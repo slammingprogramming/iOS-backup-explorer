@@ -44,8 +44,8 @@ Use a tool like https://svgtopng.com to convert
 Create a simple landing page at docs/index.html for extra SEO juice
 
 ## 6. Releases
-Create a v1.0.0 release with:
-- Title: "BackupLens v1.0.0 — Your data. Your eyes only."
+Create a release with:
+- Title: "iOS Backup Explorer — Your data. Your eyes only."
 - Description: Copy the key features from README
 - This shows up in GitHub search results prominently
 

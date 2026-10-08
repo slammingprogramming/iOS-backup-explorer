@@ -1,6 +1,6 @@
 ---
 name: Feature Request
-about: Suggest a feature for BackupLens
+about: Suggest a feature for iOS Backup Explorer
 title: '[Feature] '
 labels: enhancement
 ---

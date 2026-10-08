@@ -1,5 +1,29 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# iOS Backup Explorer
+# Copyright (C) 2026 slammingprogramming and contributors
+#
+# This program is a hard fork of BackupLens, which is
+# Copyright (c) 2026 Eyyup (Eric) Gunes and was released under the MIT
+# License. The original MIT copyright and permission notice are preserved
+# in LICENSE-MIT and NOTICE and must remain with this software. Original
+# project: https://github.com/mrgunes/BackupLens
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero General Public License as published
+# by the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU Affero General Public License for more details.
+#
+# You should have received a copy of the GNU Affero General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 """
-BackupLens — Your data. Your eyes only.
+iOS Backup Explorer — Your data. Your eyes only.
 
 A free, open-source GUI tool to decrypt, browse, and extract files
 from encrypted iPhone/iPad backups made by iTunes or Finder.
@@ -7,6 +31,7 @@ from encrypted iPhone/iPad backups made by iTunes or Finder.
 100% offline. No tracking. No telemetry. No network calls.
 Your backup password never leaves your machine.
 
+Hard fork of BackupLens by Eyyup (Eric) Gunes (MIT License).
 https://github.com/mrgunes/BackupLens
 """
 
@@ -20,11 +45,11 @@ import shutil
 from datetime import datetime
 
 __version__ = "1.0.0"
-APP_NAME = "BackupLens"
+APP_NAME = "iOS Backup Explorer"
 
 
-class BackupLens:
-    """Main application class for BackupLens."""
+class BackupExplorer:
+    """Main application class for iOS Backup Explorer."""
 
     # Default backup locations by platform
     BACKUP_PATHS = {
@@ -634,7 +659,7 @@ class BackupLens:
 def main():
     root = tk.Tk()
     root.iconname(APP_NAME)
-    BackupLens(root)
+    BackupExplorer(root)
     root.mainloop()
 
 

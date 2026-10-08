@@ -30,7 +30,7 @@ Examples of unacceptable behavior:
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported by opening a [GitHub issue](https://github.com/mrgunes/BackupLens/issues)
+reported by opening a [GitHub issue](https://github.com/slammingprogramming/iOS-backup-explorer/issues)
 or contacting the project maintainer directly.
 
 All complaints will be reviewed and investigated promptly and fairly.

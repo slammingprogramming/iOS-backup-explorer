@@ -1,6 +1,6 @@
 ---
 name: Bug Report
-about: Report a bug to help us improve BackupLens
+about: Report a bug to help us improve iOS Backup Explorer
 title: '[Bug] '
 labels: bug
 ---
@@ -11,7 +11,7 @@ labels: bug
 A clear description of what the bug is.
 
 **To reproduce**
-1. Open BackupLens
+1. Open iOS Backup Explorer
 2. Click on '...'
 3. See error
 
@@ -24,5 +24,5 @@ If applicable, add screenshots.
 **Environment:**
 - OS: [e.g. Windows 11, macOS 14.2]
 - Python version: [e.g. 3.11]
-- BackupLens version: [e.g. 1.0.0]
+- iOS Backup Explorer version: [e.g. 1.0.0]
 - iOS version of backup: [e.g. iOS 17.2]

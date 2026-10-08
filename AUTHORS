@@ -1,0 +1,28 @@
+AUTHORS
+=======
+
+This file credits the people who made this software. Entries are only ever
+added, never removed or reordered ahead of the original author.
+
+Original author (BackupLens, the project this is a hard fork of)
+----------------------------------------------------------------
+Eyyup (Eric) Gunes — creator of BackupLens, copyright holder of the original
+work (MIT License). https://github.com/mrgunes/BackupLens
+    GitHub: @mrgunes
+
+Fork maintainers (iOS Backup Explorer)
+--------------------------------------
+slammingprogramming — https://github.com/slammingprogramming
+
+Contributors to this fork
+-------------------------
+Everyone who has a commit in this repository's history is a contributor and
+is credited by `git shortlog -sne`. Add yourself below when you contribute,
+or ask the maintainers to add you:
+
+  (none yet)
+
+Upstream components credited
+----------------------------
+James Sharkey, Jean-Baptiste Bedrune and Jean Sigwald — iphone_backup_decrypt
+and the iphone-dataprotection code it builds on. See NOTICE.

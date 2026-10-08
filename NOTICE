@@ -1,0 +1,52 @@
+iOS Backup Explorer
+Copyright (C) 2026 slammingprogramming and contributors
+
+Licensed under the GNU Affero General Public License, version 3 or (at your
+option) any later version (AGPL-3.0-or-later). See LICENSE.
+
+================================================================================
+ORIGINAL WORK AND ATTRIBUTION  (this section must never be removed or altered)
+================================================================================
+
+iOS Backup Explorer is a hard fork of BackupLens, created by
+Eyyup (Eric) Gunes and released under the MIT License:
+
+    Copyright (c) 2026 Eyyup (Eric) Gunes
+    https://github.com/mrgunes/BackupLens
+
+The original MIT License text, including its copyright notice and permission
+notice, is preserved verbatim in the file LICENSE-MIT. The MIT License
+requires that notice to be included in all copies or substantial portions of
+the Software, and it applies to everything in this project that derives from
+BackupLens. That includes the application structure, user interface code,
+and documentation, as well as the logo, screenshot and social-preview
+artwork in the assets/ directory.
+
+How the two licenses relate:
+
+  * The MIT License permits modification, redistribution and sublicensing.
+    On that basis, this fork as a whole is distributed under AGPL-3.0-or-later.
+  * The original BackupLens code remains available from its upstream
+    repository under the MIT License. Relicensing this fork does not change
+    that, and it does not remove any credit due to the original author.
+  * Contributions made to this fork after the fork point are licensed under
+    AGPL-3.0-or-later.
+
+Original author and contributor credits are listed in AUTHORS. Git history
+contains the original commits with their original authorship and must not be
+rewritten in a way that removes or changes that authorship.
+
+================================================================================
+THIRD-PARTY SOFTWARE AND TEXT  (not part of this project's license grant)
+================================================================================
+
+iphone_backup_decrypt  (runtime dependency, installed separately; not bundled)
+    Copyright (c) 2019-2026 James Sharkey — MIT License
+    google_iphone_dataprotection.py within it:
+    Copyright (c) 2011-2014, Jean-Baptiste Bedrune & Jean Sigwald — BSD 3-Clause
+    https://github.com/jsharkey13/iphone_backup_decrypt
+
+Contributor Covenant, version 2.0  (adapted in CODE_OF_CONDUCT.md)
+    https://www.contributor-covenant.org
+    Licensed under CC BY 4.0. That text is not relicensed under the AGPL;
+    it remains under its own license and attribution requirements.
