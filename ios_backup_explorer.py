@@ -710,21 +710,34 @@ class BackupExplorer:
 
     def _auto_detect_backup(self):
         newest = None
+        blocked = False
         for base in self.BACKUP_PATHS.get(platform.system(), []):
             if not os.path.isdir(base):
                 continue
-            for name in os.listdir(base):
-                path = os.path.join(base, name)
-                if os.path.isdir(path) and (
-                        newest is None
-                        or os.path.getmtime(path) > os.path.getmtime(newest)):
-                    newest = path
+            try:
+                for name in os.listdir(base):
+                    path = os.path.join(base, name)
+                    if os.path.isdir(path) and (
+                            newest is None
+                            or os.path.getmtime(path)
+                            > os.path.getmtime(newest)):
+                        newest = path
+            except OSError:
+                # macOS blocks listing MobileSync/Backup unless the user
+                # picks the folder in a file dialog.
+                blocked = True
         if newest:
             # Pick the most recently modified backup
             self.path_var.set(newest)
             self.status_var.set(
                 f"Auto-detected backup: {os.path.basename(newest)}. "
                 "Enter your password to decrypt."
+            )
+        elif blocked:
+            self.status_var.set(
+                "The operating system is blocking automatic backup "
+                "detection. Click Browse and select the backup folder "
+                "(the long hex name inside MobileSync/Backup)."
             )
 
     # ── Folder browser ───────────────────────────────────────

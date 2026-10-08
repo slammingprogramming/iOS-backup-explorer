@@ -30,6 +30,9 @@ Eyyup (Eric) Gunes. Entries below the fork point record the original project's h
   characters, such as Notes attachments
 - Auto-detect missed backups made by Microsoft Store iTunes / the Apple Devices app
   (`%USERPROFILE%\Apple\MobileSync\Backup`)
+- Startup crash on macOS when the OS refuses to list `MobileSync/Backup`; the app now asks you
+  to use Browse instead (also reported and fixed upstream in
+  [mrgunes/BackupLens#5](https://github.com/mrgunes/BackupLens/pull/5))
 - Wrong-password detection no longer matches any error that merely contains "key"
 - Two domains differing only at a `_`/`%` could extract the wrong domain's file
 - Zero-byte files failed to extract

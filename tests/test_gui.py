@@ -151,6 +151,45 @@ class GuiFlowTests(unittest.TestCase):
         self.assertTrue(
             self.explorer.status_var.get().startswith("Error loading:"))
 
+    def _new_explorer(self):
+        explorer = app.BackupExplorer(self.root)
+        self.addCleanup(self._close_extra, explorer)
+        return explorer
+
+    def _close_extra(self, explorer):
+        if explorer._poll_job is not None:
+            self.root.after_cancel(explorer._poll_job)
+        explorer.session.close()
+        explorer.session._executor.shutdown(wait=True)
+
+    def test_auto_detect_picks_newest_backup(self):
+        base = os.path.join(self.tmp, "Backup")
+        for name, age in (("old", 100), ("new", 0)):
+            path = os.path.join(base, name)
+            os.makedirs(path)
+            stamp = time.time() - age
+            os.utime(path, (stamp, stamp))
+        with mock.patch.object(app.platform, "system",
+                               return_value="TestOS"), \
+                mock.patch.dict(app.BackupExplorer.BACKUP_PATHS,
+                                {"TestOS": [base]}):
+            explorer = self._new_explorer()
+        self.assertEqual(os.path.basename(explorer.path_var.get()), "new")
+
+    def test_auto_detect_survives_a_blocked_backup_folder(self):
+        """macOS raises PermissionError when listing MobileSync/Backup."""
+        base = os.path.join(self.tmp, "Backup")
+        os.makedirs(base)
+        with mock.patch.object(app.platform, "system",
+                               return_value="TestOS"), \
+                mock.patch.dict(app.BackupExplorer.BACKUP_PATHS,
+                                {"TestOS": [base]}), \
+                mock.patch.object(app.os, "listdir",
+                                  side_effect=PermissionError):
+            explorer = self._new_explorer()
+        self.assertEqual(explorer.path_var.get(), "")
+        self.assertIn("Browse", explorer.status_var.get())
+
     def test_truncation_is_reported(self):
         self.open_backup()
         self.wait_for(lambda: self.explorer.backup_open, "backup to open")
