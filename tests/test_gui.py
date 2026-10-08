@@ -68,8 +68,7 @@ class GuiFlowTests(unittest.TestCase):
         self.addCleanup(self._shutdown)
 
     def _shutdown(self):
-        if self.explorer._poll_job is not None:
-            self.root.after_cancel(self.explorer._poll_job)
+        self.explorer._cancel_timers()
         self.explorer.session.close()
         self.explorer.session._executor.shutdown(wait=True)
 
@@ -157,8 +156,7 @@ class GuiFlowTests(unittest.TestCase):
         return explorer
 
     def _close_extra(self, explorer):
-        if explorer._poll_job is not None:
-            self.root.after_cancel(explorer._poll_job)
+        explorer._cancel_timers()
         explorer.session.close()
         explorer.session._executor.shutdown(wait=True)
 

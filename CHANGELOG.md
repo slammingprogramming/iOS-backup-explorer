@@ -41,6 +41,8 @@ Eyyup (Eric) Gunes. Entries below the fork point record the original project's h
 - Extraction now shows progress and lists which files failed and why
 
 ### Added
+- **Unencrypted backups** can be opened, browsed and extracted without a password. The backup type is detected from `Manifest.plist`; the password box is disabled for unencrypted backups. They are opened read-only and `immutable`, so the backup folder is never modified (closes [mrgunes/BackupLens#4](https://github.com/mrgunes/BackupLens/issues/4); [#1](https://github.com/mrgunes/BackupLens/pull/1) takes a similar approach)
+- Clear messages for folders that are not backups and for old `Manifest.mbdb` backups
 - Test suite (`tests/`) that builds a real encrypted backup and runs it end to end, plus CI
 - `NOTICE`, `AUTHORS`, `LICENSE-MIT`, SPDX license headers
 - CI check that fails if the original author's attribution is removed

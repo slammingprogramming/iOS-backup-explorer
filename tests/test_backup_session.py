@@ -57,9 +57,10 @@ class SessionTestCase(unittest.TestCase):
 
 class OpenAndQueryTests(SessionTestCase):
     def test_open_lists_domains_and_file_count(self):
-        domains, total = self.open()
-        self.assertIn(fb.NOTES_DOMAIN, domains)
-        self.assertEqual(total, len(fb.DEFAULT_FILES))  # folder excluded
+        result = self.open()
+        self.assertTrue(result.encrypted)
+        self.assertIn(fb.NOTES_DOMAIN, result.domains)
+        self.assertEqual(result.total, len(fb.DEFAULT_FILES))  # folder excluded
 
     def test_wrong_password_is_recognised(self):
         error = self.session.open(self.backup_dir, "nope").exception(60)

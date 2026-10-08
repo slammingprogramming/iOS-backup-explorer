@@ -37,9 +37,15 @@ https://github.com/mrgunes/BackupLens
 
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
+import collections
 import concurrent.futures
+import contextlib
+import pathlib
 import queue
+import shutil
+import sqlite3
 import sys
+import tempfile
 import threading
 import traceback
 import time
@@ -196,6 +202,59 @@ def is_wrong_passphrase(exc):
                 and "incorrect passphrase" in str(exc).lower()))
 
 
+ENCRYPTED = "encrypted"
+UNENCRYPTED = "unencrypted"
+
+_FILE_ID = re.compile(r"[0-9a-f]{40}\Z")
+
+
+class BackupFormatError(ValueError):
+    """The folder is not an iOS backup this app can open."""
+
+
+class PassphraseRequiredError(ValueError):
+    """The backup is encrypted but no password was given."""
+
+
+def detect_backup(backup_dir):
+    """Return ENCRYPTED or UNENCRYPTED for the backup in *backup_dir*.
+
+    Raises BackupFormatError, with a message fit to show the user, if the
+    folder is not a backup this app can open.
+    """
+    if not os.path.isdir(backup_dir):
+        raise BackupFormatError("The backup folder does not exist.")
+    plist_path = os.path.join(backup_dir, "Manifest.plist")
+    try:
+        with open(plist_path, "rb") as handle:
+            manifest = plistlib.load(handle)
+    except FileNotFoundError:
+        if os.path.exists(os.path.join(backup_dir, "Manifest.mbdb")):
+            raise BackupFormatError(_LEGACY_FORMAT) from None
+        raise BackupFormatError(
+            "This folder has no Manifest.plist, so it does not look like an "
+            "iOS backup. Select the long hex-named folder inside "
+            "MobileSync/Backup."
+        ) from None
+    except Exception as exc:
+        raise BackupFormatError(
+            f"Manifest.plist could not be read ({type(exc).__name__})."
+        ) from exc
+    if not isinstance(manifest, dict):
+        raise BackupFormatError("Manifest.plist is not in the expected format.")
+    if not os.path.isfile(os.path.join(backup_dir, "Manifest.db")):
+        if os.path.exists(os.path.join(backup_dir, "Manifest.mbdb")):
+            raise BackupFormatError(_LEGACY_FORMAT)
+        raise BackupFormatError("This backup has no Manifest.db file.")
+    return ENCRYPTED if manifest.get("IsEncrypted") else UNENCRYPTED
+
+
+_LEGACY_FORMAT = (
+    "This backup uses the old Manifest.mbdb format (made by iTunes for "
+    "iOS 9 and earlier), which this app cannot open."
+)
+
+
 class ExtractionReport:
     """Outcome of one extraction run."""
 
@@ -211,6 +270,105 @@ def _default_backup_factory(**kwargs):
     return EncryptedBackup(**kwargs)
 
 
+class EncryptedBackend:
+    """An encrypted backup, opened with ``iphone_backup_decrypt``."""
+
+    def __init__(self, factory, backup_dir, passphrase):
+        self._lib = factory(backup_directory=backup_dir,
+                            passphrase=passphrase)
+
+    def manifest_db_cursor(self):
+        return self._lib.manifest_db_cursor()
+
+    def extract(self, cur, file_id, domain, rel_path, mtime, out_path):
+        # extract_file() looks the file up by relative path and a LIKE
+        # pattern on the domain, so a '_' or '%' in the domain could also
+        # match a different domain holding the same path.
+        cur.execute(
+            "SELECT COUNT(*) FROM Files "
+            "WHERE relativePath = ? AND domain LIKE ? AND flags=1",
+            (rel_path, domain),
+        )
+        if cur.fetchone()[0] <= 1:
+            self._lib.extract_file(relative_path=rel_path,
+                                   domain_like=domain,
+                                   output_filename=out_path)
+            return
+
+        # Ambiguous: pick the exact row by file ID instead.
+        def only_this_file(**kwargs):
+            return out_path if kwargs.get("file_id") == file_id else False
+
+        count = self._lib.extract_files(
+            relative_paths_like=rel_path, domain_like=domain,
+            output_folder=os.path.dirname(out_path),
+            filter_callback=only_this_file,
+        )
+        if count != 1:
+            raise RuntimeError("could not select this file unambiguously")
+
+    def close(self):
+        # Dropping the last reference runs the library's cleanup here, on
+        # the thread that owns its SQLite connection, and deletes its
+        # temporary decrypted Manifest.db.
+        self._lib = None
+
+
+class PlainBackend:
+    """An unencrypted backup: no password, no library, no temporary files.
+
+    Manifest.db is opened read-only and ``immutable``, so SQLite neither
+    locks it nor writes journal files next to the user's backup, and file
+    data is copied straight out of the backup folder.
+    """
+
+    def __init__(self, backup_dir):
+        self._dir = os.path.abspath(backup_dir)
+        manifest = pathlib.Path(self._dir, "Manifest.db")
+        self._conn = sqlite3.connect(
+            manifest.as_uri() + "?mode=ro&immutable=1", uri=True
+        )
+        try:
+            self._conn.execute("SELECT 1 FROM Files LIMIT 1").close()
+        except sqlite3.DatabaseError as exc:
+            self._conn.close()
+            raise BackupFormatError(
+                f"Manifest.db could not be read as a backup index ({exc})."
+            ) from exc
+
+    @contextlib.contextmanager
+    def manifest_db_cursor(self):
+        cur = self._conn.cursor()
+        try:
+            yield cur
+        finally:
+            cur.close()
+
+    def extract(self, cur, file_id, domain, rel_path, mtime, out_path):
+        # file_id comes from the backup itself, so do not trust it to be a
+        # plain name when building a path.
+        if not _FILE_ID.match(file_id):
+            raise ValueError("invalid file ID in the backup manifest")
+        source = os.path.join(self._dir, file_id[:2], file_id)
+        handle, partial = tempfile.mkstemp(dir=os.path.dirname(out_path))
+        os.close(handle)
+        try:
+            shutil.copyfile(source, partial)
+            os.replace(partial, out_path)
+        except BaseException:
+            if os.path.exists(partial):
+                os.remove(partial)
+            raise
+        if mtime:
+            os.utime(out_path, (mtime, mtime))
+
+    def close(self):
+        self._conn.close()
+
+
+OpenResult = collections.namedtuple("OpenResult", "domains total encrypted")
+
+
 class BackupSession:
     """Owns the opened backup and runs every call on ONE worker thread.
 
@@ -221,6 +379,9 @@ class BackupSession:
     ``concurrent.futures.Future``. That thread opens the backup, runs all
     queries and extractions, and releases it, so the connection is always
     used (and closed) where it was created.
+
+    Encrypted and unencrypted backups are both handled here; the type is
+    detected from the backup's Manifest.plist.
     """
 
     def __init__(self, backup_factory=None):
@@ -234,8 +395,11 @@ class BackupSession:
 
     # ── Public API (any thread; each returns a Future) ───────
 
-    def open(self, backup_dir, passphrase):
-        """Decrypt and open a backup. Future -> (domains, total_files)."""
+    def open(self, backup_dir, passphrase=None):
+        """Open a backup. Future -> OpenResult(domains, total, encrypted).
+
+        *passphrase* is only needed (and only used) for encrypted backups.
+        """
         return self._executor.submit(self._open, backup_dir, passphrase)
 
     def query_files(self, domains=None, search="", limit=MAX_ROWS):
@@ -248,7 +412,10 @@ class BackupSession:
                                      limit)
 
     def extract(self, file_ids, dest, progress=None):
-        """Decrypt files into *dest*. Future -> ExtractionReport."""
+        """Write files (decrypted if need be) into *dest*.
+
+        Future -> ExtractionReport.
+        """
         self._cancel.clear()
         return self._executor.submit(self._extract, list(file_ids), dest,
                                      progress)
@@ -257,7 +424,7 @@ class BackupSession:
         self._cancel.set()
 
     def close(self):
-        """Release the backup (and its temporary decrypted manifest)."""
+        """Release the backup (and any temporary decrypted manifest)."""
         if self._closed:
             return
         self._closed = True
@@ -271,10 +438,12 @@ class BackupSession:
         self._swap_backup(None)
 
     def _swap_backup(self, new_backup):
-        # Dropping the last reference to the old backup runs the library's
-        # cleanup here, on the thread that owns its SQLite connection, and
-        # deletes its temporary decrypted Manifest.db.
+        # Releasing the old backup here keeps its SQLite connection (and,
+        # for encrypted backups, the library's temporary decrypted
+        # Manifest.db) on the thread that created it.
         old, self._backup = self._backup, new_backup
+        if old is not None:
+            old.close()
         del old
 
     def _require_backup(self):
@@ -285,8 +454,15 @@ class BackupSession:
     def _open(self, backup_dir, passphrase):
         # The previously opened backup (if any) stays usable until the new
         # one has opened successfully.
-        backup = self._factory(backup_directory=backup_dir,
-                               passphrase=passphrase)
+        kind = detect_backup(backup_dir)
+        if kind == ENCRYPTED:
+            if not passphrase:
+                raise PassphraseRequiredError(
+                    "This backup is encrypted. Enter its password."
+                )
+            backup = EncryptedBackend(self._factory, backup_dir, passphrase)
+        else:
+            backup = PlainBackend(backup_dir)
         try:
             with backup.manifest_db_cursor() as cur:
                 cur.execute(
@@ -298,10 +474,11 @@ class BackupSession:
         except BaseException:
             # Do not let the traceback keep the half-open backup alive
             # past this thread.
+            backup.close()
             backup = None
             raise
         self._swap_backup(backup)
-        return domains, total
+        return OpenResult(domains, total, kind == ENCRYPTED)
 
     def _query_files(self, domains, search, limit):
         backup = self._require_backup()
@@ -419,40 +596,13 @@ class BackupSession:
                 if mtime:
                     os.utime(out_path, (mtime, mtime))
             else:
-                self._decrypt_to(backup, cur, file_id, domain, rel_path,
-                                 out_path)
+                backup.extract(cur, file_id, domain, rel_path, mtime,
+                               out_path)
             report.extracted += 1
         except UnsafePathError as exc:
             report.skipped.append((label, str(exc)))
         except Exception as exc:
             report.errors.append((label, f"{type(exc).__name__}: {exc}"))
-
-    @staticmethod
-    def _decrypt_to(backup, cur, file_id, domain, rel_path, out_path):
-        # extract_file() looks the file up by relative path and a LIKE
-        # pattern on the domain, so a '_' or '%' in the domain could also
-        # match a different domain holding the same path.
-        cur.execute(
-            "SELECT COUNT(*) FROM Files "
-            "WHERE relativePath = ? AND domain LIKE ? AND flags=1",
-            (rel_path, domain),
-        )
-        if cur.fetchone()[0] <= 1:
-            backup.extract_file(relative_path=rel_path, domain_like=domain,
-                                output_filename=out_path)
-            return
-
-        # Ambiguous: pick the exact row by file ID instead.
-        def only_this_file(**kwargs):
-            return out_path if kwargs.get("file_id") == file_id else False
-
-        count = backup.extract_files(
-            relative_paths_like=rel_path, domain_like=domain,
-            output_folder=os.path.dirname(out_path),
-            filter_callback=only_this_file,
-        )
-        if count != 1:
-            raise RuntimeError("could not select this file unambiguously")
 
 
 class BackupExplorer:
@@ -485,6 +635,9 @@ class BackupExplorer:
         self._request_id = 0         # discards out-of-date file lists
         self._search_job = None
         self._extracting = False
+        self._backup_kind = None     # ENCRYPTED / UNENCRYPTED / None
+        self._detect_job = None
+        self._auto_path = None       # folder chosen by auto-detect
 
         # Worker threads must never call into Tk (it can hang at shutdown),
         # so they hand work to the Tk thread through this queue.
@@ -600,6 +753,7 @@ class BackupExplorer:
         row1.pack(fill="x", pady=3)
         ttk.Label(row1, text="Backup Folder:").pack(side="left")
         self.path_var = tk.StringVar()
+        self.path_var.trace_add("write", lambda *a: self._schedule_detect())
         path_entry = ttk.Entry(row1, textvariable=self.path_var, width=75)
         path_entry.pack(side="left", padx=8)
         ttk.Button(row1, text="Browse...",
@@ -607,19 +761,21 @@ class BackupExplorer:
 
         row2 = ttk.Frame(conn_frame)
         row2.pack(fill="x", pady=3)
-        ttk.Label(row2, text="Password:").pack(side="left")
+        ttk.Label(row2, text="Password (encrypted backups):").pack(
+            side="left")
         self.pass_var = tk.StringVar()
         self.pass_entry = ttk.Entry(row2, textvariable=self.pass_var,
                                      show="*", width=40)
         self.pass_entry.pack(side="left", padx=8)
         self.pass_entry.bind("<Return>", lambda e: self._decrypt())
 
-        self.decrypt_btn = ttk.Button(row2, text="Decrypt & Open",
+        self.decrypt_btn = ttk.Button(row2, text="Open Backup",
                                        command=self._decrypt, style="Safe.TButton")
         self.decrypt_btn.pack(side="left", padx=8)
 
         self.status_var = tk.StringVar(
-            value="Select a backup folder and enter your password to begin."
+            value="Select a backup folder to begin. A password is only "
+                  "needed for encrypted backups."
         )
         status_bar = ttk.Label(conn_frame, textvariable=self.status_var,
                                 style="Status.TLabel")
@@ -728,11 +884,12 @@ class BackupExplorer:
                 blocked = True
         if newest:
             # Pick the most recently modified backup
+            self._auto_path = newest
             self.path_var.set(newest)
             self.status_var.set(
-                f"Auto-detected backup: {os.path.basename(newest)}. "
-                "Enter your password to decrypt."
+                f"Auto-detected backup: {os.path.basename(newest)}."
             )
+            self._update_backup_kind()
         elif blocked:
             self.status_var.set(
                 "The operating system is blocking automatic backup "
@@ -754,6 +911,51 @@ class BackupExplorer:
         if path:
             self.path_var.set(path)
 
+    # ── Backup type ──────────────────────────────────────────
+
+    def _schedule_detect(self):
+        """Check the chosen folder shortly after the user stops typing."""
+        if self._detect_job is not None:
+            self.root.after_cancel(self._detect_job)
+        self._detect_job = self.root.after(300, self._update_backup_kind)
+
+    def _update_backup_kind(self):
+        """Adapt the password field and button to the chosen backup."""
+        if self._detect_job is not None:
+            self.root.after_cancel(self._detect_job)  # called directly
+            self._detect_job = None
+        path = self.path_var.get().strip()
+        kind, problem = None, None
+        if path and os.path.isdir(path):
+            try:
+                kind = detect_backup(path)
+            except BackupFormatError as exc:
+                problem = str(exc)
+        self._backup_kind = kind
+
+        unencrypted = kind == UNENCRYPTED
+        self.pass_entry.configure(state="disabled" if unencrypted
+                                  else "normal")
+        self.decrypt_btn.configure(
+            text="Decrypt & Open" if kind == ENCRYPTED else "Open Backup"
+        )
+        if self.decrypt_btn.instate(["disabled"]) or self._extracting:
+            return  # an open is in progress; leave its status alone
+
+        prefix = ""
+        if path == self._auto_path:
+            prefix = f"Auto-detected backup: {os.path.basename(path)}. "
+        if kind == ENCRYPTED:
+            self.status_var.set(
+                prefix + "This backup is encrypted. Enter its password "
+                "to decrypt it.")
+        elif unencrypted:
+            self.status_var.set(
+                prefix + "This backup is not encrypted, so no password is "
+                "needed. Click Open Backup.")
+        elif problem:
+            self.status_var.set(problem)
+
     # ── Decryption ───────────────────────────────────────────
 
     def _decrypt(self):
@@ -764,13 +966,26 @@ class BackupExplorer:
         if not backup_dir or not os.path.isdir(backup_dir):
             messagebox.showerror("Error", "Please select a valid backup folder.")
             return
-        if not passphrase:
-            messagebox.showerror("Error",
-                                  "Please enter the backup encryption password.")
+        try:
+            kind = detect_backup(backup_dir)
+        except BackupFormatError as exc:
+            messagebox.showerror("Not a usable backup", str(exc))
             return
+        if kind == ENCRYPTED and not passphrase:
+            messagebox.showerror(
+                "Error",
+                "This backup is encrypted. Please enter the backup "
+                "encryption password.",
+            )
+            return
+        if kind == UNENCRYPTED:
+            passphrase = None  # never needed, never passed on
 
         self.decrypt_btn.configure(state="disabled")
-        self.status_var.set("Decrypting... this may take a moment.")
+        self.status_var.set(
+            "Decrypting... this may take a moment." if kind == ENCRYPTED
+            else "Opening backup..."
+        )
         self.root.update_idletasks()
 
         future = self.session.open(backup_dir, passphrase)
@@ -785,10 +1000,11 @@ class BackupExplorer:
             return
         # Clear password from the UI after successful decryption
         self.pass_var.set("")
-        domains, total = future.result()
-        self._on_decrypt_success(domains, total)
+        result = future.result()
+        self._on_decrypt_success(result.domains, result.total,
+                                 result.encrypted)
 
-    def _on_decrypt_success(self, domains, total_files):
+    def _on_decrypt_success(self, domains, total_files, encrypted=True):
         self.decrypt_btn.configure(state="normal")
         self.backup_open = True
         self._scope_set = False
@@ -797,7 +1013,8 @@ class BackupExplorer:
         self.file_tree.delete(*self.file_tree.get_children())
         self.count_var.set("")
         self.status_var.set(
-            f"Decrypted! {total_files:,} files across {len(domains)} domains."
+            f"{'Decrypted' if encrypted else 'Opened'}! {total_files:,} "
+            f"files across {len(domains)} domains."
         )
         self.domain_tree.delete(*self.domain_tree.get_children())
 
@@ -863,6 +1080,12 @@ class BackupExplorer:
                 "Install the requirements by running:\n"
                 "  pip install -r requirements.txt",
             )
+        elif isinstance(error, BackupFormatError):
+            self.status_var.set(f"Error: {message}")
+            messagebox.showerror("Not a usable backup", message)
+        elif isinstance(error, PassphraseRequiredError):
+            self.status_var.set("This backup is encrypted. Enter its password.")
+            messagebox.showerror("Password needed", message)
         elif is_wrong_passphrase(error):
             self.status_var.set("Incorrect password. Please try again.")
             messagebox.showerror(
@@ -1032,12 +1255,15 @@ class BackupExplorer:
             "Extraction running", "An extraction is still running. Quit anyway?"
         ):
             return
-        if self._poll_job is not None:
-            self.root.after_cancel(self._poll_job)
-        if self._search_job is not None:
-            self.root.after_cancel(self._search_job)
+        self._cancel_timers()
         self.session.close()
         self.root.destroy()
+
+    def _cancel_timers(self):
+        for job in (self._poll_job, self._search_job, self._detect_job):
+            if job is not None:
+                self.root.after_cancel(job)
+        self._poll_job = self._search_job = self._detect_job = None
 
 
 def main():

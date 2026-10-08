@@ -94,14 +94,19 @@ DEFAULT_FILES = [
 ]
 
 
-def build_backup(parent_dir, files=None, passphrase=PASSPHRASE):
+def build_backup(parent_dir, files=None, passphrase=PASSPHRASE,
+                 encrypted=True):
     """Create the backup under *parent_dir*; return ``(backup_dir, ids)``.
 
-    ``ids`` maps ``(domain, relative_path)`` to the file ID.
+    ``ids`` maps ``(domain, relative_path)`` to the file ID. With
+    ``encrypted=False`` the backup is laid out like an unencrypted iTunes /
+    Finder backup: a plain Manifest.db and plain file data.
     """
     files = DEFAULT_FILES if files is None else files
     backup_dir = os.path.join(parent_dir, "00000000-0000000000000000")
     os.makedirs(backup_dir)
+    if not encrypted:
+        return backup_dir, _build_plain(backup_dir, files)
 
     # Key bag, protected by a key derived from the passphrase.
     dpsl, salt = os.urandom(20), os.urandom(20)
@@ -170,6 +175,36 @@ def build_backup(parent_dir, files=None, passphrase=PASSPHRASE):
         handle.write(encrypted_db)
 
     return backup_dir, ids
+
+
+def _build_plain(backup_dir, files):
+    with open(os.path.join(backup_dir, "Manifest.plist"), "wb") as handle:
+        plistlib.dump({"IsEncrypted": False, "Version": "10.0"}, handle)
+
+    ids = {}
+    conn = sqlite3.connect(os.path.join(backup_dir, "Manifest.db"))
+    conn.execute("CREATE TABLE Files (fileID TEXT PRIMARY KEY, "
+                 "domain TEXT, relativePath TEXT, flags INTEGER, "
+                 "file BLOB)")
+    mtime = 1_700_000_000
+    for domain, rel_path, content in files:
+        file_id = file_id_for(domain, rel_path)
+        ids[(domain, rel_path)] = file_id
+        size = 100 if content is None else len(content)
+        if content:
+            blob_dir = os.path.join(backup_dir, file_id[:2])
+            os.makedirs(blob_dir, exist_ok=True)
+            with open(os.path.join(blob_dir, file_id), "wb") as out:
+                out.write(content)
+        conn.execute("INSERT INTO Files VALUES (?, ?, ?, 1, ?)",
+                     (file_id, domain, rel_path,
+                      _file_record(size, mtime, FILE_CLASS)))
+    conn.execute("INSERT INTO Files VALUES (?, ?, ?, 2, ?)",
+                 (file_id_for("HomeDomain", "Library"), "HomeDomain",
+                  "Library", _file_record(0, mtime, FILE_CLASS)))
+    conn.commit()
+    conn.close()
+    return ids
 
 
 def content_of(domain, relative_path):

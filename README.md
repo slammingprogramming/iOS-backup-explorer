@@ -2,7 +2,7 @@
 
 <p align="center">
   <strong>Your data. Your eyes only.</strong><br>
-  A free, open-source GUI tool to decrypt, browse, and extract files from encrypted iPhone and iPad backups.
+  A free, open-source GUI tool to decrypt, browse, and extract files from iPhone and iPad backups, encrypted or not.
 </p>
 
 <p align="center">
@@ -49,6 +49,7 @@ You made an encrypted iPhone backup with iTunes, Finder, or the Apple Devices ap
 ## Features
 
 - **Decrypt encrypted backups** — Supports iOS 13+ encrypted local backups
+- **Unencrypted backups too** — Detected automatically; no password needed
 - **Browse by category** — Camera Roll, Messages, Health, Apps, and more
 - **Search across all files** — Find exactly what you need instantly
 - **Extract individual files or bulk export** — Save to any folder
@@ -95,9 +96,11 @@ iOS Backup Explorer auto-detects your backup location. If it doesn't, here's whe
 | **macOS** | `~/Library/Application Support/MobileSync/Backup/` |
 | **Linux** | Backups must be copied from a Windows/Mac machine |
 
-### 2. Enter your password
+### 2. Enter your password (encrypted backups only)
 
-This is the **encryption password you set in iTunes, Finder, or the Apple Devices app**, NOT your Apple ID password.
+iOS Backup Explorer detects whether the backup is encrypted. If it is not, the password box is disabled and you can just click **Open Backup**.
+
+For an encrypted backup, this is the **encryption password you set in iTunes, Finder, or the Apple Devices app**, NOT your Apple ID password.
 
 **Forgot your password?**
 - **macOS:** Open Keychain Access, search for `iOS Backup` — the password is stored there
@@ -172,7 +175,15 @@ No. iOS Backup Explorer requires your correct encryption password to decrypt the
 <details>
 <summary><strong>Does this work with iCloud backups?</strong></summary>
 
-No. iOS Backup Explorer only works with **local encrypted backups** created by iTunes, Finder, or the Apple Devices app. iCloud backups are stored on Apple's servers and cannot be accessed by this tool.
+No. iOS Backup Explorer only works with **local backups** (encrypted or not) created by iTunes, Finder, or the Apple Devices app. iCloud backups are stored on Apple's servers and cannot be accessed by this tool.
+</details>
+
+<details>
+<summary><strong>Does it work with unencrypted backups?</strong></summary>
+
+Yes. Unencrypted backups are detected automatically and opened without a password, read-only: the backup folder is never modified and no temporary copy of its index is made. They must use the `Manifest.db` layout (iTunes/Finder backups of iOS 10 and later); very old `Manifest.mbdb` backups are not supported.
+
+Note that Apple leaves some data out of unencrypted backups (for example Health data and saved passwords), so you may find less in them than in an encrypted backup of the same device.
 </details>
 
 <details>
