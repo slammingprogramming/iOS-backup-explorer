@@ -22,6 +22,19 @@ or ask the maintainers to add you:
 
   (none yet)
 
+Contributors whose ideas and work shaped this fork
+--------------------------------------------------
+Nikhil-42 — https://github.com/Nikhil-42
+    Proposed unencrypted-backup support, an "Extract Entire Backup" function and
+    mounting a backup as a file system, in upstream BackupLens pull requests #1
+    and #2. Their designs inspired the matching features here, which are
+    independent implementations for this project's structure.
+jakubstetz — https://github.com/jakubstetz
+    Upstream pull request #5 found and fixed the same encrypted-extraction,
+    threading and macOS startup bugs.
+heebeejeebees — https://github.com/heebeejeebees
+    Asked for unencrypted-backup support (upstream issue #4).
+
 Upstream components credited
 ----------------------------
 James Sharkey, Jean-Baptiste Bedrune and Jean Sigwald — iphone_backup_decrypt

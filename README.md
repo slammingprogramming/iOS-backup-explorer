@@ -53,6 +53,8 @@ You made an encrypted iPhone backup with iTunes, Finder, or the Apple Devices ap
 - **Browse by category** — Camera Roll, Messages, Health, Apps, and more
 - **Search across all files** — Find exactly what you need instantly
 - **Extract individual files or bulk export** — Save to any folder
+- **Extract the entire backup** — One click, straight from the backup index, with no limit on how many files
+- **Mount a backup as a read-only drive or folder** (optional) — Browse it in your file manager; on Windows as `\\ios-backup\...` with no drive letter
 - **Auto-detects backups** — Finds your backup folder automatically
 - **Cross-platform** — Works on Windows, macOS, and Linux
 - **Single file** — The entire app is one Python file you can audit in one sitting
@@ -114,6 +116,28 @@ For an encrypted backup, this is the **encryption password you set in iTunes, Fi
 
 ---
 
+## Mounting a backup (optional)
+
+Instead of extracting, you can **mount** the open backup as a read-only drive or folder and browse it with your normal file manager and programs. Click **Mount Backup**; click it again (now **Unmount Backup**) when you are done.
+
+| Platform | What you get | What you need |
+|---|---|---|
+| **Windows** | A network-style path, `\\ios-backup\<backup name>`, with **no drive letter**. Type it into File Explorer's address bar | [WinFsp](https://winfsp.dev) |
+| **macOS** | An empty folder you choose | [macFUSE](https://macfuse.github.io) or [FUSE-T](https://www.fuse-t.org) |
+| **Linux** | An empty folder you choose | FUSE (e.g. `sudo apt install fuse3`) |
+
+On every platform you also need the small Python package (Python 3.9 or newer):
+
+```bash
+pip install -r requirements-mount.txt
+```
+
+Files from an encrypted backup are decrypted into a private temporary folder the first time you open them, and that folder is deleted when you unmount. Files from an unencrypted backup are read straight from the backup folder, with nothing copied. While a backup is mounted, programs running as you can read its decrypted contents; see [SECURITY.md](SECURITY.md). Mounting adds no network access: the Windows path is served by WinFsp on your own computer.
+
+Mounting was tested on Windows 10 with WinFsp. The macOS and Linux code paths follow the same design but have not been run on those systems yet, so please report problems.
+
+---
+
 ## Security & Privacy
 
 > **iPhone backups contain your most sensitive data — photos, messages, health records, passwords, financial apps, and more. You should be extremely careful about which tools you trust with this data.**
@@ -126,9 +150,9 @@ For an encrypted backup, this is the **encryption password you set in iTunes, Fi
 
 3. **No telemetry, no analytics, no tracking** — We don't know you exist. We don't want to.
 
-4. **Fully auditable** — The entire app is a single Python file (about 1,000 lines). Read it. We encourage it.
+4. **Fully auditable** — The core app is a single Python file (about 1,600 lines), plus one optional module (`backup_mount.py`, about 450 lines) that is only used if you mount a backup. Read them. We encourage it.
 
-5. **Open source dependencies** — Our only dependency ([iphone_backup_decrypt](https://github.com/jsharkey13/iphone_backup_decrypt)) is also open source and MIT licensed.
+5. **Open source dependencies** — Our only required dependency ([iphone_backup_decrypt](https://github.com/jsharkey13/iphone_backup_decrypt)) is also open source and MIT licensed.
 
 For our full security policy, see [SECURITY.md](SECURITY.md).
 
@@ -249,7 +273,7 @@ sudo lsof -i -P | grep python
 # Option 3: Monitor network activity (Windows PowerShell)
 Get-NetTCPConnection | Where-Object { $_.OwningProcess -eq (Get-Process python).Id }
 
-# Option 4: Read the source — it's one file, about 1,000 lines.
+# Option 4: Read the source — it's one file (about 1,600 lines) plus the optional mounting module.
 ```
 
 ---
@@ -260,6 +284,12 @@ iOS Backup Explorer is a hard fork of [BackupLens](https://github.com/mrgunes/Ba
 [Eyyup (Eric) Gunes](https://github.com/mrgunes). The application design, user interface, documentation
 and original code are his work, and this project would not exist without it. See [AUTHORS](AUTHORS)
 and [NOTICE](NOTICE).
+
+Several features here were inspired by open pull requests and issues on the original project, and are credited to the people behind them:
+
+- [Nikhil-42](https://github.com/Nikhil-42), whose pull requests [#1](https://github.com/mrgunes/BackupLens/pull/1) and [#2](https://github.com/mrgunes/BackupLens/pull/2) proposed unencrypted-backup support, extracting the entire backup, and mounting a backup as a file system
+- [jakubstetz](https://github.com/jakubstetz), whose pull request [#5](https://github.com/mrgunes/BackupLens/pull/5) found and fixed the same extraction, threading and macOS startup bugs
+- [heebeejeebees](https://github.com/heebeejeebees), who asked for unencrypted-backup support in [issue #4](https://github.com/mrgunes/BackupLens/issues/4)
 
 iOS Backup Explorer is built on top of the excellent [iphone_backup_decrypt](https://github.com/jsharkey13/iphone_backup_decrypt) library by James Sharkey. Thank you for making encrypted backup decryption accessible to everyone.
 

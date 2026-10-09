@@ -37,6 +37,19 @@ contains the original commits with their original authorship and must not be
 rewritten in a way that removes or changes that authorship.
 
 ================================================================================
+CONTRIBUTORS TO THE ORIGINAL PROJECT WHOSE WORK INSPIRED FEATURES HERE
+================================================================================
+
+Nikhil-42 (https://github.com/Nikhil-42) proposed, in pull requests #1 and #2 to
+https://github.com/mrgunes/BackupLens, support for unencrypted backups, an
+"Extract Entire Backup" function and mounting a backup as a file system. Those
+contributions were made to an MIT-licensed project and are available under the
+MIT License preserved in LICENSE-MIT. The corresponding features in this project
+are independent implementations written for its own structure; the credit is
+kept here and in AUTHORS regardless. jakubstetz (pull request #5) and
+heebeejeebees (issue #4) are credited in AUTHORS for the same reason.
+
+================================================================================
 THIRD-PARTY SOFTWARE AND TEXT  (not part of this project's license grant)
 ================================================================================
 
@@ -45,6 +58,13 @@ iphone_backup_decrypt  (runtime dependency, installed separately; not bundled)
     google_iphone_dataprotection.py within it:
     Copyright (c) 2011-2014, Jean-Baptiste Bedrune & Jean Sigwald — BSD 3-Clause
     https://github.com/jsharkey13/iphone_backup_decrypt
+
+mfusepy  (optional dependency for mounting, installed separately; not bundled)
+    ISC License. https://github.com/mxmlnkn/mfusepy
+
+WinFsp, macFUSE, FUSE-T, libfuse  (optional drivers needed for mounting)
+    Third-party software that you install yourself; none of it is bundled with
+    this project and each has its own license. https://winfsp.dev
 
 Contributor Covenant, version 2.0  (adapted in CODE_OF_CONDUCT.md)
     https://www.contributor-covenant.org

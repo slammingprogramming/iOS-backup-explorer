@@ -1,0 +1,4 @@
+# Optional: only needed to mount a backup as a drive/folder.
+# Needs Python 3.9+, plus WinFsp (Windows), macFUSE or FUSE-T (macOS) or
+# FUSE (Linux). See README, "Mounting a backup".
+mfusepy>=3.1.1

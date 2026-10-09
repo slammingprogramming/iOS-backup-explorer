@@ -44,6 +44,15 @@ The password you enter into iOS Backup Explorer is the **encryption password you
 
 Unencrypted backups need no password, so none is asked for or used. They are opened read-only (the backup folder is never written to, and no temporary copy of its index is made), and extracted files are copied out as they are.
 
+## Mounting a Backup
+
+Mounting (optional, see the README) makes the open backup's contents available as a read-only drive or folder. Be aware that:
+
+- While it is mounted, **programs running as your user can read the backup's decrypted contents.** Unmount when you are done.
+- Files from an *encrypted* backup are decrypted into a temporary folder created just for the mount (private to your account) the first time they are opened. It is deleted when you unmount or quit. If the app is killed it may be left in your system temp folder (named `ios-backup-explorer-...`); delete it if so. Files from an *unencrypted* backup are read from the backup folder and nothing is copied.
+- On Windows the files are owned by the account that mounted them and are not readable by other accounts. The `\\ios-backup\...` path is served by WinFsp on this computer only; the app makes no network connections.
+- The mount is read-only; nothing can change the backup through it.
+
 ## Supported Backup Sources
 
 iOS Backup Explorer only reads **local iPhone/iPad backups** created by:
@@ -71,3 +80,6 @@ iOS Backup Explorer depends on:
 - **iphone_backup_decrypt** — [GitHub](https://github.com/jsharkey13/iphone_backup_decrypt) — MIT licensed, open source library for decrypting iOS backups
 
 We monitor our dependencies for known vulnerabilities.
+- **mfusepy** (optional, only for mounting) — ISC licensed Python bindings for FUSE/WinFsp.
+- **WinFsp / macFUSE / FUSE-T / libfuse** (optional, only for mounting) — third-party drivers you 
+  install yourself; they are not bundled with this app.

@@ -270,6 +270,27 @@ def _default_backup_factory(**kwargs):
     return EncryptedBackup(**kwargs)
 
 
+_QUIET_CLASSES = {}
+
+
+def _disarm_finalizer(obj):
+    """Make *obj*'s ``__del__`` do nothing.
+
+    Used after cleaning up explicitly, so that a later garbage collection
+    (possibly on another thread) neither repeats the cleanup nor complains
+    about it. Works the same for every version of the library.
+    """
+    cls = type(obj)
+    quiet = _QUIET_CLASSES.get(cls)
+    if quiet is None:
+        quiet = _QUIET_CLASSES[cls] = type(
+            cls.__name__, (cls,), {"__del__": lambda self: None})
+    try:
+        obj.__class__ = quiet
+    except TypeError:
+        pass
+
+
 class EncryptedBackend:
     """An encrypted backup, opened with ``iphone_backup_decrypt``."""
 
@@ -307,11 +328,36 @@ class EncryptedBackend:
         if count != 1:
             raise RuntimeError("could not select this file unambiguously")
 
+    def materialize(self, cur, file_id, domain, rel_path, size, mtime,
+                    cache_dir):
+        """Return a path to the decrypted file, decrypting it into
+        *cache_dir* the first time it is asked for."""
+        path = os.path.join(cache_dir, file_id)
+        if os.path.exists(path):
+            return path
+        os.makedirs(cache_dir, exist_ok=True)
+        if size == 0:
+            open(path, "wb").close()
+        else:
+            self.extract(cur, file_id, domain, rel_path, mtime, path)
+        return path
+
     def close(self):
-        # Dropping the last reference runs the library's cleanup here, on
-        # the thread that owns its SQLite connection, and deletes its
-        # temporary decrypted Manifest.db.
-        self._lib = None
+        lib, self._lib = self._lib, None
+        if lib is None:
+            return
+        # Clean up explicitly, here on the thread that owns the SQLite
+        # connection, and do not rely on the library object being freed:
+        # a traceback that is still alive somewhere (an error raised inside
+        # manifest_db_cursor(), say) keeps it alive, and it would then be
+        # finalised on another thread, which cannot close the connection
+        # and so leaves the decrypted Manifest.db behind.
+        try:
+            lib._cleanup()
+        except Exception:
+            pass
+        finally:
+            _disarm_finalizer(lib)
 
 
 class PlainBackend:
@@ -361,6 +407,24 @@ class PlainBackend:
             raise
         if mtime:
             os.utime(out_path, (mtime, mtime))
+
+    def materialize(self, cur, file_id, domain, rel_path, size, mtime,
+                    cache_dir):
+        """Return a path to the file's data. Nothing is copied: the data
+        is already plain in the backup folder."""
+        if not _FILE_ID.match(file_id):
+            raise ValueError("invalid file ID in the backup manifest")
+        if size == 0:
+            # Empty files have no data in the backup.
+            path = os.path.join(cache_dir, file_id)
+            if not os.path.exists(path):
+                os.makedirs(cache_dir, exist_ok=True)
+                open(path, "wb").close()
+            return path
+        source = os.path.join(self._dir, file_id[:2], file_id)
+        if not os.path.isfile(source):
+            raise FileNotFoundError(source)
+        return source
 
     def close(self):
         self._conn.close()
@@ -419,6 +483,32 @@ class BackupSession:
         self._cancel.clear()
         return self._executor.submit(self._extract, list(file_ids), dest,
                                      progress)
+
+    def extract_all(self, dest, progress=None):
+        """Write every file in the backup into *dest*.
+
+        Unlike extracting what is on screen, this reads the whole manifest,
+        so it is not limited to the file list's row cap.
+        Future -> ExtractionReport.
+        """
+        self._cancel.clear()
+        return self._executor.submit(self._extract_all, dest, progress)
+
+    def list_all(self):
+        """Every file in the backup.
+
+        Future -> list of (file_id, domain, relative_path, size, mtime).
+        """
+        return self._executor.submit(self._list_all)
+
+    def cache_file(self, file_id, cache_dir):
+        """Make one file readable on disk. Future -> path.
+
+        For an unencrypted backup the path is the data in the backup folder
+        itself; for an encrypted one the file is decrypted into *cache_dir*
+        on first use.
+        """
+        return self._executor.submit(self._cache_file, file_id, cache_dir)
 
     def cancel_extraction(self):
         self._cancel.set()
@@ -543,6 +633,43 @@ class BackupSession:
                          mod_str))
         return rows
 
+    def _extract_all(self, dest, progress):
+        backup = self._require_backup()
+        with backup.manifest_db_cursor() as cur:
+            cur.execute("SELECT fileID FROM Files WHERE flags=1 "
+                        "ORDER BY domain, relativePath")
+            file_ids = [row[0] for row in cur.fetchall()]
+        return self._extract(file_ids, dest, progress)
+
+    def _list_all(self):
+        backup = self._require_backup()
+        rows = []
+        with backup.manifest_db_cursor() as cur:
+            cur.execute(
+                "SELECT fileID, domain, relativePath, file FROM Files "
+                "WHERE flags=1 AND domain IS NOT NULL AND domain != '' "
+                "AND relativePath IS NOT NULL AND relativePath != ''"
+            )
+            for file_id, domain, rel_path, blob in cur.fetchall():
+                size, mtime = read_file_info(blob)
+                rows.append((file_id, domain, rel_path, size or 0, mtime))
+        return rows
+
+    def _cache_file(self, file_id, cache_dir):
+        backup = self._require_backup()
+        with backup.manifest_db_cursor() as cur:
+            cur.execute(
+                "SELECT domain, relativePath, file FROM Files "
+                "WHERE fileID=? AND flags=1", (file_id,),
+            )
+            row = cur.fetchone()
+            if row is None:
+                raise FileNotFoundError(file_id)
+            domain, rel_path, blob = row
+            size, mtime = read_file_info(blob)
+            return backup.materialize(cur, file_id, domain, rel_path, size,
+                                      mtime, cache_dir)
+
     def _extract(self, file_ids, dest, progress):
         backup = self._require_backup()
         report = ExtractionReport()
@@ -630,6 +757,11 @@ class BackupExplorer:
 
         self.session = session or BackupSession()
         self.backup_open = False
+        self.backup_dir = None       # folder of the backup that is open
+        self._opening_dir = None
+        self._mount = None           # backup_mount.Mount while mounted
+        self._mount_busy = False
+        self.mount_btn = None
         self._scope_domains = None   # None = every domain
         self._scope_set = False
         self._request_id = 0         # discards out-of-date file lists
@@ -816,6 +948,11 @@ class BackupExplorer:
                     command=self._extract_selected).pack(side="right", padx=6)
         ttk.Button(toolbar, text="Extract All in View",
                     command=self._extract_all_view).pack(side="right", padx=2)
+        ttk.Button(toolbar, text="Extract Entire Backup",
+                    command=self._extract_entire).pack(side="right", padx=6)
+        self.mount_btn = ttk.Button(toolbar, text="Mount Backup",
+                                    command=self._toggle_mount)
+        self.mount_btn.pack(side="right", padx=2)
 
         cols = ("domain", "path", "size", "modified")
         self.file_tree = ttk.Treeview(right_frame, columns=cols,
@@ -966,6 +1103,10 @@ class BackupExplorer:
         if not backup_dir or not os.path.isdir(backup_dir):
             messagebox.showerror("Error", "Please select a valid backup folder.")
             return
+        if self._mount is not None or self._mount_busy:
+            messagebox.showinfo(
+                "Info", "Unmount the current backup before opening another.")
+            return
         try:
             kind = detect_backup(backup_dir)
         except BackupFormatError as exc:
@@ -988,6 +1129,7 @@ class BackupExplorer:
         )
         self.root.update_idletasks()
 
+        self._opening_dir = backup_dir
         future = self.session.open(backup_dir, passphrase)
         self._when_done(
             future, lambda fut: self._on_open_done(fut, passphrase)
@@ -1001,6 +1143,7 @@ class BackupExplorer:
         # Clear password from the UI after successful decryption
         self.pass_var.set("")
         result = future.result()
+        self.backup_dir = self._opening_dir
         self._on_decrypt_success(result.domains, result.total,
                                  result.encrypted)
 
@@ -1203,14 +1346,46 @@ class BackupExplorer:
         dest = filedialog.askdirectory(title="Select Output Folder")
         if not dest:
             return
+        self._begin_extraction(
+            lambda progress: self.session.extract(file_ids, dest, progress),
+            dest, f"Extracting {len(file_ids)} files...")
+
+    def _extract_entire(self):
+        """Extract every file, straight from the manifest (no row cap).
+
+        The idea for this button comes from Nikhil-42's upstream PR #1.
+        """
+        if not self.backup_open:
+            messagebox.showinfo("Info", "Open a backup first.")
+            return
+        if self._extracting:
+            messagebox.showinfo("Info", "An extraction is already running.")
+            return
+        dest = filedialog.askdirectory(
+            title="Select Output Folder for the Entire Backup")
+        if not dest:
+            return
+        if not messagebox.askyesno(
+            "Extract entire backup",
+            "This extracts every file in the backup into domain/"
+            "relativePath folders (for example HomeDomain/Library/SMS/"
+            "sms.db). It can take a long time and use a lot of disk space. "
+            "Continue?",
+        ):
+            return
+        self._begin_extraction(
+            lambda progress: self.session.extract_all(dest, progress),
+            dest, "Extracting the entire backup...")
+
+    def _begin_extraction(self, start, dest, label):
         self._extracting = True
-        self.status_var.set(f"Extracting {len(file_ids)} files...")
+        self.status_var.set(label)
         self.root.update_idletasks()
 
         def progress(done, total):
             self._post(self._show_progress, done, total)
 
-        future = self.session.extract(file_ids, dest, progress)
+        future = start(progress)
         self._when_done(future, lambda fut: self._on_extract_done(fut, dest))
 
     def _show_progress(self, done, total):
@@ -1248,6 +1423,163 @@ class BackupExplorer:
         else:
             messagebox.showinfo("Done", msg)
 
+    # ── Mounting ─────────────────────────────────────────────
+
+    def _toggle_mount(self):
+        """Mount the open backup as a read-only file system, or unmount it.
+
+        The idea of mounting a backup comes from Nikhil-42's upstream PR #2.
+        """
+        if self._mount_busy:
+            return
+        if self._mount is not None:
+            self._unmount()
+            return
+        if not self.backup_open:
+            messagebox.showinfo("Info", "Open a backup first.")
+            return
+
+        import backup_mount
+        try:
+            fuse = backup_mount.load_fuse()
+        except backup_mount.MountUnavailableError as exc:
+            messagebox.showerror("Mounting is not available", str(exc))
+            return
+
+        mountpoint = share = None
+        if os.name == "nt":
+            share = backup_mount.default_share_name(self.backup_dir or "")
+            where = backup_mount.unc_path(share)
+        else:
+            mountpoint = filedialog.askdirectory(
+                title="Select an EMPTY folder to mount the backup on")
+            if not mountpoint:
+                return
+            if os.listdir(mountpoint):
+                messagebox.showerror(
+                    "Error", "The mount point folder must be empty.")
+                return
+            where = mountpoint
+        if not messagebox.askyesno(
+            "Mount backup",
+            f"Mount this backup, read-only, at:\n\n    {where}\n\n"
+            "While it is mounted, programs running as you can read the "
+            "backup's decrypted contents. Files from an encrypted backup "
+            "are decrypted into a private temporary folder the first time "
+            "they are opened; that folder is deleted when you unmount.\n\n"
+            "Continue?",
+        ):
+            return
+
+        self._mount_busy = True
+        self.mount_btn.configure(state="disabled")
+        self.status_var.set("Reading the backup index...")
+        cache_dir = tempfile.mkdtemp(prefix="ios-backup-explorer-")
+        future = self.session.list_all()
+        self._when_done(future, lambda fut: self._on_mount_rows(
+            fut, backup_mount, fuse, mountpoint, share, cache_dir))
+
+    def _on_mount_rows(self, future, backup_mount, fuse, mountpoint, share,
+                       cache_dir):
+        error = future.exception()
+        if error is not None:
+            self._mount_failed(cache_dir, error)
+            return
+        rows = future.result()
+        session = self.session
+        self.status_var.set("Mounting...")
+
+        def fetch(file_id):
+            return session.cache_file(file_id, cache_dir).result()
+
+        def run():
+            mount = None
+            try:
+                tree = backup_mount.BackupTree(rows)
+                filesystem = backup_mount.BackupFilesystem(tree, fetch)
+                mount = backup_mount.Mount(
+                    filesystem, mountpoint=mountpoint, share=share,
+                    cache_dir=cache_dir, fuse=fuse)
+                mount.on_stopped = lambda: self._post(
+                    self._on_mount_stopped, mount)
+                mount.start()
+            except Exception as exc:
+                self._post(self._mount_failed, cache_dir, exc)
+                return
+            self._post(self._on_mounted, mount)
+
+        threading.Thread(target=run, daemon=True, name="mount-start").start()
+
+    def _mount_failed(self, cache_dir, error):
+        shutil.rmtree(cache_dir, ignore_errors=True)
+        self._mount_busy = False
+        self.mount_btn.configure(state="normal")
+        message = str(error) or type(error).__name__
+        self.status_var.set("Mounting failed.")
+        messagebox.showerror("Mount failed", message)
+
+    def _on_mounted(self, mount):
+        self._mount = mount
+        self._mount_busy = False
+        self.mount_btn.configure(state="normal", text="Unmount Backup")
+        self.status_var.set(f"Mounted, read-only, at {mount.display_path}")
+        if messagebox.askyesno(
+            "Backup mounted",
+            f"The backup is mounted at:\n\n    {mount.display_path}\n\n"
+            "Open it now?",
+        ):
+            self._open_location(mount.display_path)
+
+    @staticmethod
+    def _open_location(path):
+        try:
+            if os.name == "nt":
+                os.startfile(path)
+            else:
+                import subprocess
+                opener = "open" if platform.system() == "Darwin" \
+                    else "xdg-open"
+                subprocess.Popen([opener, path])
+        except Exception:
+            pass  # just a convenience
+
+    def _unmount(self):
+        mount = self._mount
+        self._mount_busy = True
+        self.mount_btn.configure(state="disabled")
+        self.status_var.set("Unmounting...")
+
+        def run():
+            stopped = mount.stop()
+            self._post(self._on_unmounted, mount, stopped)
+
+        threading.Thread(target=run, daemon=True, name="unmount").start()
+
+    def _on_unmounted(self, mount, stopped):
+        self._mount_busy = False
+        self.mount_btn.configure(state="normal")
+        if not stopped:
+            self.status_var.set("Could not unmount. Close anything using it "
+                                "and try again.")
+            messagebox.showerror(
+                "Unmount failed",
+                "The backup could not be unmounted. Close any programs "
+                "that are using it and try again.")
+            return
+        self._mount_gone(mount)
+
+    def _on_mount_stopped(self, mount):
+        """The file system ended without us asking (e.g. unmounted by hand)."""
+        if self._mount is mount and not self._mount_busy:
+            mount.stop()
+            self._mount_gone(mount)
+
+    def _mount_gone(self, mount):
+        if self._mount is mount:
+            self._mount = None
+        self.mount_btn.configure(text="Mount Backup")
+        self.status_var.set("Backup unmounted.")
+
     # ── Shutdown ─────────────────────────────────────────────
 
     def _on_close(self):
@@ -1256,6 +1588,8 @@ class BackupExplorer:
         ):
             return
         self._cancel_timers()
+        if self._mount is not None:
+            self._mount.stop()   # before the session its reads depend on
         self.session.close()
         self.root.destroy()
 
