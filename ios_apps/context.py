@@ -24,6 +24,8 @@ status line, run the normal "extract these files" flow, and look up contact
 names, without knowing anything about the rest of the window.
 """
 
+import concurrent.futures
+import itertools
 import os
 import shutil
 
@@ -44,6 +46,7 @@ class AppContext:
         self.extract = extract
         self.index = None
         self._workspace = None
+        self._fetches = itertools.count(1)
         self._contacts = None            # the ContactBook, once loaded
         self._contact_source = None
         self._contact_callbacks = None   # waiting for it, while loading
@@ -103,6 +106,71 @@ class AppContext:
 
         return _chain(future, finish)
 
+    def fetch_local(self, paths, folder_name):
+        """Make working copies of the files at *paths* (backup paths) in a
+        private folder. Future -> ``{backup path: local path}`` for those
+        that are in the backup. The copies keep the file's extension, so a
+        viewer can tell what they are. Every call gets a folder of its own
+        (inside *folder_name*), so copies made at the same time, or still
+        open in a viewer, never overwrite one another."""
+        items, names = [], {}
+        for number, path in enumerate(dict.fromkeys(paths), 1):
+            file_id = self.file_id_for(path)
+            if file_id is None:
+                continue
+            names[path] = f"{number:05d}{os.path.splitext(path)[1]}"
+            items.append((file_id, names[path]))
+        folder = self.workspace.subfolder(
+            f"{folder_name}/{next(self._fetches)}")
+        if not items:
+            future = concurrent.futures.Future()
+            future.set_result({})
+            return future
+
+        def finish(done):
+            written = set(done.result())
+            return {path: os.path.join(folder, name)
+                    for path, name in names.items() if name in written}
+
+        return _chain(self.session.export_files(items, folder), finish)
+
+    def fetcher(self, folder, path_of=lambda item: item.path,
+                subfolder="attachments"):
+        """A function for the exporters: ``fetch([(item, file name)])``
+        copies those items' files from the backup into
+        ``folder/subfolder`` and returns the names that arrived. Call it
+        from a background thread (it waits for the copy)."""
+        index, session = self.index, self.session
+
+        def fetch(wanted):
+            pairs = []
+            for item, name in wanted:
+                node = index.get(path_of(item))
+                if node is not None and not node.is_dir:
+                    pairs.append((node.file_id, name))
+            if not pairs:
+                return []
+            return session.export_files(
+                pairs, os.path.join(folder, subfolder)).result()
+
+        return fetch
+
+    def copier(self):
+        """A function ``copy(path, directory, name) -> bool`` that copies
+        the file at backup *path* into *directory* under *name*, waiting
+        until it is there (call it from a background thread). False when
+        the backup does not hold that file."""
+        index, session = self.index, self.session
+
+        def copy(path, directory, name):
+            node = index.get(path)
+            if node is None or node.is_dir:
+                return False
+            return name in session.export_files(
+                [(node.file_id, name)], directory).result()
+
+        return copy
+
     def load_contacts(self, callback):
         """Call ``callback(book)`` on the Tk thread with the address book
         (an empty one if the backup has none). Loaded once, then reused."""
@@ -148,7 +216,6 @@ class AppContext:
 
 def _chain(future, func):
     """A Future that is *func(future)*'s outcome, run on a worker thread."""
-    import concurrent.futures
     result = concurrent.futures.Future()
 
     def run(done):

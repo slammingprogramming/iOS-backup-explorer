@@ -46,9 +46,9 @@ Unencrypted backups need no password, so none is asked for or used. They are ope
 
 ## Messages and Other App Views
 
-To show an app such as Messages, iOS Backup Explorer makes a **working copy** of that app's database (and of the address book, to show names instead of numbers) in a private temporary folder. For an encrypted backup these copies are decrypted. The folder is deleted when you close the app or open another backup; if the app is killed it may be left behind in your system temp folder (named `ios-backup-explorer-apps-...`), so delete it if so.
+To show an app such as Messages, Notes, Calls, Contacts, Photos or Voice Memos, iOS Backup Explorer makes a **working copy** of that app's database (and of the address book, to show names instead of numbers) in a private temporary folder. Pictures shown in a note, the thumbnails of the Photos tab and anything you open (a picture, a recording, an attachment) are copied there too, and the thumbnail copies are deleted again as soon as the thumbnail is made. For an encrypted backup all these copies are decrypted. The folder is deleted when you close the app or open another backup; if the app is killed it may be left behind in your system temp folder (named `ios-backup-explorer-apps-...`), so delete it if so.
 
-Exports you create (text, web page, CSV, JSON) are ordinary files in the folder you choose and contain your messages in readable form. Protect or delete them yourself. The exported web page loads nothing from the internet and contains no scripts.
+Exports you create (text, Markdown, web page, PDF, vCard, CSV, JSON, converted pictures, audio files) are ordinary files in the folder you choose and contain your data in readable form. Protect or delete them yourself. The exported web pages load nothing from the internet and contain no scripts; links inside notes are only made clickable if they are web, mail or phone links. Only pictures, videos, audio and ordinary documents (PDF, text, Office files and the like) are opened from the app, in the program your computer uses for them, which is then outside this app's control. Anything else, such as a program, a script or a web page that someone attached to a note or message, is never started from here: use **Save as...** and open it yourself if you trust it.
 
 ## Mounting a Backup
 
@@ -86,6 +86,7 @@ iOS Backup Explorer depends on:
 - **iphone_backup_decrypt** — [GitHub](https://github.com/jsharkey13/iphone_backup_decrypt) — MIT licensed, open source library for decrypting iOS backups
 
 We monitor our dependencies for known vulnerabilities.
+- **Pillow**, **pillow-heif** and **fpdf2** (optional) — only for picture previews, HEIC photos and PDF export. They are installed separately, run only on this computer, and are not needed for anything else.
 - **mfusepy** (optional, only for mounting) — ISC licensed Python bindings for FUSE/WinFsp.
 - **WinFsp / macFUSE / FUSE-T / libfuse** (optional, only for mounting) — third-party drivers you 
   install yourself; they are not bundled with this app.

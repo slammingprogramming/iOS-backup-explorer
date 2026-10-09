@@ -154,13 +154,14 @@ class MessagesGuiCase(unittest.TestCase):
 
 class TabTests(MessagesGuiCase):
     def test_a_messages_tab_appears_only_when_the_backup_has_messages(self):
-        self.open_backup(with_sms=False)
+        self.open_backup(with_sms=False, with_contacts=False)
         self.assertEqual(self.explorer.notebook.tabs().__len__(), 1)
         self.assertEqual(self.explorer._app_panels, [])
 
     def test_the_tab_loads_when_it_is_first_shown(self):
         self.open_backup()
-        self.assertEqual(len(self.explorer.notebook.tabs()), 2)
+        # Messages, and the address book that is in the backup as well
+        self.assertEqual(len(self.explorer.notebook.tabs()), 3)
         self.assertEqual(self.explorer.notebook.tab(self.tab, "text"),
                          "Messages")
         self.assertFalse(self.tab._loaded)          # nothing copied yet
@@ -206,7 +207,7 @@ class TabTests(MessagesGuiCase):
         self.show_tab()
         workspace = self.explorer.apps.workspace.path
         self.assertTrue(os.path.isdir(workspace))
-        self.open_backup(with_sms=False)
+        self.open_backup(with_sms=False, with_contacts=False)
         self.assertEqual(self.explorer._app_panels, [])
         self.assertEqual(len(self.explorer.notebook.tabs()), 1)
         self.assertFalse(os.path.exists(workspace))
@@ -646,6 +647,12 @@ class ExportDialogTests(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         cls.root.destroy()
+
+    def setUp(self):
+        # (runs last) collect the dialogs here, on the Tk thread: left for
+        # later, the collector may run on a worker thread, which may not
+        # finalise Tk variables
+        self.addCleanup(gc.collect)
 
     def dialog(self, **kwargs):
         d = dialogs.ExportDialog(

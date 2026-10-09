@@ -10,7 +10,9 @@ the readers have to cope with.
 import os
 import shutil
 import sqlite3
+import struct
 import tempfile
+import zlib
 
 # A moment in September 2026, in seconds since 2001-01-01.
 T0 = 778_000_000
@@ -19,10 +21,20 @@ NS = 1_000_000_000
 LONG_TEXT = ("This is a long message, long enough that its length no longer "
              "fits in a single byte inside the archived text. ") * 3
 
-PNG_BYTES = (b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00"
-             b"\x00\x01\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\x0d"
-             b"IDATx\x9cc\xf8\xcf\xc0\x00\x00\x03\x01\x01\x00\xc9\xfe\x92\xef"
-             b"\x00\x00\x00\x00IEND\xaeB`\x82")
+def make_png(width=1, height=1, colour=(200, 30, 30)):
+    """A small, valid PNG picture of one colour."""
+    def chunk(kind, data):
+        return (struct.pack(">I", len(data)) + kind + data
+                + struct.pack(">I", zlib.crc32(kind + data) & 0xFFFFFFFF))
+
+    rows = b"".join(b"\x00" + bytes(colour) * width for _ in range(height))
+    return (b"\x89PNG\r\n\x1a\n"
+            + chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 2,
+                                         0, 0, 0))
+            + chunk(b"IDAT", zlib.compress(rows)) + chunk(b"IEND", b""))
+
+
+PNG_BYTES = make_png(2, 2)
 NOTES_TXT = b"remember the milk\n"
 
 ATTACHMENT_PATHS = {

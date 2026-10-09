@@ -50,7 +50,8 @@ You made an encrypted iPhone backup with iTunes, Finder, or the Apple Devices ap
 
 - **Decrypt encrypted backups** — Supports iOS 13+ encrypted local backups
 - **Unencrypted backups too** — Detected automatically; no password needed
-- **Read your messages like on the phone** — A Messages tab with your conversations as chat bubbles, tapbacks, attachments, contact names, search, and export to text, a web page, CSV or JSON. The original database and attachments can always be extracted untouched
+- **Browse your phone's apps the way the phone shows them** — A tab each for **Messages** (chat bubbles, tapbacks, attachments), **Notes** (formatting, checklists, pictures, folders), **Calls**, **Contacts**, **Photos** (a thumbnail grid with albums) and **Voice Memos**, with names from your address book and search everywhere
+- **Export what you find in the format you need** — Text, Markdown, web pages, PDF, CSV spreadsheets, JSON, vCard (.vcf) for contacts, JPEG for HEIC photos, web galleries. **The original files can always be extracted untouched**, too
 - **A real file manager** — Folders on the left, files on the right, with back / forward / up, a location bar you can type a path into, and file-type icons
 - **Sort by anything** — Click Name, Kind, Size, Date Modified or Date Created (clicking again reverses it); names sort naturally (`IMG_2` before `IMG_10`), folders can stay on top, and folder sizes are the total of what is inside
 - **Browse by category** — Camera Roll, Messages, Health, Apps, and more
@@ -61,7 +62,7 @@ You made an encrypted iPhone backup with iTunes, Finder, or the Apple Devices ap
 - **Mount a backup as a read-only drive or folder** (optional) — Browse it in your file manager; on Windows as `\\ios-backup\...` with no drive letter
 - **Auto-detects backups** — Finds your backup folder automatically
 - **Cross-platform** — Works on Windows, macOS, and Linux
-- **Small and auditable** — A few plain Python files you can read in an afternoon
+- **Auditable** — Plain Python files, no build step; read them
 
 ---
 
@@ -79,8 +80,11 @@ You made an encrypted iPhone backup with iTunes, Finder, or the Apple Devices ap
 git clone https://github.com/slammingprogramming/iOS-backup-explorer.git
 cd iOS-backup-explorer
 
-# 2. Install dependencies (just one!)
+# 2. Install dependencies (just one is required)
 pip install -r requirements.txt
+
+# Optional: picture previews, HEIC photos and PDF export (see "Optional extras")
+# pip install -r requirements-optional.txt
 
 # 3. Run iOS Backup Explorer
 python ios_backup_explorer.py
@@ -129,6 +133,41 @@ If the backup contains Messages, a **Messages** tab appears next to **Files**.
 - **Export this conversation / Export all** writes text files, a web page (with the attachments beside it, opens in any browser, no internet needed), a CSV spreadsheet, or JSON
 - **Extract original files** copies the Messages database (with its recent-changes files) and the attachments exactly as the backup holds them, so you always have the raw data too
 
+### 5. Notes
+
+If the backup contains Notes, a **Notes** tab appears.
+
+- Folders (and sub-folders, and *Recently Deleted*) on the left, with the number of notes in each; pinned notes first. Sort by date edited, date created or title
+- A note looks like it does on the phone: title and headings, bullet, dashed, numbered and checklist items (checked items are struck through), bold, italic, underlined and struck-through text, links, and the pictures in it. Click a voice recording or another attachment to open it or save it
+- **Search** looks in titles and in the text (and in hashtags and link titles)
+- Notes locked with a password are listed, but their text is encrypted in the backup and cannot be shown
+- **Export** one note, a folder or everything as **text**, **Markdown**, a **web page** (with the pictures; HEIC pictures are converted to JPEG when Pillow and pillow-heif are installed), **PDF**, **JSON** or a **spreadsheet**. Exports follow the Notes folders
+
+### 6. Calls and Contacts
+
+- **Calls** is the call history as a table: click a heading to sort, filter by missed, incoming, outgoing, phone or FaceTime, and search by name, number or place. Names come from the address book. Export what you see, or everything, as a spreadsheet, web page, text or JSON
+- **Contacts** is a list (sorted by last or first name) with each person's card: numbers, emails, addresses, web pages, birthday, notes and more. Export as a **vCard (.vcf) file** that other address books import, a spreadsheet, a web page, text or JSON. Contact photos are not included
+
+### 7. Photos and Voice Memos
+
+- **Photos** shows the camera roll as a grid of thumbnails, made only for what is on screen, so a large library opens at once. The left side lists *All items*, *Photos*, *Videos*, *Favorites*, *Hidden*, *Recently Deleted* and your own albums, as the phone's library records them (without the library database, the DCIM folders are listed instead). Click to select, Ctrl-click and Shift-click for more, double-click to open a picture in your usual viewer
+- **Export** copies the original files (named by what they are, with the date taken as their file date), converts them to **JPEG** so every program can open them, makes a **web gallery**, or lists them in a spreadsheet. **Extract original files** uses the normal extraction (with progress) and keeps the backup's own folders
+- **Voice Memos** lists the recordings with title, date and length; **Play** opens one in your usual audio player. Export them as audio files named by date and title, a web page with a player for each, or a list. The audio is never converted; it is exactly what the phone recorded
+
+### Optional extras
+
+Everything above works with the one required package. These optional ones add more:
+
+```bash
+pip install -r requirements-optional.txt
+```
+
+- **Pillow** — picture previews (JPEG and others) and conversion to JPEG
+- **pillow-heif** — the same for the HEIC pictures iPhones take
+- **fpdf2** — PDF export of notes
+
+Without them the app says what is missing and the originals can still be extracted or saved.
+
 ---
 
 ## Mounting a backup (optional)
@@ -165,7 +204,7 @@ Mounting was tested on Windows 10 with WinFsp. The macOS and Linux code paths fo
 
 3. **No telemetry, no analytics, no tracking** — We don't know you exist. We don't want to.
 
-4. **Fully auditable** — The app is a few plain Python files (about 5,000 lines in all, with no build step): the app itself, the file browser, the file index, the app views such as Messages, and an optional module that is only used if you mount a backup. Read them. We encourage it.
+4. **Fully auditable** — The app is plain Python (about 10,000 lines in all, with no build step): the app itself, the file browser, the file index, a reader, exporter and view for each app (Messages, Notes, Calls, Contacts, Photos, Voice Memos), and an optional module that is only used if you mount a backup. Read them. We encourage it.
 
 5. **Open source dependencies** — Our only required dependency ([iphone_backup_decrypt](https://github.com/jsharkey13/iphone_backup_decrypt)) is also open source and MIT licensed.
 
@@ -215,6 +254,18 @@ No. iOS Backup Explorer requires your correct encryption password to decrypt the
 <summary><strong>Are my messages complete?</strong></summary>
 
 The newest messages on a phone are often not yet in the main database file but in a small companion "-wal" file. iOS Backup Explorer copies both together, so nothing recent is lost. Messages that you deleted on the phone before the backup was made are not in the backup. Message text that iOS stores only in its archived form is decoded; if some text looks wrong or is missing, please report it.
+</details>
+
+<details>
+<summary><strong>Why is a note, photo or call missing?</strong></summary>
+
+A backup holds what was on the phone when it was made. Notes locked with a password are listed but cannot be shown. Photos that live only in iCloud (when "Optimize iPhone Storage" is on) are not on the phone and so not in the backup. Unencrypted backups leave out some data that encrypted backups hold. The apps are read from the databases iOS uses; the layouts change between iOS versions, so if something that is in your backup does not show, please report it (without sending your data).
+</details>
+
+<details>
+<summary><strong>Why do my photos show as grey tiles?</strong></summary>
+
+Picture previews need the optional Pillow package, and HEIC pictures (what iPhones take by default) also need pillow-heif: `pip install Pillow pillow-heif`. Videos always show a play symbol. The files themselves are never affected; you can still open, save, export and extract them.
 </details>
 
 <details>
@@ -294,7 +345,7 @@ sudo lsof -i -P | grep python
 # Option 3: Monitor network activity (Windows PowerShell)
 Get-NetTCPConnection | Where-Object { $_.OwningProcess -eq (Get-Process python).Id }
 
-# Option 4: Read the source — it's a few plain Python files, about 5,000 lines in all.
+# Option 4: Read the source — it's plain Python, about 10,000 lines in all.
 ```
 
 ---

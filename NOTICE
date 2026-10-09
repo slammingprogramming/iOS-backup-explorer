@@ -62,6 +62,13 @@ iphone_backup_decrypt  (runtime dependency, installed separately; not bundled)
 mfusepy  (optional dependency for mounting, installed separately; not bundled)
     ISC License. https://github.com/mxmlnkn/mfusepy
 
+Pillow, pillow-heif, fpdf2  (optional dependencies for picture previews, HEIC
+    photos and PDF export, installed separately; not bundled)
+    Pillow: HPND License, https://python-pillow.org
+    pillow-heif: BSD 3-Clause License; the HEIF decoder it uses (libheif) is
+    LGPL-3.0, https://github.com/bigcat88/pillow_heif
+    fpdf2: LGPL-3.0, https://github.com/py-pdf/fpdf2
+
 WinFsp, macFUSE, FUSE-T, libfuse  (optional drivers needed for mounting)
     Third-party software that you install yourself; none of it is bundled with
     this project and each has its own license. https://winfsp.dev

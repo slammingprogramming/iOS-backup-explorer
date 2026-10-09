@@ -32,7 +32,7 @@ from tkinter import filedialog, messagebox, ttk
 
 from . import messages as ms
 from . import messages_export as mx
-from ui_util import post_weak, post_when_done
+from ui_util import post_when_done, weak_notifier
 
 from .common import SqliteSource, format_datetime
 from .dialogs import ask_export
@@ -558,7 +558,7 @@ class MessagesPanel(ttk.Frame):
             return
         items = done.result()
         session, index = self.ctx.session, self.ctx.index
-        post, finished = self.ctx.post, self._export_finished
+        notify = weak_notifier(self.ctx.post, self._export_finished)
 
         def fetch(wanted):
             pairs = []
@@ -575,9 +575,9 @@ class MessagesPanel(ttk.Frame):
             try:
                 paths = mx.export(items, fmt, folder, fetch)
             except Exception as exc:
-                post_weak(post, finished, exc, None, folder)
+                notify(exc, None, folder)
             else:
-                post_weak(post, finished, None, paths, folder)
+                notify(None, paths, folder)
 
         threading.Thread(target=work, daemon=True, name="export").start()
 

@@ -48,6 +48,28 @@ REQUIRED = {
     "ios_apps/messages_view.py": [
         "SPDX-License-Identifier: AGPL-3.0-or-later"],
     "ios_apps/registry.py": ["SPDX-License-Identifier: AGPL-3.0-or-later"],
+    "ios_apps/panel_base.py": ["SPDX-License-Identifier: AGPL-3.0-or-later"],
+    "ios_apps/export_util.py": ["SPDX-License-Identifier: AGPL-3.0-or-later"],
+    "ios_apps/imaging.py": ["SPDX-License-Identifier: AGPL-3.0-or-later"],
+    "ios_apps/notes.py": ["SPDX-License-Identifier: AGPL-3.0-or-later"],
+    "ios_apps/notes_export.py": ["SPDX-License-Identifier: AGPL-3.0-or-later"],
+    "ios_apps/notes_view.py": ["SPDX-License-Identifier: AGPL-3.0-or-later"],
+    "ios_apps/pdf_export.py": ["SPDX-License-Identifier: AGPL-3.0-or-later"],
+    "ios_apps/calls.py": ["SPDX-License-Identifier: AGPL-3.0-or-later"],
+    "ios_apps/calls_export.py": ["SPDX-License-Identifier: AGPL-3.0-or-later"],
+    "ios_apps/calls_view.py": ["SPDX-License-Identifier: AGPL-3.0-or-later"],
+    "ios_apps/contacts.py": ["SPDX-License-Identifier: AGPL-3.0-or-later"],
+    "ios_apps/contacts_export.py": [
+        "SPDX-License-Identifier: AGPL-3.0-or-later"],
+    "ios_apps/contacts_view.py": ["SPDX-License-Identifier: AGPL-3.0-or-later"],
+    "ios_apps/photos.py": ["SPDX-License-Identifier: AGPL-3.0-or-later"],
+    "ios_apps/photos_export.py": ["SPDX-License-Identifier: AGPL-3.0-or-later"],
+    "ios_apps/photos_view.py": ["SPDX-License-Identifier: AGPL-3.0-or-later"],
+    "ios_apps/voice_memos.py": ["SPDX-License-Identifier: AGPL-3.0-or-later"],
+    "ios_apps/voice_memos_export.py": [
+        "SPDX-License-Identifier: AGPL-3.0-or-later"],
+    "ios_apps/voice_memos_view.py": [
+        "SPDX-License-Identifier: AGPL-3.0-or-later"],
     "browser_panel.py": ["SPDX-License-Identifier: AGPL-3.0-or-later"],
     "backup_mount.py": [
         "SPDX-License-Identifier: AGPL-3.0-or-later",

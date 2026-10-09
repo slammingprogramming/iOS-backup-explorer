@@ -28,11 +28,11 @@ import csv
 import html
 import json
 import os
-import re
-import urllib.parse
-from datetime import datetime, timezone
 
 from .common import format_datetime
+from .export_util import (describe_size, iso_utc,  # noqa: F401
+                          safe_filename)
+from .export_util import href as link_target
 
 FORMATS = {
     "txt": "Text (one file per conversation)",
@@ -43,43 +43,11 @@ FORMATS = {
 
 _BROWSER_IMAGES = {"image/png", "image/jpeg", "image/gif", "image/webp",
                    "image/bmp"}
-_FILENAME_BAD = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
-
-
-def safe_filename(text, fallback="untitled", limit=80):
-    """*text* as a name that is valid on every platform."""
-    name = _FILENAME_BAD.sub("_", text or "").strip(" .")
-    name = name[:limit].rstrip(" .")
-    if not name or name.split(".")[0].upper() in (
-            "CON", "PRN", "AUX", "NUL", *(f"COM{i}" for i in range(1, 10)),
-            *(f"LPT{i}" for i in range(1, 10))):
-        name = f"_{name}" if name else fallback
-    return name
 
 
 def conversation_filename(number, conversation, extension):
     """``003 - Alice Example.html``: numbered, so names never collide."""
     return f"{number:03d} - {safe_filename(conversation.title)}.{extension}"
-
-
-def iso_utc(stamp):
-    if stamp is None:
-        return ""
-    try:
-        return datetime.fromtimestamp(stamp, timezone.utc).isoformat(
-            timespec="seconds")
-    except (OverflowError, OSError, ValueError):
-        return ""
-
-
-def describe_size(size):
-    if not size:
-        return ""
-    for unit in ("B", "KB", "MB", "GB"):
-        if size < 1024 or unit == "GB":
-            return f"{size:.0f} {unit}" if unit == "B" \
-                else f"{size:.1f} {unit}"
-        size /= 1024
 
 
 def _who(message):
@@ -218,10 +186,6 @@ def _page(title, body):
             f"<body><main>{body}</main></body></html>\n")
 
 
-def _href(relative):
-    return urllib.parse.quote(relative.replace("\\", "/"), safe="/")
-
-
 def _attachment_html(att, files):
     name = html.escape(att.name)
     relative = files.get(att.rowid)
@@ -231,7 +195,7 @@ def _attachment_html(att, files):
         return (f"<div class=\"att\">\U0001F4CE {name}"
                 f" ({detail or 'not in the backup'}) &mdash; not exported"
                 "</div>")
-    href = html.escape(_href(relative), quote=True)
+    href = html.escape(link_target(relative), quote=True)
     if att.mime in _BROWSER_IMAGES:
         return (f"<a href=\"{href}\"><img loading=\"lazy\" src=\"{href}\" "
                 f"alt=\"{name}\"></a>")
@@ -290,7 +254,7 @@ def write_html(folder, items, attachment_files=None):
             handle.write(_page(conv.title, "".join(body)))
         paths.append(path)
         listing.append(
-            f"<li><a href=\"{html.escape(_href(name), quote=True)}\">"
+            f"<li><a href=\"{html.escape(link_target(name), quote=True)}\">"
             f"{html.escape(conv.title)}</a><div class=\"meta\">"
             f"{len(messages):,} messages"
             + (f" &middot; last {html.escape(format_datetime(conv.last_when))}"

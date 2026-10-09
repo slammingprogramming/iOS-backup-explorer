@@ -73,7 +73,18 @@ def file_id_for(domain, relative_path):
     return hashlib.sha1(f"{domain}-{relative_path}".encode()).hexdigest()
 
 
-# (domain, relative_path, content)  -- content None = no data in the backup
+DEFAULT_MTIME = 1_700_000_000       # an arbitrary fixed timestamp
+
+
+def _entries(files):
+    """``(domain, path, content, mtime)`` for each file: an entry may carry
+    its own modification time as a fourth item."""
+    for entry in files:
+        yield (*entry[:3], entry[3] if len(entry) > 3 else DEFAULT_MTIME)
+
+
+# (domain, relative_path, content[, mtime])
+# -- content None = no data in the backup
 DEFAULT_FILES = [
     # Mirrors the real-world case: a large (multi-chunk) QuickTime file.
     (NOTES_DOMAIN, NOTES_MOV,
@@ -144,8 +155,7 @@ def build_backup(parent_dir, files=None, passphrase=PASSPHRASE,
         conn.execute("CREATE TABLE Files (fileID TEXT PRIMARY KEY, "
                      "domain TEXT, relativePath TEXT, flags INTEGER, "
                      "file BLOB)")
-        mtime = 1_700_000_000  # arbitrary fixed timestamp
-        for domain, rel_path, content in files:
+        for domain, rel_path, content, mtime in _entries(files):
             file_id = file_id_for(domain, rel_path)
             ids[(domain, rel_path)] = file_id
             size = 100 if content is None else len(content)
@@ -187,7 +197,7 @@ def _build_plain(backup_dir, files):
                  "domain TEXT, relativePath TEXT, flags INTEGER, "
                  "file BLOB)")
     mtime = 1_700_000_000
-    for domain, rel_path, content in files:
+    for domain, rel_path, content, file_mtime in _entries(files):
         file_id = file_id_for(domain, rel_path)
         ids[(domain, rel_path)] = file_id
         size = 100 if content is None else len(content)
@@ -198,7 +208,7 @@ def _build_plain(backup_dir, files):
                 out.write(content)
         conn.execute("INSERT INTO Files VALUES (?, ?, ?, 1, ?)",
                      (file_id, domain, rel_path,
-                      _file_record(size, mtime, FILE_CLASS)))
+                      _file_record(size, file_mtime, FILE_CLASS)))
     conn.execute("INSERT INTO Files VALUES (?, ?, ?, 2, ?)",
                  (file_id_for("HomeDomain", "Library"), "HomeDomain",
                   "Library", _file_record(0, mtime, FILE_CLASS)))

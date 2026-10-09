@@ -1,0 +1,8 @@
+# Optional extras, none of them needed to run the app. See the README,
+# "Optional extras". Install with: pip install -r requirements-optional.txt
+#
+# Pillow and pillow-heif: picture previews, HEIC photos, conversion to JPEG.
+# fpdf2: PDF export of notes.
+Pillow>=10.0
+pillow-heif>=0.16
+fpdf2>=2.7

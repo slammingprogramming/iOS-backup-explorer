@@ -45,6 +45,19 @@ def post_weak(post, method, *args):
     post(_invoke_plain, weakref.WeakMethod(method), args)
 
 
+def weak_notifier(post, method):
+    """``notify(*args)``, safe to call from any thread, that runs
+    ``method(*args)`` on the Tk thread without keeping the method's object
+    alive (see :func:`post_when_done`). For worker threads that report
+    several times or at the end."""
+    reference = weakref.WeakMethod(method)
+
+    def notify(*args):
+        post(_invoke_plain, reference, args)
+
+    return notify
+
+
 def _invoke_plain(reference, args):
     method = reference()
     if method is not None:

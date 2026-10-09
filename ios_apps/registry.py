@@ -20,7 +20,7 @@
 line to :data:`APPS`; a tab appears for it whenever the backup has its data.
 """
 
-from . import messages
+from . import calls, contacts, messages, notes, photos, voice_memos
 
 
 def _has_file(index, path):
@@ -40,10 +40,48 @@ def _create_messages(master, context):
     return MessagesPanel(master, context)
 
 
+def _create_notes(master, context):
+    from .notes_view import NotesPanel
+    return NotesPanel(master, context)
+
+
+def _create_calls(master, context):
+    from .calls_view import CallsPanel
+    return CallsPanel(master, context)
+
+
+def _create_contacts(master, context):
+    from .contacts_view import ContactsPanel
+    return ContactsPanel(master, context)
+
+
+def _create_photos(master, context):
+    from .photos_view import PhotosPanel
+    return PhotosPanel(master, context)
+
+
+def _create_voice_memos(master, context):
+    from .voice_memos_view import VoiceMemosPanel
+    return VoiceMemosPanel(master, context)
+
+
 APPS = [
     AppEntry("messages", "Messages",
              lambda index: _has_file(index, messages.DATABASE),
              _create_messages),
+    AppEntry("notes", "Notes",
+             lambda index: _has_file(index, notes.DATABASE),
+             _create_notes),
+    AppEntry("calls", "Calls",
+             lambda index: _has_file(index, calls.DATABASE),
+             _create_calls),
+    AppEntry("contacts", "Contacts",
+             lambda index: _has_file(index, contacts.DATABASE),
+             _create_contacts),
+    AppEntry("photos", "Photos", lambda index: bool(photos.scan(index)),
+             _create_photos),
+    AppEntry("voice_memos", "Voice Memos", voice_memos.has_recordings,
+             _create_voice_memos),
 ]
 
 

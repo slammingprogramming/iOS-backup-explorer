@@ -71,6 +71,42 @@ def format_datetime(stamp, seconds=False):
         return ""
 
 
+OPENABLE = frozenset("""
+    .jpg .jpeg .png .gif .heic .heif .tif .tiff .bmp .webp .dng
+    .mov .mp4 .m4v .3gp .m4a .mp3 .wav .aac .caf .amr .aiff .qta
+    .pdf .txt .rtf .csv .vcf .ics .doc .docx .xls .xlsx .ppt .pptx
+    .pages .numbers .key .epub
+""".split())
+"""The kinds of file that are handed to the computer's own program. A file
+from a backup could be anything, including a program or a script, so
+nothing else is started from here; the user can save it and decide."""
+
+
+class NotOpened(OSError):
+    """The file is not of a kind that is opened from here."""
+
+
+def open_file(path):
+    """Open *path* with the program the computer uses for that kind of file
+    (the user asked for it by clicking). Only picture, video, audio and
+    ordinary document files are opened; anything else raises
+    :class:`NotOpened`."""
+    import subprocess
+    import sys
+    extension = os.path.splitext(path)[1].lower()
+    if extension not in OPENABLE:
+        raise NotOpened(
+            f"files of this kind ({extension or 'no extension'}) are not "
+            "opened from here, because something inside a backup could be a "
+            "program. Use Save as... and open it yourself if you trust it")
+    if sys.platform.startswith("win"):
+        os.startfile(path)                      # noqa: S606
+    elif sys.platform == "darwin":
+        subprocess.Popen(["open", path])
+    else:
+        subprocess.Popen(["xdg-open", path])
+
+
 class Workspace:
     """A private temporary folder for working copies of backup files.
 
