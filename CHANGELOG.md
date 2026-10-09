@@ -43,6 +43,9 @@ Eyyup (Eric) Gunes. Entries below the fork point record the original project's h
 - Extraction now shows progress and lists which files failed and why
 
 ### Added
+- **A Messages tab** (the first of the iOS-style app views). Conversations with contact names, chat bubbles (blue for iMessage, green for SMS), tapbacks, group events, attachments you can save, paging for long conversations, and a search that jumps to the match. iMessage and SMS chats with the same number are merged like in the Messages app. Text that newer iOS versions keep only in `attributedBody` is decoded, and the database's `-wal` file is copied with it so recent messages are not lost
+- **Export Messages** to text (a file per conversation), a web page with the attachments beside it, a CSV spreadsheet or JSON, and **Extract original files** for the untouched database and attachments
+- Tabs: the Files view and each app view are tabs. The connection box folds away once a backup is open
 - **A file-manager style browser.** Folders on the left, a sortable list on the right, back / forward / up navigation, a typeable location bar, file-type icons, a context menu (extract, copy name, copy path, properties) and keyboard shortcuts. The whole backup is indexed once when it is opened, so browsing, sorting and searching are instant and no longer wait behind a running extraction
 - **Sort by Name, Kind, Size, Date Modified, Date Created or Location**, ascending or descending. Names sort naturally, folders can be kept on top, a folder's size is the total of what is in it, and items with an unknown date always sort last. Creation dates are shown where iOS recorded them
 - Folders can be extracted (everything inside them), "Include subfolders" shows a flat list, and long lists are paged instead of being cut off

@@ -38,6 +38,16 @@ REQUIRED = {
     "README.md": [AUTHOR, UPSTREAM, "LICENSE-MIT", "AGPL-3.0-or-later",
                   "Nikhil-42"],
     "file_index.py": ["SPDX-License-Identifier: AGPL-3.0-or-later"],
+    "ui_util.py": ["SPDX-License-Identifier: AGPL-3.0-or-later"],
+    "ios_apps/common.py": ["SPDX-License-Identifier: AGPL-3.0-or-later"],
+    "ios_apps/context.py": ["SPDX-License-Identifier: AGPL-3.0-or-later"],
+    "ios_apps/dialogs.py": ["SPDX-License-Identifier: AGPL-3.0-or-later"],
+    "ios_apps/messages.py": ["SPDX-License-Identifier: AGPL-3.0-or-later"],
+    "ios_apps/messages_export.py": [
+        "SPDX-License-Identifier: AGPL-3.0-or-later"],
+    "ios_apps/messages_view.py": [
+        "SPDX-License-Identifier: AGPL-3.0-or-later"],
+    "ios_apps/registry.py": ["SPDX-License-Identifier: AGPL-3.0-or-later"],
     "browser_panel.py": ["SPDX-License-Identifier: AGPL-3.0-or-later"],
     "backup_mount.py": [
         "SPDX-License-Identifier: AGPL-3.0-or-later",

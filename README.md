@@ -50,6 +50,7 @@ You made an encrypted iPhone backup with iTunes, Finder, or the Apple Devices ap
 
 - **Decrypt encrypted backups** — Supports iOS 13+ encrypted local backups
 - **Unencrypted backups too** — Detected automatically; no password needed
+- **Read your messages like on the phone** — A Messages tab with your conversations as chat bubbles, tapbacks, attachments, contact names, search, and export to text, a web page, CSV or JSON. The original database and attachments can always be extracted untouched
 - **A real file manager** — Folders on the left, files on the right, with back / forward / up, a location bar you can type a path into, and file-type icons
 - **Sort by anything** — Click Name, Kind, Size, Date Modified or Date Created (clicking again reverses it); names sort naturally (`IMG_2` before `IMG_10`), folders can stay on top, and folder sizes are the total of what is inside
 - **Browse by category** — Camera Roll, Messages, Health, Apps, and more
@@ -118,6 +119,16 @@ For an encrypted backup, this is the **encryption password you set in iTunes, Fi
 - Use the search bar to find files in the current folder and below (several words must all match). `Ctrl+F` jumps to it
 - Select files or folders and click **Extract Selected** (a folder extracts everything in it), or export what you see with **Extract All in View**. Very long lists are split into pages
 
+### 4. Read your messages
+
+If the backup contains Messages, a **Messages** tab appears next to **Files**.
+
+- Conversations are listed newest first, with names taken from the backup's address book. An iMessage chat and an SMS chat with the same number are shown as one conversation, like on the phone
+- Your messages are on the right in blue (green for SMS), theirs on the left in grey, with tapbacks, group events and day headings. Click an attachment to save it. Long conversations load a page at a time
+- **Search messages** looks inside every conversation, including messages iOS 16 and later keep only in their archived form, and jumps to the match
+- **Export this conversation / Export all** writes text files, a web page (with the attachments beside it, opens in any browser, no internet needed), a CSV spreadsheet, or JSON
+- **Extract original files** copies the Messages database (with its recent-changes files) and the attachments exactly as the backup holds them, so you always have the raw data too
+
 ---
 
 ## Mounting a backup (optional)
@@ -154,7 +165,7 @@ Mounting was tested on Windows 10 with WinFsp. The macOS and Linux code paths fo
 
 3. **No telemetry, no analytics, no tracking** — We don't know you exist. We don't want to.
 
-4. **Fully auditable** — The app is a few plain Python files (about 2,900 lines in all, with no build step): the app itself, the file browser, the file index, and an optional module that is only used if you mount a backup. Read them. We encourage it.
+4. **Fully auditable** — The app is a few plain Python files (about 5,000 lines in all, with no build step): the app itself, the file browser, the file index, the app views such as Messages, and an optional module that is only used if you mount a backup. Read them. We encourage it.
 
 5. **Open source dependencies** — Our only required dependency ([iphone_backup_decrypt](https://github.com/jsharkey13/iphone_backup_decrypt)) is also open source and MIT licensed.
 
@@ -198,6 +209,12 @@ Yes. iOS Backup Explorer is 100% offline, open source, and makes no network conn
 <summary><strong>Can iOS Backup Explorer crack/bypass my backup password?</strong></summary>
 
 No. iOS Backup Explorer requires your correct encryption password to decrypt the backup. It cannot guess, crack, or bypass passwords. This is a feature, not a limitation — it means no one else can access your data without the password either.
+</details>
+
+<details>
+<summary><strong>Are my messages complete?</strong></summary>
+
+The newest messages on a phone are often not yet in the main database file but in a small companion "-wal" file. iOS Backup Explorer copies both together, so nothing recent is lost. Messages that you deleted on the phone before the backup was made are not in the backup. Message text that iOS stores only in its archived form is decoded; if some text looks wrong or is missing, please report it.
 </details>
 
 <details>
@@ -277,7 +294,7 @@ sudo lsof -i -P | grep python
 # Option 3: Monitor network activity (Windows PowerShell)
 Get-NetTCPConnection | Where-Object { $_.OwningProcess -eq (Get-Process python).Id }
 
-# Option 4: Read the source — it's a few plain Python files, about 2,900 lines in all.
+# Option 4: Read the source — it's a few plain Python files, about 5,000 lines in all.
 ```
 
 ---

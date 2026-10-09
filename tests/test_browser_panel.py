@@ -3,6 +3,7 @@
 """The Files view as a widget: navigation, sorting, search, paging and
 extraction hand-off (skipped without a display)."""
 
+import gc
 import queue
 import time
 import tkinter as tk
@@ -39,10 +40,16 @@ class PanelCase(unittest.TestCase):
             on_extract=self.extracted.append,
             on_status=self.status.append,
             page_size=lambda: self.page_size)
+        self.addCleanup(self._release)
         self.addCleanup(self.panel.destroy)
         self.addCleanup(self.panel.close)
         self.index = fi.FileIndex(SAMPLE)
         self.panel.set_index(self.index)
+
+    def _release(self):
+        # runs last: collect the panel's garbage on the Tk thread
+        self.panel = None
+        gc.collect()
 
     # -- helpers ----------------------------------------------
 

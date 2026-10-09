@@ -28,6 +28,7 @@ import concurrent.futures
 import tkinter as tk
 from tkinter import messagebox, ttk
 
+from ui_util import post_when_done
 from file_index import (
     FileIndex, category_for, format_size, format_time, kind_of, sort_nodes,
 )
@@ -478,8 +479,7 @@ class FileBrowserPanel(ttk.Frame):
             self._compute, self.index, self._scope,
             self.recursive_var.get(), text, self._sort_key,
             self._sort_desc, self.folders_first_var.get())
-        future.add_done_callback(
-            lambda fut: self._post(self._on_listing, fut, request))
+        post_when_done(self._post, future, self._on_listing, request)
 
     @staticmethod
     def _compute(index, scope, recursive, text, key, descending,

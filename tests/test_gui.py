@@ -5,6 +5,7 @@
 Skipped when no display is available (e.g. headless CI).
 """
 
+import gc
 import os
 import shutil
 import tempfile
@@ -79,6 +80,11 @@ class GuiFlowTests(unittest.TestCase):
         # Take this test's windows down, or they pile up in the shared root.
         for child in self.root.winfo_children():
             child.destroy()
+        # Drop the window and collect its garbage here, on the Tk thread:
+        # left for later, the collector can run on a worker thread, which
+        # may not finalise Tk variables.
+        self.explorer = None
+        gc.collect()
 
     def wait_for(self, condition, what, timeout=30):
         deadline = time.monotonic() + timeout

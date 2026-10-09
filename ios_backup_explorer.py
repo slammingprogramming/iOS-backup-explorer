@@ -55,6 +55,8 @@ import platform
 import re
 
 import browser_panel
+from ios_apps import registry as app_registry
+from ios_apps.context import AppContext
 from file_index import (  # noqa: F401
     FileIndex, format_size, read_file_details,
 )
@@ -458,6 +460,16 @@ class BackupSession:
         self._cancel.clear()
         return self._executor.submit(self._extract_all, dest, progress)
 
+    def export_files(self, items, dest_dir):
+        """Write backup files into *dest_dir* under names the caller picks.
+
+        *items* are ``(file_id, name)``; each *name* must be a plain file
+        name. Used to make working copies of databases and attachments for
+        the app views. Future -> list of the names written.
+        """
+        return self._executor.submit(self._export_files, list(items),
+                                     dest_dir)
+
     def list_all(self):
         """Every file in the backup.
 
@@ -552,6 +564,33 @@ class BackupSession:
         if progress is not None:
             progress(len(rows), total)
         return rows
+
+    def _export_files(self, items, dest_dir):
+        backup = self._require_backup()
+        os.makedirs(dest_dir, exist_ok=True)
+        written = []
+        with backup.manifest_db_cursor() as cur:
+            for file_id, name in items:
+                if not name or name != os.path.basename(name) \
+                        or name in (".", ".."):
+                    raise ValueError(f"not a plain file name: {name!r}")
+                cur.execute(
+                    "SELECT domain, relativePath, file FROM Files "
+                    "WHERE fileID=? AND flags=1", (file_id,),
+                )
+                row = cur.fetchone()
+                if row is None:
+                    raise FileNotFoundError(file_id)
+                domain, rel_path, blob = row
+                size, mtime = read_file_info(blob)
+                out_path = fs_path(os.path.join(dest_dir, name))
+                if size == 0:
+                    open(out_path, "wb").close()
+                else:
+                    backup.extract(cur, file_id, domain, rel_path, mtime,
+                                   out_path)
+                written.append(name)
+        return written
 
     def _extract_all(self, dest, progress):
         backup = self._require_backup()
@@ -677,6 +716,7 @@ class BackupExplorer:
         self._mount_busy = False
         self.mount_btn = None
         self._index_request = 0      # discards out-of-date indexing runs
+        self._app_panels = []        # the Messages tab, ...
         self._extracting = False
         self._backup_kind = None     # ENCRYPTED / UNENCRYPTED / None
         self._detect_job = None
@@ -689,6 +729,9 @@ class BackupExplorer:
 
         self._apply_style()
         self._build_ui()
+        self.apps = AppContext(
+            session=self.session, post=self._post,
+            set_status=self.status_var.set, extract=self._extract_files)
         self._auto_detect_backup()
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
         self._drain_ui_queue()
@@ -728,6 +771,13 @@ class BackupExplorer:
         style.configure(".", background=c["bg"], foreground=c["fg"],
                          fieldbackground=c["surface"])
         style.configure("TFrame", background=c["bg"])
+        style.configure("TNotebook", background=c["bg"], borderwidth=0)
+        style.configure("TNotebook.Tab", background=c["border"],
+                        foreground=c["fg"], padding=(16, 6),
+                        font=(font, 10, "bold"))
+        style.map("TNotebook.Tab",
+                  background=[("selected", c["surface"])],
+                  foreground=[("selected", c["accent"])])
         style.configure("TLabel", background=c["bg"], foreground=c["fg"],
                          font=(font, 10))
         style.configure("Title.TLabel", background=c["bg"],
@@ -798,7 +848,11 @@ class BackupExplorer:
         conn_frame = ttk.LabelFrame(self.root, text="Open Backup", padding=12)
         conn_frame.pack(fill="x", padx=20, pady=(10, 0))
 
-        row1 = ttk.Frame(conn_frame)
+        # Everything but the status line folds away once a backup is open,
+        # to leave the room to what is in it.
+        self.conn_body = ttk.Frame(conn_frame)
+        self.conn_body.pack(fill="x")
+        row1 = ttk.Frame(self.conn_body)
         row1.pack(fill="x", pady=3)
         ttk.Label(row1, text="Backup Folder:").pack(side="left")
         self.path_var = tk.StringVar()
@@ -808,7 +862,7 @@ class BackupExplorer:
         ttk.Button(row1, text="Browse...",
                     command=self._browse_folder).pack(side="left")
 
-        row2 = ttk.Frame(conn_frame)
+        row2 = ttk.Frame(self.conn_body)
         row2.pack(fill="x", pady=3)
         ttk.Label(row2, text="Password (encrypted backups):").pack(
             side="left")
@@ -826,15 +880,21 @@ class BackupExplorer:
             value="Select a backup folder to begin. A password is only "
                   "needed for encrypted backups."
         )
-        status_bar = ttk.Label(conn_frame, textvariable=self.status_var,
-                                style="Status.TLabel")
-        status_bar.pack(fill="x", pady=(8, 0))
+        self._status_bar = ttk.Label(conn_frame, textvariable=self.status_var,
+                                     style="Status.TLabel")
+        self._status_bar.pack(fill="x", pady=(8, 0))
+        self.change_btn = ttk.Button(conn_frame,
+                                     text="Open another backup...",
+                                     command=self._expand_connection)
 
-        # The Files view
+        # The Files view, and a tab for each app found in the backup
+        self.notebook = ttk.Notebook(self.root)
+        self.notebook.pack(fill="both", expand=True, padx=20, pady=10)
         self.panel = browser_panel.FileBrowserPanel(
-            self.root, post=self._post, on_extract=self._extract_files,
+            self.notebook, post=self._post, on_extract=self._extract_files,
             on_status=self.status_var.set, page_size=lambda: MAX_ROWS)
-        self.panel.pack(fill="both", expand=True, padx=20, pady=10)
+        self.notebook.add(self.panel, text="Files")
+        self.notebook.bind("<<NotebookTabChanged>>", self._on_tab_changed)
         ttk.Button(self.panel.actions, text="Extract Entire Backup",
                    command=self._extract_entire).pack(side="left", padx=6)
         self.mount_btn = ttk.Button(self.panel.actions, text="Mount Backup",
@@ -880,6 +940,16 @@ class BackupExplorer:
     def _when_done(self, future, callback):
         """Run ``callback(future)`` on the Tk thread once *future* is done."""
         future.add_done_callback(lambda fut: self._post(callback, fut))
+
+    # ── Connection box ───────────────────────────────────────
+
+    def _collapse_connection(self):
+        self.conn_body.pack_forget()
+        self.change_btn.pack(anchor="w", pady=(0, 6), before=self._status_bar)
+
+    def _expand_connection(self):
+        self.change_btn.pack_forget()
+        self.conn_body.pack(fill="x", before=self._status_bar)
 
     # ── Auto-detect backup ───────────────────────────────────
 
@@ -1032,6 +1102,7 @@ class BackupExplorer:
     def _on_decrypt_success(self, domains, total_files, encrypted=True):
         self.decrypt_btn.configure(state="normal")
         self.backup_open = True
+        self._collapse_connection()
         self.status_var.set(
             f"{'Decrypted' if encrypted else 'Opened'}! {total_files:,} "
             f"files across {len(domains)} domains. Building the file index..."
@@ -1081,6 +1152,8 @@ class BackupExplorer:
         self._index_request += 1
         request = self._index_request
         self.panel.set_index(None)
+        self._clear_app_tabs()
+        self.apps.reset()
 
         def progress(done, total):
             self._post(self._show_index_progress, request, done, total)
@@ -1120,9 +1193,31 @@ class BackupExplorer:
         if request != self._index_request:
             return
         self.panel.set_index(index)
+        self.apps.index = index
+        self._add_app_tabs(index)
         self.status_var.set(
             f"{index.file_count:,} files ready. Choose a folder on the "
             "left, or use the search box.")
+
+    # ── App tabs ─────────────────────────────────────────────
+
+    def _add_app_tabs(self, index):
+        for entry in app_registry.available_apps(index):
+            panel = entry.create(self.notebook, self.apps)
+            self.notebook.add(panel, text=entry.title)
+            self._app_panels.append(panel)
+
+    def _clear_app_tabs(self):
+        for panel in self._app_panels:
+            panel.close()
+            self.notebook.forget(panel)
+            panel.destroy()
+        self._app_panels = []
+
+    def _on_tab_changed(self, event):
+        current = self.notebook.nametowidget(self.notebook.select())
+        if current in self._app_panels:
+            current.activate()
 
     # ── Extraction ───────────────────────────────────────────
 
@@ -1382,6 +1477,8 @@ class BackupExplorer:
             return
         self._cancel_timers()
         self.panel.close()
+        self._clear_app_tabs()
+        self.apps.reset()
         if self._mount is not None:
             self._mount.stop()   # before the session its reads depend on
         self.session.close()
@@ -1393,6 +1490,8 @@ class BackupExplorer:
                 self.root.after_cancel(job)
         self._poll_job = self._detect_job = None
         self.panel.cancel_timers()
+        for panel in self._app_panels:
+            panel.cancel_timers()
 
 
 def main():

@@ -44,6 +44,12 @@ The password you enter into iOS Backup Explorer is the **encryption password you
 
 Unencrypted backups need no password, so none is asked for or used. They are opened read-only (the backup folder is never written to, and no temporary copy of its index is made), and extracted files are copied out as they are.
 
+## Messages and Other App Views
+
+To show an app such as Messages, iOS Backup Explorer makes a **working copy** of that app's database (and of the address book, to show names instead of numbers) in a private temporary folder. For an encrypted backup these copies are decrypted. The folder is deleted when you close the app or open another backup; if the app is killed it may be left behind in your system temp folder (named `ios-backup-explorer-apps-...`), so delete it if so.
+
+Exports you create (text, web page, CSV, JSON) are ordinary files in the folder you choose and contain your messages in readable form. Protect or delete them yourself. The exported web page loads nothing from the internet and contains no scripts.
+
 ## Mounting a Backup
 
 Mounting (optional, see the README) makes the open backup's contents available as a read-only drive or folder. Be aware that:
