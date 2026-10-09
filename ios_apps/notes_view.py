@@ -157,6 +157,8 @@ class NotesPanel(AppPanel):
         text.tag_configure("attachment", foreground=_LINK, underline=True,
                            background="#eef0f3")
         text.tag_configure("prefix", foreground=_MUTED)
+        text.tag_configure("transcript", foreground=_MUTED,
+                           font=self._font(self._size - 1, False, True))
 
     def _font(self, size, bold=False, italic=False, mono=False):
         key = (size, bold, italic, mono)
@@ -393,6 +395,9 @@ class NotesPanel(AppPanel):
                       lambda e: text.configure(cursor="hand2"))
         text.tag_bind(tag, "<Leave>",
                       lambda e: text.configure(cursor="arrow"))
+        if attachment.text:                  # what was said in a recording
+            text.insert("end", "\n" + attachment.text, tuple(tags)
+                        + ("transcript",))
 
     def _attachment_menu(self, event, attachment):
         menu = tk.Menu(self, tearoff=False)

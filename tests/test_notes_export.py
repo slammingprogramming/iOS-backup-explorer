@@ -413,6 +413,75 @@ class ExportTests(NotesCase):
         self.assertIn("not exported", page)
 
 
+class CallRecordingExportTests(NotesCase):
+    def setUp(self):
+        super().setUp()
+        conn = make_connection(self, fn.build_with_call_recordings)
+        index = index_for(fn.backup_files(call_recordings=True))
+        reader = nt.NotesReader(conn, nt.media_resolver(index))
+        self.note = next(reader.load(n) for n in reader.notes() if n.pk == 19)
+        self.folders = reader.folders_by_pk
+
+    def test_text_has_the_words_under_the_recording(self):
+        text = nx.note_to_text(self.note)
+        self.assertIn("[Recording: Call with Example Co (2:05)]\n"
+                      "    Hello, this is a test call.\n"
+                      "    Thank you, goodbye.\n", text)
+
+    def test_markdown_quotes_the_words(self):
+        text = nx.note_to_markdown(self.note, {
+            "ATT-30": "../attachments/00001_call.m4a"})
+        self.assertIn("[Recording: Call with Example Co (2:05)]"
+                      "(../attachments/00001_call.m4a)\n\n"
+                      "> Hello, this is a test call.\n"
+                      "> Thank you, goodbye.", text)
+
+    def test_the_web_page_has_a_player_and_the_words(self):
+        page = nx.note_to_html_body(self.note, {
+            "ATT-30": "../attachments/00001_call.m4a"})
+        self.assertIn("<audio controls", page)
+        self.assertIn("<details class=\"transcript\"><summary>Words of the "
+                      "recording</summary><p>Hello, this is a test call.<br>"
+                      "Thank you, goodbye.</p></details>", page)
+
+    def test_the_words_are_escaped(self):
+        attachment = self.note.attachments["ATT-30"]
+        attachment.text = "<script>alert(1)</script> & more"
+        page = nx.note_to_html_body(self.note)
+        self.assertNotIn("<script>", page)
+        self.assertIn("&lt;script&gt;alert(1)&lt;/script&gt; &amp; more", page)
+
+    def test_json_has_the_words_the_length_and_the_file(self):
+        folder = os.path.join(self.tmp, "call-json")
+
+        def fetch(wanted):
+            target = os.path.join(folder, "attachments")
+            os.makedirs(target, exist_ok=True)
+            for _a, name in wanted:
+                spit(os.path.join(target, name), b"audio", "wb")
+            return [name for _a, name in wanted]
+
+        (path,) = nx.export([self.note], self.folders, "json", folder, fetch)
+        (data,) = json.loads(slurp(path, encoding="utf-8"))
+        call = next(a for a in data["attachments"] if a["id"] == "ATT-30")
+        self.assertEqual(call["transcript"], fn.CALL_WORDS)
+        self.assertEqual(call["duration_seconds"], 125.0)
+        self.assertEqual(call["title"], "Call with Example Co")
+        self.assertEqual(call["file"], "attachments/00001_call.m4a")
+
+    def test_a_recording_with_no_words_adds_nothing(self):
+        for attachment in self.note.attachments.values():
+            attachment.text = ""
+        self.assertNotIn("Hello", nx.note_to_text(self.note))
+        self.assertNotIn("transcript", nx.note_to_html_body(self.note))
+
+    @unittest.skipUnless(HAVE_PDF, "fpdf2 is not installed")
+    def test_the_pdf_works_with_a_recording(self):
+        path = os.path.join(self.tmp, "call.pdf")
+        pdf_export.write_note_pdf(path, self.note)
+        self.assertEqual(slurp(path, "rb")[:5], b"%PDF-")
+
+
 class HeicTests(NotesCase):
     @unittest.skipUnless(imaging.have_heif(), "pillow-heif is not installed")
     def test_heic_pictures_are_converted_so_browsers_can_show_them(self):

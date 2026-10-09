@@ -34,6 +34,7 @@ import zlib
 from dataclasses import dataclass, field
 
 from .common import apple_time, table_columns
+from .export_util import describe_duration
 
 DOMAIN = "AppDomainGroup-group.com.apple.notes"
 DATABASE = f"{DOMAIN}/NoteStore.sqlite"
@@ -261,6 +262,8 @@ class Attachment:
     url: str = ""
     alt: str = ""              # text of a hashtag or mention
     title: str = ""
+    duration: float = 0.0      # seconds, for a recording
+    text: str = ""             # the words of a recording, when Notes has them
 
     @property
     def label(self):
@@ -271,7 +274,13 @@ class Attachment:
         names = {"table": "Table", "drawing": "Drawing", "scan": "Scan",
                  "image": "Image", "audio": "Recording", "video": "Video"}
         base = names.get(self.kind, "Attachment")
-        return f"{base}: {self.name}" if self.name else base
+        # a call recording has a title ("Call with ...") and a file whose
+        # name means nothing to a person
+        what = (self.title if self.kind == "audio" else "") or self.name
+        label = f"{base}: {what}" if what else base
+        if self.kind in ("audio", "video") and self.duration:
+            label += f" ({describe_duration(self.duration)})"
+        return label
 
 
 def classify(uti, name=""):
@@ -349,7 +358,7 @@ class Note:
                 if attachment is not None:
                     parts.append(" ".join(x for x in (
                         attachment.alt, attachment.title, attachment.url,
-                        attachment.name) if x))
+                        attachment.name, attachment.text) if x))
             lines.append("".join(parts))
         return "\n".join(lines)
 
@@ -499,6 +508,8 @@ class NotesReader:
             return {}
         sql = (
             f"SELECT a.ZIDENTIFIER, {self._col('ZTYPEUTI', 'a')}, "
+            f"a.Z_PK, {self._col('ZDURATION', 'a')}, "
+            f"{self._col('ZADDITIONALINDEXABLETEXT', 'a')}, "
             f"{self._col('ZTITLE', 'a')}, {self._col('ZURLSTRING', 'a')}, "
             f"{self._first_of(['ZALTTEXT', 'ZTOKENCONTENTIDENTIFIER'], 'a')}, "
             f"{self._col('ZIDENTIFIER', 'm') if 'ZMEDIA' in self.cols else 'NULL'},"
@@ -507,9 +518,9 @@ class NotesReader:
             + ("LEFT JOIN ZICCLOUDSYNCINGOBJECT m ON m.Z_PK = a.ZMEDIA "
                if "ZMEDIA" in self.cols else "")
             + "WHERE a.ZNOTE = ?")
-        found = {}
-        for ident, uti, title, url, alt, media_id, filename in \
-                self.conn.execute(sql, (note.pk,)):
+        found, by_pk = {}, {}
+        for (ident, uti, pk, duration, words, title, url, alt, media_id,
+             filename) in self.conn.execute(sql, (note.pk,)):
             if not ident:
                 continue
             path = self.resolve_media(media_id, filename) \
@@ -518,8 +529,44 @@ class NotesReader:
             kind = classify(uti, name)
             found[ident] = Attachment(
                 ident, uti or "", kind, name, path, url or "", alt or "",
-                title or "")
+                title or "", float(duration or 0),
+                (words or "").strip() if kind == "audio" else "")
+            by_pk[pk] = found[ident]
+        self._find_files_of_children(by_pk)
         return found
+
+    def _find_files_of_children(self, by_pk):
+        """Some attachments hold no file themselves: a call recording is one
+        row with the title and the words, and a child row (pointing at it
+        through ZPARENTATTACHMENT) with the audio file. Give the parent the
+        file of its child."""
+        waiting = {pk: a for pk, a in by_pk.items()
+                   if not a.path and a.kind not in ("inline", "url", "table")}
+        if not waiting or not {"ZPARENTATTACHMENT", "ZMEDIA"} <= self.cols:
+            return
+        marks = ",".join("?" * len(waiting))
+        best = {}
+        for parent, media_id, filename, duration in self.conn.execute(
+                f"SELECT c.ZPARENTATTACHMENT, m.ZIDENTIFIER, m.ZFILENAME, "
+                f"{self._col('ZDURATION', 'c')} "
+                "FROM ZICCLOUDSYNCINGOBJECT c JOIN ZICCLOUDSYNCINGOBJECT m "
+                "ON m.Z_PK = c.ZMEDIA "
+                f"WHERE c.ZPARENTATTACHMENT IN ({marks}) ORDER BY c.Z_PK",
+                list(waiting)):
+            path = self.resolve_media(media_id, filename)
+            if not path:
+                continue
+            # the first file that is there wins, but a real audio file
+            # beats anything else
+            audio = os.path.splitext(path)[1].lower() in (".m4a", ".mp4",
+                                                          ".caf", ".mov")
+            if parent not in best or (audio and not best[parent][3]):
+                best[parent] = (path, filename or os.path.basename(path),
+                                float(duration or 0), audio)
+        for parent, (path, name, duration, _audio) in best.items():
+            attachment = waiting[parent]
+            attachment.path, attachment.name = path, name
+            attachment.duration = attachment.duration or duration
 
     # -- searching and originals ------------------------------
 

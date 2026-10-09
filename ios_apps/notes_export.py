@@ -136,10 +136,24 @@ def _plain(paragraph, note):
     return "".join(out)
 
 
+def transcripts(paragraph, note):
+    """The words of the recordings in *paragraph* (a call recording carries
+    what was said, as far as Notes wrote it down)."""
+    found = []
+    for span in paragraph.spans:
+        attachment = note.attachments.get(span.attachment) \
+            if span.attachment else None
+        if attachment is not None and attachment.text:
+            found.append(attachment.text)
+    return found
+
+
 def note_to_text(note):
     lines = []
     for paragraph in note.paragraphs:
         lines.append(_prefix(paragraph) + _plain(paragraph, note))
+        for words in transcripts(paragraph, note):
+            lines.extend("    " + line for line in words.splitlines())
     text = "\n".join(lines).rstrip("\n")
     if note.error and not note.paragraphs:
         text = note.error
@@ -256,6 +270,10 @@ def note_to_markdown(note, files=None):
             out.append(body)
         # headings and plain paragraphs need a blank line after them
         if style not in nt.LIST_STYLES:
+            for words in transcripts(paragraph, note):
+                out.append("")
+                out.extend("> " + _md_escape(line)
+                           for line in words.splitlines())
             out.append("")
     if in_code:
         out.append("```")
@@ -275,6 +293,7 @@ ul.check{list-style:none;padding-left:1.2em}
 .note audio,.note video{max-width:100%;display:block;margin:6px 0}
 .chip{background:var(--card);border-radius:6px;padding:1px 6px}
 .locked{color:var(--muted);font-style:italic}
+.transcript{color:var(--muted);margin:4px 0 8px}
 """
 
 
@@ -383,6 +402,11 @@ def note_to_html_body(note, files=None):
                nt.SUBHEADING: "h3"}.get(style, "p")
         out.append(f"<{tag}>{body}</{tag}>" if body.strip()
                    else "<p>&nbsp;</p>")
+        for words in transcripts(paragraph, note):
+            out.append("<details class=\"transcript\"><summary>Words of the "
+                       "recording</summary><p>"
+                       + html.escape(words).replace("\n", "<br>")
+                       + "</p></details>")
     close_lists()
     if in_pre:
         out.append("</pre>")
@@ -436,6 +460,9 @@ def _note_dict(note, folders_by_pk, files):
         "attachments": [{
             "id": a.ident, "kind": a.kind, "type": a.uti, "name": a.name,
             "url": a.url or None, "text": a.alt or None,
+            "title": a.title or None,
+            "duration_seconds": a.duration or None,
+            "transcript": a.text or None,
             "file": files.get(a.path)} for a in note.attachments.values()],
     }
 

@@ -280,6 +280,55 @@ class ShowingANoteTests(NotesGuiCase):
         self.assertIn("[Image: photo.png]", self.body_text())
 
 
+class CallRecordingViewTests(NotesGuiCase):
+    def setUp(self):
+        super().setUp()
+        self.open_files(fn.backup_files(call_recordings=True))
+        self.show()
+        self.select_note("Call with Example Co")
+
+    def test_the_recording_and_what_was_said_are_shown(self):
+        text = self.body_text()
+        self.assertIn("[Recording: Call with Example Co (2:05)]", text)
+        self.assertIn("Hello, this is a test call.", text)
+        self.assertIn("Only words.", text)
+
+    def test_the_words_are_set_apart(self):
+        body = self.tab.body
+        spot = body.search("Hello, this", "1.0")
+        self.assertIn("transcript", body.tag_names(spot))
+
+    def test_the_recording_can_be_saved_and_opened(self):
+        tab = self.tab
+        call = tab.current.attachments["ATT-30"]
+        self.assertTrue(call.path)                     # the menu is not greyed
+        opened = []
+        with mock.patch.object(common, "open_file", opened.append):
+            tab.open_backup_file(call.path)
+            self.wait_for(lambda: opened, "the player")
+        with open(opened[0], "rb") as handle:
+            self.assertEqual(handle.read(), fn.CALL_BYTES)
+        self.assertTrue(opened[0].endswith(".m4a"))
+
+    def test_the_words_can_be_searched_for(self):
+        tab = self.tab
+        tab.search_var.set("goodbye")
+        tab._search()
+        self.wait_for(lambda: tab.state_var.get().endswith(
+            "matching notes"), "the results")
+        self.assertEqual(self.rows(), ["Call with Example Co  — Notes"])
+
+    def test_the_originals_include_the_recording(self):
+        extracted = []
+        self.explorer.apps.extract = extracted.append
+        with mock.patch.object(nv.messagebox, "askyesnocancel",
+                               return_value=True):
+            self.tab.extract_originals()
+            self.wait_for(lambda: extracted, "the request")
+        (ids,) = extracted
+        self.assertIn(self.ids[(fn.NOTES_DOMAIN, fn.CALL_FILE)], ids)
+
+
 class SearchTests(NotesGuiCase):
     def setUp(self):
         super().setUp()

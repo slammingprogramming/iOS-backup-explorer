@@ -30,7 +30,7 @@ import re
 import tempfile
 
 from . import imaging, notes as nt
-from .notes_export import attachment_text
+from .notes_export import attachment_text, transcripts
 
 try:
     from fpdf import FPDF
@@ -155,6 +155,10 @@ class _Writer:
                 pdf.write(height, text)
             wrote = True
         pdf.ln(height + (1 if wrote else 2))
+        for words in transcripts(paragraph, note):
+            self.font(size - 1, italic=True)
+            pdf.multi_cell(0, height, self.clean(words),
+                           new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         pdf.set_left_margin(left)
         pdf.set_x(left)
 

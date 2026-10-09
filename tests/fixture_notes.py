@@ -91,7 +91,8 @@ CREATE TABLE ZICCLOUDSYNCINGOBJECT (
     ZIDENTIFIER VARCHAR, ZMARKEDFORDELETION INTEGER, ZISPINNED INTEGER,
     ZISPASSWORDPROTECTED INTEGER, ZFOLDERTYPE INTEGER,
     ZNOTE INTEGER, ZMEDIA INTEGER, ZTYPEUTI VARCHAR, ZFILENAME VARCHAR,
-    ZURLSTRING VARCHAR, ZALTTEXT VARCHAR);
+    ZURLSTRING VARCHAR, ZALTTEXT VARCHAR, ZPARENTATTACHMENT INTEGER,
+    ZADDITIONALINDEXABLETEXT VARCHAR, ZDURATION FLOAT);
 CREATE TABLE ZICNOTEDATA (Z_PK INTEGER PRIMARY KEY, Z_ENT INTEGER,
     ZNOTE INTEGER, ZDATA BLOB);
 """
@@ -194,9 +195,69 @@ def build(conn):
     conn.commit()
 
 
-def backup_files(include_media=True):
+CALL_FILE = f"{NOTES_ACCOUNT}/Media/MEDIA-CALL/1_GEN-C/call.m4a"
+CALL_IMAGE_FILE = f"{NOTES_ACCOUNT}/Media/MEDIA-CALLPIC/1_GEN-P/cover.png"
+CALL_BYTES = b"\x00\x00\x00\x18ftypM4A a call recording"
+CALL_WORDS = "Hello, this is a test call.\nThank you, goodbye."
+
+
+def build_with_call_recordings(conn):
+    """The usual database plus a note with call recordings, stored the way
+    iOS 18 does: the attachment the note refers to has a title and the
+    words but no media; a child row (ZPARENTATTACHMENT) holds the file.
+
+    Note 19, "Call with Example Co", has three recordings: 30 has a child
+    with the audio (and an earlier child that is only a picture), 31 has no
+    child at all (its file is not in the backup), 32 has a child whose file
+    is missing from the backup.
+    """
+    build(conn)
+
+    def attachment(pk, parent=None, media=None, uti="com.apple.m4a-audio",
+                   title=None, words=None, duration=None, ident=None):
+        conn.execute(
+            "INSERT INTO ZICCLOUDSYNCINGOBJECT (Z_PK, Z_ENT, ZNOTE, "
+            "ZIDENTIFIER, ZTYPEUTI, ZTITLE, ZADDITIONALINDEXABLETEXT, "
+            "ZPARENTATTACHMENT, ZMEDIA, ZDURATION) VALUES (?,3,19,?,?,?,?,?,"
+            "?,?)", (pk, ident or f"ATT-{pk}", uti, title, words, parent,
+                     media, duration))
+
+    conn.execute(
+        "INSERT INTO ZICCLOUDSYNCINGOBJECT (Z_PK, Z_ENT, ZTITLE1, ZFOLDER, "
+        "ZACCOUNT3, ZCREATIONDATE3, ZMODIFICATIONDATE1, ZIDENTIFIER) VALUES "
+        "(19, 8, 'Call with Example Co', 2, 1, 780000000, 780000000, "
+        "'NOTE-19')")
+    conn.execute(
+        "INSERT INTO ZICNOTEDATA (ZNOTE, ZDATA) VALUES (19, ?)",
+        (blob([run("Call with Example Co\n", style=0),
+               run("\ufffc", attachment=("ATT-30", "com.apple.m4a-audio")),
+               run("\n"),
+               run("\ufffc", attachment=("ATT-31", "com.apple.m4a-audio")),
+               run("\n"),
+               run("\ufffc", attachment=("ATT-32", "com.apple.m4a-audio")),
+               run("\n")]),))
+    row = ("INSERT INTO ZICCLOUDSYNCINGOBJECT (Z_PK, Z_ENT, ZIDENTIFIER, "
+           "ZFILENAME) VALUES (?, 11, ?, ?)")
+    conn.execute(row, (40, "MEDIA-CALLPIC", "cover.png"))
+    conn.execute(row, (41, "MEDIA-CALL", "call.m4a"))
+    conn.execute(row, (42, "MEDIA-GONE", "gone.m4a"))
+    attachment(30, title="Call with Example Co", words=CALL_WORDS)
+    attachment(33, parent=30, media=40, uti="public.png")     # a picture first
+    attachment(34, parent=30, media=41, uti="public.mpeg-4-audio",
+               duration=125.0)
+    attachment(31, title="Call with Nobody", words="Only words.")
+    attachment(32, title="Call with Gone")
+    attachment(35, parent=32, media=42, uti="public.mpeg-4-audio")
+    conn.commit()
+
+
+def backup_files(include_media=True, call_recordings=False):
     """The ``(domain, path, bytes)`` list for a backup that has the notes."""
-    files = [(NOTES_DOMAIN, "NoteStore.sqlite", database_bytes(build))]
+    files = [(NOTES_DOMAIN, "NoteStore.sqlite", database_bytes(
+        build_with_call_recordings if call_recordings else build))]
+    if call_recordings:
+        files += [(NOTES_DOMAIN, CALL_FILE, CALL_BYTES),
+                  (NOTES_DOMAIN, CALL_IMAGE_FILE, PNG_BYTES)]
     if include_media:
         files += [(NOTES_DOMAIN, NOTES_FILES["photo_old"], OLD_PHOTO),
                   (NOTES_DOMAIN, NOTES_FILES["photo"], PNG_BYTES),

@@ -289,6 +289,85 @@ class ReaderTests(unittest.TestCase):
         self.assertTrue(one[0].endswith("Recording.m4a"))
 
 
+class CallRecordingTests(unittest.TestCase):
+    """A call recording is one attachment with the title and the words and no
+    file, and a child attachment (ZPARENTATTACHMENT) that holds the file."""
+
+    def setUp(self):
+        conn = make_connection(self, fn.build_with_call_recordings)
+        self.index = index_for(fn.backup_files(call_recordings=True))
+        self.reader = nt.NotesReader(conn, nt.media_resolver(self.index))
+        self.note = next(n for n in self.reader.notes() if n.pk == 19)
+        self.reader.load(self.note)
+        self.attachments = self.note.attachments
+
+    def test_the_file_comes_from_the_child(self):
+        call = self.attachments["ATT-30"]
+        self.assertEqual(call.path, f"{fn.NOTES_DOMAIN}/{fn.CALL_FILE}")
+        self.assertEqual((call.kind, call.name), ("audio", "call.m4a"))
+
+    def test_an_audio_child_beats_an_earlier_picture(self):
+        self.assertTrue(self.attachments["ATT-30"].path.endswith("call.m4a"))
+
+    def test_the_title_the_length_and_the_words(self):
+        call = self.attachments["ATT-30"]
+        self.assertEqual(call.title, "Call with Example Co")
+        self.assertEqual(call.duration, 125.0)
+        self.assertEqual(call.text, fn.CALL_WORDS)
+        self.assertEqual(call.label, "Recording: Call with Example Co (2:05)")
+
+    def test_a_recording_without_a_child_keeps_its_words_but_has_no_file(self):
+        lonely = self.attachments["ATT-31"]
+        self.assertEqual((lonely.path, lonely.text), ("", "Only words."))
+        self.assertEqual(lonely.label, "Recording: Call with Nobody")
+
+    def test_a_child_whose_file_is_not_in_the_backup_gives_no_file(self):
+        self.assertEqual(self.attachments["ATT-32"].path, "")
+
+    def test_the_file_is_listed_once_for_extraction(self):
+        paths = self.reader.attachment_paths([self.note])
+        self.assertEqual(paths.count(f"{fn.NOTES_DOMAIN}/{fn.CALL_FILE}"), 1)
+
+    def test_the_words_can_be_searched(self):
+        found = [n.pk for n in self.reader.search("goodbye")]
+        self.assertEqual(found, [19])
+        self.assertEqual([n.pk for n in self.reader.search("only words")],
+                         [19])
+
+    def test_only_recordings_keep_their_words(self):
+        conn = make_connection(self, fn.build_with_call_recordings)
+        conn.execute("UPDATE ZICCLOUDSYNCINGOBJECT SET ZTYPEUTI = "
+                     "'public.png' WHERE Z_PK = 31")
+        reader = nt.NotesReader(conn)
+        note = next(n for n in reader.notes() if n.pk == 19)
+        reader.load(note)
+        self.assertEqual(note.attachments["ATT-31"].text, "")
+
+    def test_a_database_without_the_child_column_still_reads(self):
+        def build(conn):
+            conn.executescript("""
+                CREATE TABLE Z_PRIMARYKEY (Z_ENT INTEGER PRIMARY KEY,
+                    Z_NAME VARCHAR);
+                CREATE TABLE ZICCLOUDSYNCINGOBJECT (Z_PK INTEGER PRIMARY KEY,
+                    Z_ENT INTEGER, ZTITLE1 VARCHAR, ZNOTE INTEGER,
+                    ZIDENTIFIER VARCHAR, ZTYPEUTI VARCHAR, ZMEDIA INTEGER);
+                CREATE TABLE ZICNOTEDATA (Z_PK INTEGER PRIMARY KEY,
+                    ZNOTE INTEGER, ZDATA BLOB);
+                INSERT INTO Z_PRIMARYKEY VALUES (8, 'ICNote');
+                INSERT INTO ZICCLOUDSYNCINGOBJECT VALUES
+                    (1, 8, 'N', NULL, 'N1', NULL, NULL),
+                    (2, 3, NULL, 1, 'A1', 'com.apple.m4a-audio', NULL);
+            """)
+            conn.execute("INSERT INTO ZICNOTEDATA (ZNOTE, ZDATA) VALUES "
+                         "(1, ?)", (fn.blob([fn.run("x\n")]),))
+            conn.commit()
+
+        reader = nt.NotesReader(make_connection(self, build))
+        (note,) = reader.notes()
+        reader.load(note)
+        self.assertEqual(note.attachments["A1"].path, "")
+
+
 class SchemaToleranceTests(unittest.TestCase):
     def test_a_database_without_the_optional_columns_still_reads(self):
         def build(conn):
