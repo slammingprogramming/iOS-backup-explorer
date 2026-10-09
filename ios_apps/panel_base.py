@@ -276,6 +276,10 @@ class AppPanel(ttk.Frame):
             messagebox.showerror("Open", f"Could not open it: {error}"
                                  if error else "Could not open it.")
             return
+        self.launch_local(local)
+
+    def launch_local(self, local):
+        """Open a working copy with the computer's own program for it."""
         try:
             common.open_file(local)
         except common.NotOpened as exc:

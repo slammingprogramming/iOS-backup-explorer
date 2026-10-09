@@ -25,18 +25,21 @@ spreadsheet), and the original database and attachments can always be
 extracted untouched.
 """
 
+import os
+import shutil
+import threading
 import tkinter as tk
 import tkinter.font as tkfont
 import webbrowser
-from tkinter import messagebox, ttk
+from tkinter import filedialog, messagebox, ttk
 
-from ui_util import post_when_done
+from ui_util import post_when_done, weak_notifier
 
-from . import imaging
+from . import audio_tools, imaging
 from . import notes as nt
 from . import notes_export as nx
 from .common import format_datetime
-from .dialogs import ask_export
+from .dialogs import ask_choice, ask_export
 from .panel_base import AppPanel
 
 SORTS = {"Date edited": lambda n: n.modified or 0,
@@ -51,7 +54,11 @@ def _load(conn, _book, index):
     """(runs on the database thread) -> the reader and the first data."""
     reader = nt.NotesReader(conn, nt.media_resolver(index))
     notes = reader.notes()
-    return reader, (notes, reader.folders())
+    # (whether to ask which file of a recording to export: only if there are
+    # recordings, and they come in more than one form or can be mixed)
+    recordings = reader.has_audio_attachments()
+    parts = recordings and reader.has_recordings_in_parts()
+    return reader, (notes, reader.folders(), recordings, parts)
 
 
 class NotesPanel(AppPanel):
@@ -63,6 +70,7 @@ class NotesPanel(AppPanel):
     def __init__(self, master, context):
         super().__init__(master, context)
         self.notes = []
+        self._recordings = self._in_parts = False   # (see _load)
         self.folders = {}
         self._items = {}                 # tree row -> ("note"|"folder", obj)
         self.current = None
@@ -189,7 +197,7 @@ class NotesPanel(AppPanel):
     # ── Loading and the tree ─────────────────────────────────
 
     def on_loaded(self, data):
-        self.notes, folder_list = data
+        self.notes, folder_list, self._recordings, self._in_parts = data
         self.folders = {f.pk: f for f in folder_list}
         self._show_tree()
         shown = [n for n in self.notes if not n.deleted]
@@ -401,18 +409,81 @@ class NotesPanel(AppPanel):
 
     def _attachment_menu(self, event, attachment):
         menu = tk.Menu(self, tearoff=False)
-        has_file = bool(attachment.path)
-        state = "normal" if has_file else "disabled"
-        menu.add_command(label="Open", state=state,
-                         command=lambda: self.open_backup_file(attachment.path))
-        menu.add_command(
-            label="Save as...", state=state,
-            command=lambda: self.save_backup_file(
-                attachment.path, attachment.name or "attachment"))
+        # one entry each when the recording exists in more than one form (a
+        # call recording kept as a movie file can also be mixed into one
+        # audio file, if ffmpeg is installed)
+        files = nt.recording_forms(attachment, audio_tools.available()) \
+            or [nt.Variant(attachment.path, attachment.name)]
+        state = "normal" if attachment.path else "disabled"
+        for number, variant in enumerate(files):
+            what = f" the {variant.label}" if len(files) > 1 else ""
+            if variant.mix:
+                menu.add_command(
+                    label=f"Open{what}",
+                    command=lambda v=variant: self.mix_and(v, "open"))
+                menu.add_command(
+                    label=f"Save{what} as...",
+                    command=lambda v=variant: self.mix_and(v, "save"))
+            else:
+                menu.add_command(
+                    label=f"Open{what}", state=state,
+                    command=lambda v=variant: self.open_backup_file(v.path))
+                menu.add_command(
+                    label=f"Save{what} as...", state=state,
+                    command=lambda v=variant: self.save_backup_file(
+                        v.path, v.name or "attachment"))
+            if number < len(files) - 1:
+                menu.add_separator()
         try:
             menu.tk_popup(event.x_root, event.y_root)
         finally:
             menu.grab_release()
+
+    def mix_and(self, variant, action):
+        """Mix the tracks of the recording file *variant* into one audio
+        file, then open it or save it (*action*)."""
+        destination = None
+        if action == "save":
+            destination = filedialog.asksaveasfilename(
+                initialfile=variant.name, defaultextension=".m4a",
+                title="Save the mixed audio as")
+            if not destination:
+                return
+        self.ctx.set_status("Mixing the recording...")
+        post_when_done(self.ctx.post,
+                       self.ctx.fetch_local([variant.path], "notes-mix"),
+                       self._mix_source, variant.path, destination)
+
+    def _mix_source(self, done, path, destination):
+        local = None if done.exception() is not None \
+            else done.result().get(path)
+        if not local:
+            messagebox.showerror("Mixed audio", "Could not read the file.")
+            return
+        notify = weak_notifier(self.ctx.post, self._mixed)
+        mixed = os.path.splitext(local)[0] + ".mixed.m4a"
+
+        def work():
+            ok = audio_tools.mix_to_m4a(local, mixed)
+            if ok and destination:
+                try:
+                    shutil.copyfile(mixed, destination)
+                except OSError:
+                    ok = False
+            notify(ok, mixed, destination)
+
+        threading.Thread(target=work, daemon=True, name="mix").start()
+
+    def _mixed(self, ok, mixed, destination):
+        if not ok:
+            messagebox.showerror(
+                "Mixed audio", "The tracks could not be mixed (this needs "
+                "ffmpeg). The original file can still be opened or saved.")
+        elif destination:
+            self.ctx.set_status(f"Saved {destination}")
+        else:
+            self.ctx.set_status("")
+            self.launch_local(mixed)
 
     # ── Pictures inside notes ────────────────────────────────
 
@@ -516,23 +587,33 @@ class NotesPanel(AppPanel):
         scopes["all"] = f"All {len(self.notes):,} notes"
         if default_scope not in scopes:
             default_scope = next(iter(scopes))
+        extra = None
+        if self._recordings and (self._in_parts or audio_tools.available()):
+            extra = {"title": "Call recordings, which file:",
+                     "options": dict(nx.RECORDINGS), "default": "mixed"}
+            if not audio_tools.available():
+                extra["options"]["mixed"] += " (as the original file here " \
+                    "unless ffmpeg is installed)"
         choice = ask_export(self, "Export notes", nx.formats(), scopes,
-                            default_scope)
+                            default_scope, extra)
         if choice is None:
             return
-        fmt, scope, destination = choice
+        fmt, scope, destination, *more = choice
+        recordings = more[0] if more else "mixed"
         chosen = {"one": lambda: [self.current],
                   "folder": lambda: self._notes_in(folder),
                   "all": lambda: list(self.notes)}[scope]()
-        self.export_to(chosen, fmt, destination)
+        self.export_to(chosen, fmt, destination, recordings)
 
-    def export_to(self, notes, fmt, destination):
-        """Export *notes* as *fmt* into *destination* (in the background)."""
+    def export_to(self, notes, fmt, destination, recordings="mixed"):
+        """Export *notes* as *fmt* into *destination* (in the background).
+        *recordings* says which file of a call recording to export (see
+        ``notes_export.RECORDINGS``)."""
         folders = dict(self.folders)
         self.start_export(
             lambda reader: [reader.load(n) for n in notes],
             lambda data, fetch: nx.export(data, folders, fmt, destination,
-                                          fetch),
+                                          fetch, recordings),
             destination)
 
     # ── Original files ───────────────────────────────────────
@@ -552,7 +633,28 @@ class NotesPanel(AppPanel):
             if answer is None:
                 return
             only = [self.current] if answer else None
-        self.run_query(lambda reader: reader.attachment_paths(only),
+        self.run_query(lambda reader: reader.has_recording_forms(only),
+                       self._originals_choice, only)
+
+    def _originals_choice(self, done, only):
+        error = done.exception()
+        if error is not None:
+            messagebox.showerror("Original files", str(error))
+            return
+        mode = "both"
+        if done.result():
+            mode = ask_choice(
+                self, "Original files",
+                "Some call recordings were saved in two forms: a mixed audio "
+                "file, and the original file with a separate track for each "
+                "side of the call. Which should be extracted?",
+                {"both": "Both files",
+                 "mixed": "Only the mixed recording (.m4a)",
+                 "original": "Only the original (.mov), with the separate "
+                             "tracks"}, "both")
+            if mode is None:
+                return
+        self.run_query(lambda reader: reader.attachment_paths(only, mode),
                        self._originals_ready)
 
     def _originals_ready(self, done):

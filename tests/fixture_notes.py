@@ -197,6 +197,12 @@ def build(conn):
 
 CALL_FILE = f"{NOTES_ACCOUNT}/Media/MEDIA-CALL/1_GEN-C/call.m4a"
 CALL_IMAGE_FILE = f"{NOTES_ACCOUNT}/Media/MEDIA-CALLPIC/1_GEN-P/cover.png"
+CALL_MOV_FILE = (f"{NOTES_ACCOUNT}/Media/MEDIA-CALLMOV/1_GEN-M/"
+                 "moments_call-audio.MOV")
+CALL_MOV_BYTES = b"\x00\x00\x00\x14ftypqt  the original, two tracks"
+ONLY_MOV_FILE = (f"{NOTES_ACCOUNT}/Media/MEDIA-ONLYMOV/1_GEN-O/"
+                 "moments_only-audio.MOV")
+ONLY_MOV_BYTES = b"\x00\x00\x00\x14ftypqt  only a movie file"
 CALL_BYTES = b"\x00\x00\x00\x18ftypM4A a call recording"
 CALL_WORDS = "Hello, this is a test call.\nThank you, goodbye."
 
@@ -206,10 +212,12 @@ def build_with_call_recordings(conn):
     iOS 18 does: the attachment the note refers to has a title and the
     words but no media; a child row (ZPARENTATTACHMENT) holds the file.
 
-    Note 19, "Call with Example Co", has three recordings: 30 has a child
-    with the audio (and an earlier child that is only a picture), 31 has no
-    child at all (its file is not in the backup), 32 has a child whose file
-    is missing from the backup.
+    Note 19, "Call with Example Co", has four recordings: 30 has a child
+    with the mixed audio (.m4a), a child with the original movie file with
+    the separate tracks (.MOV, stored first) and a child that is only a
+    picture; 31 has no child at all; 32 has a child whose file is missing
+    from the backup; 36 has only a movie file, as call recordings usually
+    are in a backup.
     """
     build(conn)
 
@@ -235,19 +243,28 @@ def build_with_call_recordings(conn):
                run("\ufffc", attachment=("ATT-31", "com.apple.m4a-audio")),
                run("\n"),
                run("\ufffc", attachment=("ATT-32", "com.apple.m4a-audio")),
+               run("\n"),
+               run("\ufffc", attachment=("ATT-36", "com.apple.m4a-audio")),
                run("\n")]),))
     row = ("INSERT INTO ZICCLOUDSYNCINGOBJECT (Z_PK, Z_ENT, ZIDENTIFIER, "
            "ZFILENAME) VALUES (?, 11, ?, ?)")
     conn.execute(row, (40, "MEDIA-CALLPIC", "cover.png"))
     conn.execute(row, (41, "MEDIA-CALL", "call.m4a"))
     conn.execute(row, (42, "MEDIA-GONE", "gone.m4a"))
+    conn.execute(row, (43, "MEDIA-CALLMOV", "moments_call-audio.MOV"))
+    conn.execute(row, (44, "MEDIA-ONLYMOV", "moments_only-audio.MOV"))
     attachment(30, title="Call with Example Co", words=CALL_WORDS)
-    attachment(33, parent=30, media=40, uti="public.png")     # a picture first
+    attachment(29, parent=30, media=43, uti="public.mpeg-4-audio",
+               duration=125.0)                       # the movie, stored first
+    attachment(33, parent=30, media=40, uti="public.png")     # a picture
     attachment(34, parent=30, media=41, uti="public.mpeg-4-audio",
                duration=125.0)
     attachment(31, title="Call with Nobody", words="Only words.")
     attachment(32, title="Call with Gone")
     attachment(35, parent=32, media=42, uti="public.mpeg-4-audio")
+    attachment(36, title="Call with Movie Only", words="Words of the movie.")
+    attachment(37, parent=36, media=44, uti="public.mpeg-4-audio",
+               duration=60.0)
     conn.commit()
 
 
@@ -257,7 +274,9 @@ def backup_files(include_media=True, call_recordings=False):
         build_with_call_recordings if call_recordings else build))]
     if call_recordings:
         files += [(NOTES_DOMAIN, CALL_FILE, CALL_BYTES),
-                  (NOTES_DOMAIN, CALL_IMAGE_FILE, PNG_BYTES)]
+                  (NOTES_DOMAIN, CALL_IMAGE_FILE, PNG_BYTES),
+                  (NOTES_DOMAIN, CALL_MOV_FILE, CALL_MOV_BYTES),
+                  (NOTES_DOMAIN, ONLY_MOV_FILE, ONLY_MOV_BYTES)]
     if include_media:
         files += [(NOTES_DOMAIN, NOTES_FILES["photo_old"], OLD_PHOTO),
                   (NOTES_DOMAIN, NOTES_FILES["photo"], PNG_BYTES),

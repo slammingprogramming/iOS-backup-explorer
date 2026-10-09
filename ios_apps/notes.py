@@ -252,6 +252,79 @@ def _number_lists(paragraphs):
 
 # ── Attachments, notes, folders ──────────────────────────────
 
+MIXED_EXTENSIONS = (".m4a", ".mp3", ".aac", ".wav", ".caf", ".amr", ".aiff")
+TRACKS_EXTENSIONS = (".mov", ".mp4", ".m4v", ".qta", ".3gp")
+
+
+@dataclass
+class Variant:
+    """One of the files a recording is kept in. A call recording is saved
+    as a mixed audio file (``.m4a``, one track) and as the original movie
+    file (``.mov``), which keeps the two sides of the call as separate
+    tracks."""
+    path: str
+    name: str
+    mix: bool = False       # not a file of the backup: the tracks of the file
+                            # at *path* mixed into one (made on export)
+
+    @property
+    def key(self):
+        """What stands for this file when exports are planned: the mixed
+        audio made from a file and the file itself share a path."""
+        return self.path + ("#mix" if self.mix else "")
+
+    @property
+    def kind(self):
+        ext = os.path.splitext(self.name or self.path)[1].lower()
+        if ext in MIXED_EXTENSIONS:
+            return "mixed"
+        if ext in TRACKS_EXTENSIONS:
+            return "tracks"
+        return "file"
+
+    @property
+    def label(self):
+        ext = os.path.splitext(self.name or self.path)[1].lower() or "file"
+        return {"mixed": f"mixed audio ({ext})",
+                "tracks": f"original with separate tracks ({ext})"
+                }.get(self.kind, f"file ({ext})")
+
+
+def recording_forms(attachment, can_mix=False):
+    """The forms a recording can be had in: the files the backup holds and,
+    when *can_mix*, a mixed audio file made from the original movie file's
+    tracks if the backup has no mixed audio file of its own."""
+    forms = list(attachment.variants) or (
+        [Variant(attachment.path, attachment.name)] if attachment.path
+        else [])
+    if can_mix and attachment.kind == "audio" \
+            and not any(v.kind == "mixed" for v in forms):
+        tracks = next((v for v in forms if v.kind == "tracks"), None)
+        if tracks is not None:
+            forms.append(Variant(tracks.path, os.path.splitext(
+                tracks.name)[0] + ".m4a", True))
+    return forms
+
+
+def pick_variants(attachment, mode, forms=None):
+    """``(main, also)``: the file to use for *attachment* and the further
+    files to keep with it, when the recording exists in several forms
+    (*forms*, by default the attachment's own files; see
+    :func:`recording_forms`). *mode* is ``mixed``, ``original`` (the file
+    with separate tracks, if there is one) or ``both`` (the mixed file, and
+    the other one beside it). An attachment with one file just gives that
+    file."""
+    variants = attachment.variants if forms is None else forms
+    if len(variants) < 2:
+        return (variants[0] if variants else Variant(attachment.path,
+                                                     attachment.name)), []
+    mixed = next((v for v in variants if v.kind == "mixed"), variants[0])
+    tracks = next((v for v in variants if v.kind == "tracks"), None)
+    main = tracks if mode == "original" and tracks else mixed
+    return main, ([v for v in variants if v is not main]
+                  if mode == "both" else [])
+
+
 @dataclass
 class Attachment:
     ident: str
@@ -264,6 +337,15 @@ class Attachment:
     title: str = ""
     duration: float = 0.0      # seconds, for a recording
     text: str = ""             # the words of a recording, when Notes has them
+    pk: int = 0
+    parent_pk: int = 0         # the attachment this one is a file of
+    variants: list = field(default_factory=list)   # the files of a recording
+    also: list = field(default_factory=list)       # (for an export)
+    mix: bool = False          # (for an export) path is to be mixed down
+
+    @property
+    def key(self):
+        return self.path + ("#mix" if self.mix else "")
 
     @property
     def label(self):
@@ -509,6 +591,7 @@ class NotesReader:
         sql = (
             f"SELECT a.ZIDENTIFIER, {self._col('ZTYPEUTI', 'a')}, "
             f"a.Z_PK, {self._col('ZDURATION', 'a')}, "
+            f"{self._col('ZPARENTATTACHMENT', 'a')}, "
             f"{self._col('ZADDITIONALINDEXABLETEXT', 'a')}, "
             f"{self._col('ZTITLE', 'a')}, {self._col('ZURLSTRING', 'a')}, "
             f"{self._first_of(['ZALTTEXT', 'ZTOKENCONTENTIDENTIFIER'], 'a')}, "
@@ -519,8 +602,8 @@ class NotesReader:
                if "ZMEDIA" in self.cols else "")
             + "WHERE a.ZNOTE = ?")
         found, by_pk = {}, {}
-        for (ident, uti, pk, duration, words, title, url, alt, media_id,
-             filename) in self.conn.execute(sql, (note.pk,)):
+        for (ident, uti, pk, duration, parent, words, title, url, alt,
+             media_id, filename) in self.conn.execute(sql, (note.pk,)):
             if not ident:
                 continue
             path = self.resolve_media(media_id, filename) \
@@ -530,7 +613,8 @@ class NotesReader:
             found[ident] = Attachment(
                 ident, uti or "", kind, name, path, url or "", alt or "",
                 title or "", float(duration or 0),
-                (words or "").strip() if kind == "audio" else "")
+                (words or "").strip() if kind == "audio" else "",
+                pk, parent or 0)
             by_pk[pk] = found[ident]
         self._find_files_of_children(by_pk)
         return found
@@ -545,7 +629,7 @@ class NotesReader:
         if not waiting or not {"ZPARENTATTACHMENT", "ZMEDIA"} <= self.cols:
             return
         marks = ",".join("?" * len(waiting))
-        best = {}
+        children = {}
         for parent, media_id, filename, duration in self.conn.execute(
                 f"SELECT c.ZPARENTATTACHMENT, m.ZIDENTIFIER, m.ZFILENAME, "
                 f"{self._col('ZDURATION', 'c')} "
@@ -554,19 +638,28 @@ class NotesReader:
                 f"WHERE c.ZPARENTATTACHMENT IN ({marks}) ORDER BY c.Z_PK",
                 list(waiting)):
             path = self.resolve_media(media_id, filename)
-            if not path:
-                continue
-            # the first file that is there wins, but a real audio file
-            # beats anything else
-            audio = os.path.splitext(path)[1].lower() in (".m4a", ".mp4",
-                                                          ".caf", ".mov")
-            if parent not in best or (audio and not best[parent][3]):
-                best[parent] = (path, filename or os.path.basename(path),
-                                float(duration or 0), audio)
-        for parent, (path, name, duration, _audio) in best.items():
+            if path:
+                children.setdefault(parent, []).append(
+                    (Variant(path, filename or os.path.basename(path)),
+                     float(duration or 0)))
+        for parent, found in children.items():
             attachment = waiting[parent]
-            attachment.path, attachment.name = path, name
-            attachment.duration = attachment.duration or duration
+            if attachment.kind in ("audio", "video"):
+                # only the recordings themselves, not a picture beside them
+                found = [f for f in found if f[0].kind != "file"] or found
+                # the mixed audio first, then the original; ties keep the
+                # order the phone stored them in
+                order = {"mixed": 0, "tracks": 1, "file": 2}
+                found.sort(key=lambda f: order[f[0].kind])
+            variants = []
+            for variant, _duration in found:
+                if all(v.path != variant.path for v in variants):
+                    variants.append(variant)
+            attachment.variants = variants
+            attachment.path, attachment.name = variants[0].path, \
+                variants[0].name
+            attachment.duration = attachment.duration or next(
+                (d for _v, d in found if d), 0.0)
 
     # -- searching and originals ------------------------------
 
@@ -583,12 +676,50 @@ class NotesReader:
                 found.append(note)
         return found
 
-    def attachment_paths(self, notes=None):
-        """Backup paths of the attachment files of *notes* (default: all)."""
+    def has_audio_attachments(self):
+        """A quick look (no notes are read) at whether there are any audio
+        recordings at all."""
+        if "ZTYPEUTI" not in self.cols:
+            return False
+        return self.conn.execute(
+            "SELECT 1 FROM ZICCLOUDSYNCINGOBJECT WHERE lower(ZTYPEUTI) "
+            "LIKE '%audio%' LIMIT 1").fetchone() is not None
+
+    def has_recordings_in_parts(self):
+        """A quick look (no notes are read) at whether the database has
+        attachments that are files of another attachment, as call
+        recordings are. Used to decide whether to ask about them."""
+        if not {"ZPARENTATTACHMENT", "ZMEDIA"} <= self.cols:
+            return False
+        return self.conn.execute(
+            "SELECT 1 FROM ZICCLOUDSYNCINGOBJECT WHERE ZPARENTATTACHMENT "
+            "IS NOT NULL AND ZMEDIA IS NOT NULL LIMIT 1").fetchone() \
+            is not None
+
+    def has_recording_forms(self, notes=None):
+        """Whether any recording in *notes* (default: all) was saved in more
+        than one form (a mixed audio file and the original movie file)."""
+        for note in (self._notes if notes is None else notes):
+            self.load(note)
+            if any(len(a.variants) > 1 for a in note.attachments.values()):
+                return True
+        return False
+
+    def attachment_paths(self, notes=None, recordings="both"):
+        """Backup paths of the attachment files of *notes* (default: all).
+        *recordings* is which file(s) to give for a recording that exists
+        in more than one form: ``mixed``, ``original`` or ``both``."""
         paths = []
         for note in (self._notes if notes is None else notes):
             self.load(note)
-            paths.extend(a.path for a in note.attachments.values() if a.path)
+            folded = {a.pk for a in note.attachments.values()
+                      if a.pk and a.variants}
+            for a in note.attachments.values():
+                if recordings != "both" and a.parent_pk in folded:
+                    continue                # a file of a recording: see below
+                main, also = pick_variants(a, recordings)
+                paths.extend(p for p in [main.path] + [v.path for v in also]
+                             if p)
         return list(dict.fromkeys(paths))
 
 

@@ -25,13 +25,15 @@ and the web page (HEIC pictures are converted to JPEG if pillow-heif is
 installed, so every browser can show them).
 """
 
+import copy
+import dataclasses
 import html
 import json
 import os
 import re
 import shutil
 
-from . import imaging, notes as nt
+from . import audio_tools, imaging, notes as nt
 from .common import format_datetime
 from .export_util import (href, html_page, iso_utc, safe_filename,
                           write_csv_file, write_text_file)
@@ -44,6 +46,14 @@ FORMATS = {
     "json": "JSON (all notes, for programs)",
     "csv": "Spreadsheet (CSV, one row per note)",
 }
+
+RECORDINGS = {
+    "mixed": "The mixed recording (.m4a), the two sides on one track",
+    "original": "The original file (.mov), with the separate tracks",
+    "both": "Both",
+}
+"""Which file of a call recording to export, when it was saved as a mixed
+audio file and as the original movie file with a track for each side."""
 
 _STYLE_NAMES = {nt.TITLE: "title", nt.HEADING: "heading",
                 nt.SUBHEADING: "subheading", nt.MONOSPACED: "monospaced",
@@ -230,7 +240,12 @@ def _md_attachment(attachment, files):
     if attachment.kind == "image" and imaging.extension(relative) in \
             imaging.BROWSER_EXTENSIONS:
         return f"![{_md_escape(attachment.name)}]({target})"
-    return f"[{label}]({target})"
+    link = f"[{label}]({target})"
+    extra = files.get("also:" + attachment.ident)
+    if extra:
+        link += " (also: " + ", ".join(
+            f"[{_md_escape(name)}]({href(rel)})" for name, rel in extra) + ")"
+    return link
 
 
 def note_to_markdown(note, files=None):
@@ -343,8 +358,12 @@ def _html_attachment(attachment, files):
         return (f"<a href=\"{target}\"><img loading=\"lazy\" src=\"{target}\""
                 f" alt=\"{html.escape(attachment.name)}\"></a>")
     if attachment.kind == "audio":
+        extra = "".join(
+            f" &middot; <a href=\"{html.escape(href(rel), quote=True)}\">"
+            f"{html.escape(name)}</a>"
+            for name, rel in files.get("also:" + attachment.ident, ()))
         return (f"<audio controls preload=\"none\" src=\"{target}\"></audio>"
-                f"<a href=\"{target}\">{label}</a>")
+                f"<a href=\"{target}\">{label}</a>{extra}")
     if attachment.kind == "video":
         return (f"<video controls preload=\"none\" src=\"{target}\"></video>"
                 f"<a href=\"{target}\">{label}</a>")
@@ -463,7 +482,10 @@ def _note_dict(note, folders_by_pk, files):
             "title": a.title or None,
             "duration_seconds": a.duration or None,
             "transcript": a.text or None,
-            "file": files.get(a.path)} for a in note.attachments.values()],
+            "file": files.get(a.key),
+            "other_files": [files.get(v.key) for v in a.also
+                            if files.get(v.key)] or None}
+            for a in note.attachments.values()],
     }
 
 
@@ -492,33 +514,90 @@ def write_csv(path, notes, folders_by_pk):
 
 # ── Putting it together ──────────────────────────────────────
 
+def choose_recordings(notes, mode="mixed", can_mix=False):
+    """Copies of *notes* in which each recording that exists in more than
+    one form (see :func:`notes.recording_forms`) has just the file(s) *mode*
+    asks for: ``mixed``, ``original`` (the one with separate tracks) or
+    ``both`` (the mixed one is shown, the other is linked beside it). With
+    *can_mix*, a recording that exists only as the original movie file also
+    gets a mixed form, made on export. The notes given are not changed."""
+    if mode not in RECORDINGS:
+        raise ValueError(f"unknown recordings choice {mode!r}")
+    chosen = []
+    for note in notes:
+        folded = {a.pk for a in note.attachments.values()
+                  if a.pk and a.variants}
+        attachments = {}
+        for ident, attachment in note.attachments.items():
+            if attachment.parent_pk and attachment.parent_pk in folded:
+                continue                   # a file of its parent: see below
+            forms = nt.recording_forms(attachment, can_mix)
+            if len(forms) > 1:
+                main, also = nt.pick_variants(attachment, mode, forms)
+                attachment = dataclasses.replace(
+                    attachment, path=main.path, name=main.name, mix=main.mix,
+                    also=also)
+            attachments[ident] = attachment
+        copied = copy.copy(note)
+        copied.attachments = attachments
+        chosen.append(copied)
+    return chosen
+
+
 def attachment_plan(notes):
     """``{backup path: unique file name}`` and ``{backup path: Attachment}``
-    for every attachment that has a file in the backup."""
+    for every attachment that has a file in the backup (and the further
+    files of a recording to be exported in both forms)."""
     names, attachments = {}, {}
     for note in notes:
         for attachment in note.attachments.values():
-            path = attachment.path
-            if not path or path in names:
-                continue
-            names[path] = f"{len(names) + 1:05d}_" \
-                + safe_filename(attachment.name, "attachment", 100)
-            attachments[path] = attachment
+            for item in [attachment] + list(attachment.also):
+                key = item.key
+                if not item.path or key in names:
+                    continue
+                names[key] = f"{len(names) + 1:05d}_" \
+                    + safe_filename(item.name, "attachment", 100)
+                attachments[key] = item
     return names, attachments
 
 
-def _fetch_attachments(notes, folder, fetch):
+def _fetch_attachments(notes, folder, fetch, mixer=None):
     """Copy the attachments into ``folder/attachments`` and return
-    ``{backup path: relative file name}`` for those that arrived (HEIC
-    pictures converted to JPEG where possible)."""
+    ``{file key: relative file name}`` for those that arrived (HEIC
+    pictures converted to JPEG where possible; a recording to be mixed
+    is copied and mixed down with *mixer*, and when that fails the original
+    file is kept instead)."""
     if fetch is None:
         return {}
     names, attachments = attachment_plan(notes)
     if not names:
         return {}
-    arrived = set(fetch([(attachments[p], n) for p, n in names.items()]))
+    directory = os.path.join(folder, "attachments")
+    wanted, mixing = [], {}
+    for path, name in names.items():
+        if attachments[path].mix:
+            # copy the original under a name of its own, then mix it down
+            source = f"{os.path.splitext(name)[0]}.source" + \
+                os.path.splitext(attachments[path].path)[1]
+            mixing[path] = source
+            wanted.append((attachments[path], source))
+        else:
+            wanted.append((attachments[path], name))
+    arrived = set(fetch(wanted))
     result = {}
     for path, name in names.items():
+        if path in mixing:
+            source = mixing[path]
+            if source not in arrived:
+                continue
+            made = mixer is not None and mixer(
+                os.path.join(directory, source), os.path.join(directory, name))
+            if made:
+                os.remove(os.path.join(directory, source))
+                result[path] = f"attachments/{name}"
+            else:                      # keep what the phone recorded
+                result[path] = f"attachments/{source}"
+            continue
         if name not in arrived:
             continue
         final = name
@@ -536,24 +615,43 @@ def _fetch_attachments(notes, folder, fetch):
 def _relative_files(note, files, note_path):
     """The attachment links for *note*, relative to where its file is."""
     start = os.path.dirname(note_path) or "."
-    return {a.ident: os.path.relpath(files[a.path], start).replace("\\", "/")
-            for a in note.attachments.values() if a.path in files}
+
+    def relative(path):
+        return os.path.relpath(files[path], start).replace("\\", "/")
+
+    links = {a.ident: relative(a.key)
+             for a in note.attachments.values() if a.key in files}
+    for a in note.attachments.values():
+        extra = [(v.label, relative(v.key)) for v in a.also
+                 if v.key in files]
+        if extra:
+            links["also:" + a.ident] = extra
+    return links
 
 
-def export(notes, folders_by_pk, fmt, folder, fetch_attachments=None):
+def export(notes, folders_by_pk, fmt, folder, fetch_attachments=None,
+           recordings="mixed", mixer=None):
     """Write *notes* (already loaded) as *fmt* into *folder*.
 
     *fetch_attachments(files)* is called with ``[(Attachment, file name)]``
     and must copy those files into ``folder/attachments`` and return the
-    names that arrived. Returns the paths written.
+    names that arrived. *recordings* says which file of a call recording to
+    export: see :data:`RECORDINGS`. *mixer(source, destination)* mixes the
+    tracks of a recording kept only as a movie file into one audio file
+    (default: ffmpeg, if it is installed; when there is none, such a
+    recording is exported as the original file whatever the choice).
+    Returns the paths written.
     """
     if fmt not in FORMATS:
         raise ValueError(f"unknown format {fmt!r}")
+    if mixer is None and audio_tools.available():
+        mixer = audio_tools.mix_to_m4a
+    notes = choose_recordings(notes, recordings, can_mix=mixer is not None)
     os.makedirs(folder, exist_ok=True)
     wants_files = fmt in ("md", "html", "json", "pdf")
     attachments_dir = os.path.join(folder, "attachments")
     had_attachments_dir = os.path.isdir(attachments_dir)
-    files = _fetch_attachments(notes, folder, fetch_attachments) \
+    files = _fetch_attachments(notes, folder, fetch_attachments, mixer) \
         if wants_files else {}
     if fmt == "json":
         return write_json(os.path.join(folder, "notes.json"), notes,
@@ -579,9 +677,9 @@ def export(notes, folders_by_pk, fmt, folder, fetch_attachments=None):
         else:
             from . import pdf_export
             pdf_export.write_note_pdf(target, note, {
-                a.ident: os.path.join(folder, *files[a.path].split("/"))
+                a.ident: os.path.join(folder, *files[a.key].split("/"))
                 for a in note.attachments.values()
-                if a.kind == "image" and a.path in files})
+                if a.kind == "image" and a.key in files})
         paths.append(target)
     if fmt == "pdf" and not had_attachments_dir:
         shutil.rmtree(attachments_dir, ignore_errors=True)  # only a means

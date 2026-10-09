@@ -141,6 +141,7 @@ If the backup contains Notes, a **Notes** tab appears.
 - A note looks like it does on the phone: title and headings, bullet, dashed, numbered and checklist items (checked items are struck through), bold, italic, underlined and struck-through text, links, and the pictures in it. Click a voice recording or another attachment to open it or save it
 - **Search** looks in titles and in the text (and in hashtags and link titles)
 - Notes locked with a password are listed, but their text is encrypted in the backup and cannot be shown
+- **Call recordings** (iOS 18) show their title, length and the words Notes wrote down. The backup holds the original movie file (`.mov`) with a separate track for each side of the call; click the recording to open or save that file as it is or, if [ffmpeg](https://ffmpeg.org) is installed, a **mixed `.m4a`** made from the tracks. When you export or extract, you choose the mixed audio, the original with the separate tracks, or both
 - **Export** one note, a folder or everything as **text**, **Markdown**, a **web page** (with the pictures; HEIC pictures are converted to JPEG when Pillow and pillow-heif are installed), **PDF**, **JSON** or a **spreadsheet**. Exports follow the Notes folders
 
 ### 6. Calls and Contacts
@@ -165,6 +166,7 @@ pip install -r requirements-optional.txt
 - **Pillow** — picture previews (JPEG and others) and conversion to JPEG
 - **pillow-heif** — the same for the HEIC pictures iPhones take
 - **fpdf2** — PDF export of notes
+- **ffmpeg** (a separate program, not a pip package; [ffmpeg.org](https://ffmpeg.org)) — mixes the two sides of a call recording into one `.m4a`. The original files with the separate tracks never need it
 
 Without them the app says what is missing and the originals can still be extracted or saved.
 

@@ -3,7 +3,10 @@
 """The Notes tab in the real window (skipped without a display)."""
 
 import os
+import time
+import tkinter as tk
 import tkinter.font as tkfont
+import types
 import unittest
 from unittest import mock
 
@@ -14,6 +17,12 @@ from ios_apps import panel_base, pdf_export
 from tests import fixture_notes as fn
 from tests.fixture_apps import PNG_BYTES
 from tests.gui_apps import AppGuiCase
+
+
+def write_mixed(source, destination):
+    with open(destination, "wb") as handle:
+        handle.write(b"mixed")
+    return True
 
 
 class NotesGuiCase(AppGuiCase):
@@ -318,15 +327,233 @@ class CallRecordingViewTests(NotesGuiCase):
             "matching notes"), "the results")
         self.assertEqual(self.rows(), ["Call with Example Co  — Notes"])
 
+    # -- a recording in more than one form --------------------
+
+    def menu_labels(self, attachment, ffmpeg=True):
+        shown = []
+        event = types.SimpleNamespace(x_root=0, y_root=0)
+        with mock.patch.object(tk.Menu, "tk_popup",
+                               lambda menu, *a: shown.append(menu)), \
+                mock.patch.object(nv.audio_tools, "available",
+                                  return_value=ffmpeg):
+            self.tab._attachment_menu(event, attachment)
+        menu = shown[0]
+        labels = []
+        for index in range(menu.index("end") + 1):
+            if menu.type(index) == "separator":
+                labels.append("-")
+            else:
+                labels.append((menu.entrycget(index, "label"),
+                               menu.entrycget(index, "state")))
+        return labels
+
+    def attachment(self, ident):
+        return self.tab.current.attachments[ident]
+
+    def test_a_recording_in_two_forms_offers_each(self):
+        self.assertEqual(self.menu_labels(self.attachment("ATT-30")), [
+            ("Open the mixed audio (.m4a)", "normal"),
+            ("Save the mixed audio (.m4a) as...", "normal"), "-",
+            ("Open the original with separate tracks (.mov)", "normal"),
+            ("Save the original with separate tracks (.mov) as...",
+             "normal")])
+
+    def test_a_movie_only_recording_offers_the_mix_when_ffmpeg_is_there(self):
+        labels = self.menu_labels(self.attachment("ATT-36"), ffmpeg=True)
+        self.assertEqual([l[0] for l in labels if l != "-"], [
+            "Open the original with separate tracks (.mov)",
+            "Save the original with separate tracks (.mov) as...",
+            "Open the mixed audio (.m4a)",
+            "Save the mixed audio (.m4a) as..."])
+        labels = self.menu_labels(self.attachment("ATT-36"), ffmpeg=False)
+        self.assertEqual(labels, [("Open", "normal"),
+                                  ("Save as...", "normal")])
+
+    def test_a_recording_without_a_file_has_a_greyed_out_menu(self):
+        self.assertEqual(self.menu_labels(self.attachment("ATT-31")),
+                         [("Open", "disabled"), ("Save as...", "disabled")])
+
+    def test_opening_the_mixed_audio(self):
+        variant = nt.recording_forms(self.attachment("ATT-36"), True)[1]
+        opened = []
+
+        def mix(source, destination):
+            with open(source, "rb") as handle, \
+                    open(destination, "wb") as out:
+                out.write(b"mixed:" + handle.read())
+            return True
+
+        with mock.patch.object(nv.audio_tools, "mix_to_m4a", mix), \
+                mock.patch.object(common, "open_file", opened.append):
+            self.tab.mix_and(variant, "open")
+            self.wait_for(lambda: opened, "the player")
+        with open(opened[0], "rb") as handle:
+            self.assertEqual(handle.read(), b"mixed:" + fn.ONLY_MOV_BYTES)
+        self.assertTrue(opened[0].endswith(".m4a"))
+
+    def test_saving_the_mixed_audio(self):
+        variant = nt.recording_forms(self.attachment("ATT-36"), True)[1]
+        target = os.path.join(self.tmp, "mixed-call.m4a")
+
+        def mix(source, destination):
+            with open(destination, "wb") as out:
+                out.write(b"mixed")
+            return True
+
+        with mock.patch.object(nv.audio_tools, "mix_to_m4a", mix), \
+                mock.patch("tkinter.filedialog.asksaveasfilename",
+                           return_value=target) as ask:
+            self.tab.mix_and(variant, "save")
+            self.wait_for(lambda: os.path.exists(target), "the saved file")
+        self.assertEqual(ask.call_args.kwargs["initialfile"],
+                         "moments_only-audio.m4a")
+        with open(target, "rb") as handle:
+            self.assertEqual(handle.read(), b"mixed")
+
+    def test_a_cancelled_save_mixes_nothing(self):
+        variant = nt.recording_forms(self.attachment("ATT-36"), True)[1]
+        with mock.patch("tkinter.filedialog.asksaveasfilename",
+                        return_value=""), \
+                mock.patch.object(nv.audio_tools, "mix_to_m4a") as mix:
+            self.tab.mix_and(variant, "save")
+            self.root.update()
+        mix.assert_not_called()
+
+    def test_a_failed_mix_is_reported(self):
+        variant = nt.recording_forms(self.attachment("ATT-36"), True)[1]
+        before = len(self.dialogs)
+        with mock.patch.object(nv.audio_tools, "mix_to_m4a",
+                               return_value=False):
+            self.tab.mix_and(variant, "open")
+            self.wait_for(lambda: len(self.dialogs) > before, "the report")
+        self.assertEqual(self.dialogs[-1][0], "showerror")
+        self.assertIn("ffmpeg", self.dialogs[-1][1][1])
+
+    def export_with(self, answer, ffmpeg=True):
+        calls = []
+
+        def ask(parent, title, formats, scopes, default, extra=None):
+            calls.append(extra)
+            return answer
+
+        with mock.patch.object(nv, "ask_export", side_effect=ask), \
+                mock.patch.object(nv.audio_tools, "available",
+                                  return_value=ffmpeg), \
+                mock.patch.object(nv.nx.audio_tools, "available",
+                                  return_value=ffmpeg), \
+                mock.patch.object(nv.nx.audio_tools, "mix_to_m4a",
+                                  write_mixed):
+            before = len(self.dialogs)
+            self.tab.export()
+            if answer is not None:
+                self.wait_for(lambda: len(self.dialogs) > before, "export")
+        return calls[0]
+
+    def test_the_export_dialog_asks_which_recording_file(self):
+        out = os.path.join(self.tmp, "export-mixed")
+        extra = self.export_with(("html", "one", out, "mixed"))
+        self.assertEqual(list(extra["options"]), ["mixed", "original", "both"])
+        self.assertEqual(extra["default"], "mixed")
+        names = sorted(os.listdir(os.path.join(out, "attachments")))
+        self.assertTrue(any(n.endswith("call.m4a") for n in names))
+        self.assertTrue(any(n.endswith("only-audio.m4a") for n in names))
+        self.assertFalse(any(n.lower().endswith(".mov") for n in names))
+
+    def test_the_original_files_can_be_chosen(self):
+        out = os.path.join(self.tmp, "export-original")
+        self.export_with(("html", "one", out, "original"))
+        names = os.listdir(os.path.join(out, "attachments"))
+        self.assertTrue(any(n.endswith("call-audio.MOV") for n in names))
+        self.assertFalse(any(n.endswith(".m4a") for n in names))
+
+    def test_without_ffmpeg_the_mixed_choice_says_what_it_gives(self):
+        extra = self.export_with(None, ffmpeg=False)
+        self.assertIn("unless ffmpeg is installed", extra["options"]["mixed"])
+
+    def test_the_originals_question(self):
+        extracted = []
+        self.explorer.apps.extract = extracted.append
+        for answer, expected in (("original", {fn.CALL_MOV_FILE,
+                                               fn.ONLY_MOV_FILE}),
+                                 ("mixed", {fn.CALL_FILE, fn.ONLY_MOV_FILE}),
+                                 ("both", {fn.CALL_FILE, fn.CALL_MOV_FILE,
+                                           fn.ONLY_MOV_FILE})):
+            with self.subTest(answer=answer):
+                del extracted[:]
+                with mock.patch.object(nv.messagebox, "askyesnocancel",
+                                       return_value=True), \
+                        mock.patch.object(nv, "ask_choice",
+                                          return_value=answer) as ask:
+                    self.tab.extract_originals()
+                    self.wait_for(lambda: extracted, "the request")
+                self.assertEqual(ask.call_count, 1)
+                (ids,) = extracted
+                wanted = {self.ids[(fn.NOTES_DOMAIN, p)] for p in expected}
+                self.assertTrue(wanted <= set(ids))
+                everything = {self.ids[(fn.NOTES_DOMAIN, p)] for p in (
+                    fn.CALL_FILE, fn.CALL_MOV_FILE, fn.ONLY_MOV_FILE)}
+                self.assertEqual(everything & set(ids), wanted)
+
+    def test_cancelling_the_originals_question_extracts_nothing(self):
+        extracted = []
+        self.explorer.apps.extract = extracted.append
+        with mock.patch.object(nv.messagebox, "askyesnocancel",
+                               return_value=True), \
+                mock.patch.object(nv, "ask_choice", return_value=None):
+            self.tab.extract_originals()
+            self.root.update()
+            time.sleep(0.3)
+            self.root.update()
+        self.assertEqual(extracted, [])
+
     def test_the_originals_include_the_recording(self):
         extracted = []
         self.explorer.apps.extract = extracted.append
         with mock.patch.object(nv.messagebox, "askyesnocancel",
-                               return_value=True):
+                               return_value=True), \
+                mock.patch.object(nv, "ask_choice", return_value="both"):
             self.tab.extract_originals()
             self.wait_for(lambda: extracted, "the request")
         (ids,) = extracted
         self.assertIn(self.ids[(fn.NOTES_DOMAIN, fn.CALL_FILE)], ids)
+
+
+class NoRecordingChoiceTests(NotesGuiCase):
+    """Nothing is asked about recordings when there is nothing to choose."""
+
+    def setUp(self):
+        super().setUp()
+        self.open_notes()
+        self.show()
+
+    def test_no_question_when_each_recording_has_one_file_and_no_mixer(self):
+        calls = []
+        with mock.patch.object(nv, "ask_export", side_effect=lambda *a: (
+                calls.append(a) or None)), \
+                mock.patch.object(nv.audio_tools, "available",
+                                  return_value=False):
+            self.tab.export()
+        self.assertEqual(len(calls[0]), 6)
+        self.assertIsNone(calls[0][5])
+
+    def test_the_question_is_asked_when_a_mixer_could_help(self):
+        calls = []
+        with mock.patch.object(nv, "ask_export", side_effect=lambda *a: (
+                calls.append(a) or None)), \
+                mock.patch.object(nv.audio_tools, "available",
+                                  return_value=True):
+            self.tab.export()
+        self.assertIsNotNone(calls[0][5])
+
+    def test_no_originals_question_when_nothing_has_two_forms(self):
+        extracted = []
+        self.explorer.apps.extract = extracted.append
+        with mock.patch.object(nv.messagebox, "askyesnocancel",
+                               return_value=False), \
+                mock.patch.object(nv, "ask_choice") as ask:
+            self.tab.extract_originals()
+            self.wait_for(lambda: extracted, "the request")
+        ask.assert_not_called()
 
 
 class SearchTests(NotesGuiCase):
@@ -426,7 +653,7 @@ class ExportTests(NotesGuiCase):
         tab = self.tab
         calls = []
 
-        def choose(parent, title, formats, scopes, default):
+        def choose(parent, title, formats, scopes, default, extra=None):
             calls.append((title, list(formats), dict(scopes), default))
             return ("txt", "folder", self.out)
 
@@ -453,7 +680,7 @@ class ExportTests(NotesGuiCase):
         tab = self.tab
         calls = []
 
-        def choose(parent, title, formats, scopes, default):
+        def choose(parent, title, formats, scopes, default, extra=None):
             calls.append((list(scopes), default))
             return ("txt", "one", self.out)
 

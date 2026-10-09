@@ -50,6 +50,7 @@ REQUIRED = {
     "ios_apps/registry.py": ["SPDX-License-Identifier: AGPL-3.0-or-later"],
     "ios_apps/panel_base.py": ["SPDX-License-Identifier: AGPL-3.0-or-later"],
     "ios_apps/export_util.py": ["SPDX-License-Identifier: AGPL-3.0-or-later"],
+    "ios_apps/audio_tools.py": ["SPDX-License-Identifier: AGPL-3.0-or-later"],
     "ios_apps/imaging.py": ["SPDX-License-Identifier: AGPL-3.0-or-later"],
     "ios_apps/notes.py": ["SPDX-License-Identifier: AGPL-3.0-or-later"],
     "ios_apps/notes_export.py": ["SPDX-License-Identifier: AGPL-3.0-or-later"],

@@ -87,6 +87,7 @@ iOS Backup Explorer depends on:
 
 We monitor our dependencies for known vulnerabilities.
 - **Pillow**, **pillow-heif** and **fpdf2** (optional) — only for picture previews, HEIC photos and PDF export. They are installed separately, run only on this computer, and are not needed for anything else.
+- **ffmpeg** (optional, a separate program you install yourself) — only to mix the tracks of a call recording into one audio file. It is started without a shell, on a working copy of the recording, only when you ask for the mixed audio; the original file is never changed.
 - **mfusepy** (optional, only for mounting) — ISC licensed Python bindings for FUSE/WinFsp.
 - **WinFsp / macFUSE / FUSE-T / libfuse** (optional, only for mounting) — third-party drivers you 
   install yourself; they are not bundled with this app.
