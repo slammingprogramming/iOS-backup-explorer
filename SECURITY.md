@@ -27,7 +27,7 @@ iOS Backup Explorer is designed from the ground up with your privacy and securit
 - We don't know who you are, what you're extracting, or that you even use this tool.
 
 ### Open Source & Auditable
-- The entire codebase is a single Python file — small enough to read in one sitting.
+- The entire codebase is a few plain Python files — small enough to read in an afternoon.
 - We encourage security researchers to audit the code.
 - All dependencies are listed in `requirements.txt` and are open source themselves.
 

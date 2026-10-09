@@ -64,6 +64,11 @@ class GuiFlowTests(unittest.TestCase):
         patcher.start()
         self.addCleanup(patcher.stop)
 
+        # Never look at the real backups on the machine running the tests.
+        patcher = mock.patch.object(app.BackupExplorer, "BACKUP_PATHS", {})
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
         self.explorer = app.BackupExplorer(self.root)
         self.addCleanup(self._shutdown)
 
@@ -71,6 +76,9 @@ class GuiFlowTests(unittest.TestCase):
         self.explorer._cancel_timers()
         self.explorer.session.close()
         self.explorer.session._executor.shutdown(wait=True)
+        # Take this test's windows down, or they pile up in the shared root.
+        for child in self.root.winfo_children():
+            child.destroy()
 
     def wait_for(self, condition, what, timeout=30):
         deadline = time.monotonic() + timeout
@@ -87,6 +95,12 @@ class GuiFlowTests(unittest.TestCase):
         self.explorer.pass_var.set(password)
         self.explorer._decrypt()
 
+    def open_and_index(self):
+        self.open_backup()
+        self.wait_for(lambda: self.explorer.backup_open, "backup to open")
+        self.wait_for(lambda: self.explorer.panel.index is not None,
+                      "file index")
+
     def test_wrong_password_shows_incorrect_password(self):
         self.open_backup("wrong")
         self.wait_for(lambda: self.dialogs, "error dialog")
@@ -100,8 +114,7 @@ class GuiFlowTests(unittest.TestCase):
         self.assertEqual(self.dialogs[0][1][0], "Decryption Failed")
 
     def test_browse_search_and_extract(self):
-        self.open_backup()
-        self.wait_for(lambda: self.explorer.backup_open, "backup to open")
+        self.open_and_index()
         self.assertEqual(self.explorer.pass_var.get(), "")  # cleared
 
         self.explorer.domain_tree.selection_set("__ALL__")
@@ -112,7 +125,7 @@ class GuiFlowTests(unittest.TestCase):
         self.explorer.search_var.set("voice_memo_01")
         self.wait_for(lambda: len(self.explorer.file_tree.get_children())
                       == 1, "search result")
-        self.assertEqual(self.explorer.count_var.get(), "1 files")
+        self.assertEqual(self.explorer.count_var.get(), "1 items")
 
         file_id = self.explorer.file_tree.get_children()[0]
         self.explorer.file_tree.selection_set(file_id)
@@ -129,20 +142,23 @@ class GuiFlowTests(unittest.TestCase):
         self.assertEqual(data, fb.content_of(*key))
 
     def test_category_selection(self):
-        self.open_backup()
-        self.wait_for(lambda: self.explorer.backup_open, "backup to open")
-        self.explorer.domain_tree.selection_set("__CAT__Apps")
-        self.wait_for(lambda: len(self.explorer.file_tree.get_children())
-                      == 4, "apps category")  # notes x2 + a_c + a-c
+        self.open_and_index()
+        ex = self.explorer
+        ex.domain_tree.selection_set("__CAT__Apps")
+        # the category's domains show up as folders ...
+        self.wait_for(lambda: len(ex.file_tree.get_children()) == 3,
+                      "apps category")        # notes, a_c, a-c
+        # ... and "Include subfolders" lists every file inside them
+        ex.panel.recursive_var.set(True)
+        ex.panel._options_changed()
+        self.wait_for(lambda: len(ex.file_tree.get_children()) == 4,
+                      "files of the apps category")   # notes x2 + a_c + a-c
 
     def test_load_error_shows_the_real_message(self):
         """Regression: a NameError about 'e' used to hide the real error."""
-        self.open_backup()
-        self.wait_for(lambda: self.explorer.backup_open, "backup to open")
-        failed = Future()
-        failed.set_exception(RuntimeError("the real problem"))
-        with mock.patch.object(self.explorer.session, "query_files",
-                               return_value=failed):
+        self.open_and_index()
+        with mock.patch.object(self.explorer.panel.index, "listing",
+                               side_effect=RuntimeError("the real problem")):
             self.explorer.domain_tree.selection_set("__ALL__")
             self.wait_for(
                 lambda: "the real problem" in self.explorer.status_var.get(),
@@ -188,15 +204,38 @@ class GuiFlowTests(unittest.TestCase):
         self.assertEqual(explorer.path_var.get(), "")
         self.assertIn("Browse", explorer.status_var.get())
 
-    def test_truncation_is_reported(self):
-        self.open_backup()
-        self.wait_for(lambda: self.explorer.backup_open, "backup to open")
+    def test_the_buttons_under_the_list_keep_their_room(self):
+        """Regression: on a short window they were squashed to slivers
+        because they were packed after the expanding file list."""
+        ex = self.explorer
+        self.root.deiconify()
+        self.addCleanup(self.root.withdraw)
+        self.root.geometry("1000x640")
+        bar = ex.panel.actions
+        self.wait_for(lambda: bar.winfo_ismapped() and bar.winfo_height() > 1,
+                      "the window to be laid out")
+        self.assertGreaterEqual(bar.winfo_height(), 30)
+        self.assertLessEqual(bar.winfo_rooty() + bar.winfo_height(),
+                             self.root.winfo_rooty()
+                             + self.root.winfo_height() + 1)
+        for button in bar.winfo_children():
+            self.assertGreaterEqual(button.winfo_height(), 24)
+
+    def test_long_listings_are_paged(self):
+        self.open_and_index()
+        ex = self.explorer
         with mock.patch.object(app, "MAX_ROWS", 2):
-            self.explorer.domain_tree.selection_set("__ALL__")
-            self.wait_for(lambda: "Showing the first 2"
-                          in self.explorer.status_var.get(), "truncation")
-        self.assertEqual(self.explorer.count_var.get(),
-                         f"2 of {len(fb.DEFAULT_FILES)} files")
+            ex.domain_tree.selection_set("__ALL__")
+            self.wait_for(lambda: "Showing 2 of" in ex.status_var.get(),
+                          "paging")
+            total = len(fb.DEFAULT_FILES)
+            pages = -(-total // 2)
+            self.assertEqual(ex.count_var.get(), f"{total} items")
+            self.assertEqual(ex.panel.page_var.get(), f"Page 1 of {pages}")
+            first = ex.file_tree.get_children()
+            ex.panel.next_btn.invoke()
+            self.assertEqual(ex.panel.page_var.get(), f"Page 2 of {pages}")
+            self.assertNotEqual(ex.file_tree.get_children(), first)
 
 
 if __name__ == "__main__":

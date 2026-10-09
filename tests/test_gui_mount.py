@@ -75,6 +75,11 @@ class MountGuiCase(unittest.TestCase):
         patcher.start()
         self.addCleanup(patcher.stop)
 
+        # Never look at the real backups on the machine running the tests.
+        patcher = mock.patch.object(app.BackupExplorer, "BACKUP_PATHS", {})
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
         self.explorer = app.BackupExplorer(self.root)
         self.addCleanup(self._shutdown)
 
@@ -84,6 +89,9 @@ class MountGuiCase(unittest.TestCase):
         self.explorer._cancel_timers()
         self.explorer.session.close()
         self.explorer.session._executor.shutdown(wait=True)
+        # Take this test's windows down, or they pile up in the shared root.
+        for child in self.root.winfo_children():
+            child.destroy()
 
     def wait_for(self, condition, what, timeout=30):
         deadline = time.monotonic() + timeout
@@ -102,6 +110,7 @@ class MountGuiCase(unittest.TestCase):
             ex.pass_var.set(fb.PASSPHRASE)
         ex._decrypt()
         self.wait_for(lambda: ex.backup_open, "backup to open")
+        self.wait_for(lambda: ex.panel.index is not None, "file index")
 
 
 class ExtractEntireBackupTests(MountGuiCase):

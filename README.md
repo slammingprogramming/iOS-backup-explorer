@@ -50,14 +50,17 @@ You made an encrypted iPhone backup with iTunes, Finder, or the Apple Devices ap
 
 - **Decrypt encrypted backups** — Supports iOS 13+ encrypted local backups
 - **Unencrypted backups too** — Detected automatically; no password needed
+- **A real file manager** — Folders on the left, files on the right, with back / forward / up, a location bar you can type a path into, and file-type icons
+- **Sort by anything** — Click Name, Kind, Size, Date Modified or Date Created (clicking again reverses it); names sort naturally (`IMG_2` before `IMG_10`), folders can stay on top, and folder sizes are the total of what is inside
 - **Browse by category** — Camera Roll, Messages, Health, Apps, and more
-- **Search across all files** — Find exactly what you need instantly
+- **Search across all files** — Instant, searches the folder you are in and everything below it
+- **Right-click** a file or folder to extract it, copy its name or path, or see its properties
 - **Extract individual files or bulk export** — Save to any folder
 - **Extract the entire backup** — One click, straight from the backup index, with no limit on how many files
 - **Mount a backup as a read-only drive or folder** (optional) — Browse it in your file manager; on Windows as `\\ios-backup\...` with no drive letter
 - **Auto-detects backups** — Finds your backup folder automatically
 - **Cross-platform** — Works on Windows, macOS, and Linux
-- **Single file** — The entire app is one Python file you can audit in one sitting
+- **Small and auditable** — A few plain Python files you can read in an afternoon
 
 ---
 
@@ -110,9 +113,10 @@ For an encrypted backup, this is the **encryption password you set in iTunes, Fi
 
 ### 3. Browse and extract
 
-- Click categories on the left to filter files
-- Use the search bar to find specific files
-- Select files and click **Extract Selected**, or export everything with **Extract All in View**
+- Click a category, domain or folder on the left, or double-click a folder in the list, to open it. Use the arrow buttons (or `Alt+Left` / `Alt+Right`, `Backspace`) to go back, forward and up
+- Click a column heading to sort. **Include subfolders** lists every file below the current folder in one flat list; **Folders first** keeps folders above files
+- Use the search bar to find files in the current folder and below (several words must all match). `Ctrl+F` jumps to it
+- Select files or folders and click **Extract Selected** (a folder extracts everything in it), or export what you see with **Extract All in View**. Very long lists are split into pages
 
 ---
 
@@ -150,7 +154,7 @@ Mounting was tested on Windows 10 with WinFsp. The macOS and Linux code paths fo
 
 3. **No telemetry, no analytics, no tracking** — We don't know you exist. We don't want to.
 
-4. **Fully auditable** — The core app is a single Python file (about 1,600 lines), plus one optional module (`backup_mount.py`, about 450 lines) that is only used if you mount a backup. Read them. We encourage it.
+4. **Fully auditable** — The app is a few plain Python files (about 2,900 lines in all, with no build step): the app itself, the file browser, the file index, and an optional module that is only used if you mount a backup. Read them. We encourage it.
 
 5. **Open source dependencies** — Our only required dependency ([iphone_backup_decrypt](https://github.com/jsharkey13/iphone_backup_decrypt)) is also open source and MIT licensed.
 
@@ -251,7 +255,7 @@ Contributions are welcome! Whether it's bug fixes, new features, or documentatio
 
 Please keep in mind:
 - **Security is paramount.** Any PR that adds network access will be rejected.
-- **Keep it simple.** The app should remain a single file that anyone can audit.
+- **Keep it simple.** The app should stay a few plain Python files that anyone can audit, with no build step.
 - **Test on multiple platforms** if possible.
 - **Run the tests** before opening a PR: `python -m unittest discover -s tests -t .` (they build a small encrypted backup and run it through the real decryption library).
 - **Licensing and credit.** By contributing you agree your contribution is licensed under
@@ -273,7 +277,7 @@ sudo lsof -i -P | grep python
 # Option 3: Monitor network activity (Windows PowerShell)
 Get-NetTCPConnection | Where-Object { $_.OwningProcess -eq (Get-Process python).Id }
 
-# Option 4: Read the source — it's one file (about 1,600 lines) plus the optional mounting module.
+# Option 4: Read the source — it's a few plain Python files, about 2,900 lines in all.
 ```
 
 ---

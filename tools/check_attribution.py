@@ -37,6 +37,8 @@ REQUIRED = {
                 "heebeejeebees"],
     "README.md": [AUTHOR, UPSTREAM, "LICENSE-MIT", "AGPL-3.0-or-later",
                   "Nikhil-42"],
+    "file_index.py": ["SPDX-License-Identifier: AGPL-3.0-or-later"],
+    "browser_panel.py": ["SPDX-License-Identifier: AGPL-3.0-or-later"],
     "backup_mount.py": [
         "SPDX-License-Identifier: AGPL-3.0-or-later",
         "Nikhil-42",

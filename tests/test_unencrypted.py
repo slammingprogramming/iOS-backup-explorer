@@ -123,14 +123,15 @@ class OpenUnencryptedTests(PlainSessionCase):
     def test_a_password_is_ignored(self):
         self.assertFalse(self.open("not needed").encrypted)
 
-    def test_browse_and_search(self):
+    def test_scan_reads_the_index(self):
         self.open()
-        rows, total = self.session.query_files().result(60)
-        self.assertEqual(total, len(fb.DEFAULT_FILES))
-        rows, _ = self.session.query_files(None, "VOICE_MEMO_01").result(60)
-        self.assertEqual([r[2] for r in rows], [fb.NOTES_MOV])
-        rows, _ = self.session.query_files(None, "plain.txt").result(60)
-        self.assertEqual(rows[0][3], "20 B")
+        rows = self.session.scan().result(60)
+        by_path = {(r[1], r[2]): r for r in rows if r[3] == 1}
+        self.assertEqual(len(by_path), len(fb.DEFAULT_FILES))
+        _id, _d, _p, _flags, size, mtime, birth = by_path[
+            ("HomeDomain", "Library/Preferences/plain.txt")]
+        self.assertEqual((size, mtime, birth), (20, 1_700_000_000,
+                                                1_700_000_000))
 
     def test_encrypted_backup_still_needs_its_password(self):
         enc_dir, _ = fb.build_backup(self.make_dir())
@@ -147,8 +148,7 @@ class OpenUnencryptedTests(PlainSessionCase):
         self.assertTrue(self.session.open(enc_dir, fb.PASSPHRASE)
                         .result(60).encrypted)
         self.assertFalse(self.open().encrypted)
-        rows, _ = self.session.query_files().result(60)
-        self.assertTrue(rows)
+        self.assertTrue(self.session.scan().result(60))
 
     def test_corrupt_manifest_db_is_a_clear_error(self):
         with open(os.path.join(self.backup_dir, "Manifest.db"), "wb") as f:
@@ -222,7 +222,7 @@ class NoSideEffectsTests(PlainSessionCase):
     def test_the_backup_folder_is_never_modified(self):
         before = snapshot(self.backup_dir)
         self.open()
-        self.session.query_files(None, "txt").result(60)
+        self.session.scan().result(60)
         self.extract(("HomeDomain", "Library/Preferences/plain.txt"),
                      (fb.NOTES_DOMAIN, fb.NOTES_MOV))
         self.session.close()

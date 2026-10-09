@@ -25,6 +25,9 @@ def read(path):
         return handle.read()
 
 
+MOV_KEY = (fb.NOTES_DOMAIN, fb.NOTES_MOV)
+
+
 @unittest.skipIf(EncryptedBackup is None, "iphone_backup_decrypt not installed")
 class SessionTestCase(unittest.TestCase):
     def setUp(self):
@@ -70,8 +73,7 @@ class OpenAndQueryTests(SessionTestCase):
         self.open()
         self.assertIsNotNone(self.session.open(self.backup_dir, "nope")
                              .exception(60))
-        rows, _ = self.session.query_files().result(60)
-        self.assertTrue(rows)
+        self.assertTrue(self.session.scan().result(60))
 
     def test_queries_work_from_many_threads(self):
         """Regression: 'SQLite objects created in a thread can only be
@@ -82,7 +84,7 @@ class OpenAndQueryTests(SessionTestCase):
         def worker():
             try:
                 for _ in range(5):
-                    self.session.query_files(None, "txt").result(60)
+                    self.session.scan().result(60)
             except Exception as exc:  # noqa: BLE001
                 errors.append(exc)
 
@@ -93,43 +95,31 @@ class OpenAndQueryTests(SessionTestCase):
             t.join()
         self.assertEqual(errors, [])
 
-    def test_scope_search_and_truncation(self):
+    def test_scan_reads_every_file_and_folder(self):
         self.open()
-        rows, total = self.session.query_files().result(60)
-        self.assertEqual((len(rows), total),
-                         (len(fb.DEFAULT_FILES), len(fb.DEFAULT_FILES)))
+        rows = self.session.scan().result(60)
+        files = [r for r in rows if r[3] == 1]
+        folders = [r for r in rows if r[3] == 2]
+        self.assertEqual(len(files), len(fb.DEFAULT_FILES))
+        self.assertEqual([(r[1], r[2]) for r in folders],
+                         [("HomeDomain", "Library")])
+        by_path = {(r[1], r[2]): r for r in files}
+        file_id, _d, _p, flags, size, mtime, birth = by_path[MOV_KEY]
+        self.assertEqual(file_id, self.ids[MOV_KEY])
+        self.assertEqual(size, len(fb.content_of(*MOV_KEY)))
+        self.assertEqual((mtime, birth), (1_700_000_000, 1_700_000_000))
 
-        rows, total = self.session.query_files(None, "", 3).result(60)
-        self.assertEqual((len(rows), total), (3, len(fb.DEFAULT_FILES)))
-
-        rows, total = self.session.query_files(
-            [fb.NOTES_DOMAIN]).result(60)
-        self.assertEqual({r[1] for r in rows}, {fb.NOTES_DOMAIN})
-        self.assertEqual(total, 2)
-
-        self.assertEqual(self.session.query_files([]).result(60), ([], 0))
-
-        rows, _ = self.session.query_files(None, "VOICE_MEMO_01").result(60)
-        self.assertEqual([r[2] for r in rows], [fb.NOTES_MOV])
-
-    def test_search_treats_like_wildcards_literally(self):
+    def test_scan_reports_progress(self):
         self.open()
-        rows, _ = self.session.query_files(None, "a_c").result(60)
-        self.assertEqual({r[1] for r in rows}, {"AppDomain-com.a_c"})
-        rows, _ = self.session.query_files(None, "%").result(60)
-        self.assertEqual(rows, [])
+        calls = []
+        self.session.scan(lambda done, total: calls.append((done, total))) \
+            .result(60)
+        self.assertEqual(calls[-1], (len(fb.DEFAULT_FILES) + 1,
+                                     len(fb.DEFAULT_FILES) + 1))
 
-    def test_rows_carry_size_and_date(self):
-        self.open()
-        rows, _ = self.session.query_files(
-            None, "plain.txt").result(60)
-        file_id, domain, rel_path, size, modified = rows[0]
-        self.assertEqual(size, "20 B")
-        self.assertRegex(modified, r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$")
-
-    def test_queries_need_an_open_backup(self):
-        self.assertIsInstance(
-            self.session.query_files().exception(60), RuntimeError)
+    def test_scan_needs_an_open_backup(self):
+        self.assertIsInstance(self.session.scan().exception(60),
+                              RuntimeError)
 
 
 class ExtractionTests(SessionTestCase):
@@ -255,9 +245,6 @@ class LibraryContractTests(unittest.TestCase):
 
 
 class HelperTests(unittest.TestCase):
-    def test_escape_like(self):
-        self.assertEqual(app.escape_like(r"50%_off\x"), r"50\%\_off\\x")
-
     def test_sanitize_component_windows(self):
         s = app.sanitize_component
         self.assertEqual(s('a<b>c:d"e|f?g*h', True), "a_b_c_d_e_f_g_h")

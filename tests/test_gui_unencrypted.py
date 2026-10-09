@@ -49,6 +49,11 @@ class UnencryptedGuiTests(unittest.TestCase):
         patcher.start()
         self.addCleanup(patcher.stop)
 
+        # Never look at the real backups on the machine running the tests.
+        patcher = mock.patch.object(app.BackupExplorer, "BACKUP_PATHS", {})
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
         self.explorer = app.BackupExplorer(self.root)
         self.addCleanup(self._shutdown)
 
@@ -56,6 +61,9 @@ class UnencryptedGuiTests(unittest.TestCase):
         self.explorer._cancel_timers()
         self.explorer.session.close()
         self.explorer.session._executor.shutdown(wait=True)
+        # Take this test's windows down, or they pile up in the shared root.
+        for child in self.root.winfo_children():
+            child.destroy()
 
     def wait_for(self, condition, what, timeout=30):
         deadline = time.monotonic() + timeout
@@ -95,6 +103,7 @@ class UnencryptedGuiTests(unittest.TestCase):
         self.assertEqual(self.dialogs, [])
         self.assertTrue(ex.status_var.get().startswith("Opened!"),
                         ex.status_var.get())
+        self.wait_for(lambda: ex.panel.index is not None, "file index")
 
         ex.domain_tree.selection_set("__ALL__")
         self.wait_for(lambda: len(ex.file_tree.get_children())

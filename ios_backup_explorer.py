@@ -53,64 +53,28 @@ import os
 import plistlib
 import platform
 import re
-from datetime import datetime
+
+import browser_panel
+from file_index import (  # noqa: F401
+    FileIndex, format_size, read_file_details,
+)
 
 __version__ = "1.0.0"
 APP_NAME = "iOS Backup Explorer"
 
-# The file list shows at most this many rows. The status bar says so when
-# a query matched more, and the search box queries the whole backup.
+# The file list shows this many rows per page; longer listings are paged.
 MAX_ROWS = 10000
-
-# Rows per "domain IN (...)" query; SQLite builds limit bound variables.
-_DOMAIN_CHUNK = 500
 
 
 # ── Helpers (no GUI) ─────────────────────────────────────────
-
-def format_size(size):
-    for unit in ("B", "KB", "MB"):
-        if size < 1024:
-            return f"{size:.1f} {unit}" if unit != "B" else f"{size} B"
-        size /= 1024
-    return f"{size:.2f} GB"
-
-
-def escape_like(text):
-    """Escape SQL LIKE wildcards so *text* matches literally (ESCAPE '\\')."""
-    return (text.replace("\\", "\\\\").replace("%", "\\%")
-            .replace("_", "\\_"))
-
 
 def read_file_info(blob):
     """Return ``(size, mtime)`` from a Manifest.db ``file`` blob.
 
     Either value is ``None`` when it cannot be read.
     """
-    if not blob:
-        return None, None
-    try:
-        meta = plistlib.loads(blob)
-    except Exception:
-        return None, None
-    objects = meta.get("$objects") if isinstance(meta, dict) else None
-    if not isinstance(objects, list):
-        return None, None
-
-    info = None
-    try:
-        info = objects[meta["$top"]["root"].data]
-    except (KeyError, IndexError, AttributeError, TypeError):
-        pass
-    if not isinstance(info, dict):
-        info = objects[1] if len(objects) > 1 else None
-    if not isinstance(info, dict):
-        return None, None
-
-    size = info.get("Size")
-    mtime = info.get("LastModified")
-    return (size if isinstance(size, int) else None,
-            mtime if isinstance(mtime, (int, float)) else None)
+    size, mtime, _birth = read_file_details(blob)
+    return size, mtime
 
 
 _WINDOWS_ILLEGAL = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
@@ -466,14 +430,14 @@ class BackupSession:
         """
         return self._executor.submit(self._open, backup_dir, passphrase)
 
-    def query_files(self, domains=None, search="", limit=MAX_ROWS):
-        """List files. Future -> (rows, total_matching).
+    def scan(self, progress=None):
+        """Read the whole manifest. Future -> list of rows
+        ``(file_id, domain, relative_path, flags, size, mtime, birth)`` for
+        every file (flags 1) and folder (flags 2).
 
-        *domains* is a list of domains, or None for the whole backup.
-        Each row is (file_id, domain, relative_path, size_str, mod_str).
+        *progress(done, total)* is called now and then from the worker.
         """
-        return self._executor.submit(self._query_files, domains, search,
-                                     limit)
+        return self._executor.submit(self._scan, progress)
 
     def extract(self, file_ids, dest, progress=None):
         """Write files (decrypted if need be) into *dest*.
@@ -570,67 +534,23 @@ class BackupSession:
         self._swap_backup(backup)
         return OpenResult(domains, total, kind == ENCRYPTED)
 
-    def _query_files(self, domains, search, limit):
+    def _scan(self, progress):
         backup = self._require_backup()
-        if domains is not None and not domains:
-            return [], 0
-
-        where = ["flags=1"]
-        params = []
-        if search:
-            where.append("(domain LIKE ? ESCAPE '\\' "
-                         "OR relativePath LIKE ? ESCAPE '\\')")
-            pattern = "%" + escape_like(search) + "%"
-            params += [pattern, pattern]
-
-        chunks = [None] if domains is None else [
-            domains[i:i + _DOMAIN_CHUNK]
-            for i in range(0, len(domains), _DOMAIN_CHUNK)
-        ]
-        raw_rows = []
-        total = 0
-        with backup.manifest_db_cursor() as cur:
-            for chunk in chunks:
-                clauses = list(where)
-                chunk_params = list(params)
-                if chunk is not None:
-                    clauses.append(
-                        "domain IN (%s)" % ",".join("?" * len(chunk))
-                    )
-                    chunk_params += chunk
-                condition = " AND ".join(clauses)
-
-                cur.execute("SELECT COUNT(*) FROM Files WHERE " + condition,
-                            chunk_params)
-                total += cur.fetchone()[0]
-
-                remaining = limit - len(raw_rows)
-                if remaining > 0:
-                    cur.execute(
-                        "SELECT fileID, domain, relativePath, file "
-                        "FROM Files WHERE " + condition +
-                        " ORDER BY domain, relativePath LIMIT ?",
-                        chunk_params + [remaining],
-                    )
-                    raw_rows.extend(cur.fetchall())
-        return self._display_rows(raw_rows), total
-
-    @staticmethod
-    def _display_rows(raw_rows):
         rows = []
-        for file_id, domain, rel_path, blob in raw_rows:
-            size, mtime = read_file_info(blob)
-            size_str = format_size(size) if size else ""
-            mod_str = ""
-            if mtime:
-                try:
-                    mod_str = datetime.fromtimestamp(mtime).strftime(
-                        "%Y-%m-%d %H:%M"
-                    )
-                except (OverflowError, OSError, ValueError):
-                    pass
-            rows.append((file_id, domain or "", rel_path or "", size_str,
-                         mod_str))
+        with backup.manifest_db_cursor() as cur:
+            cur.execute("SELECT COUNT(*) FROM Files WHERE flags IN (1, 2)")
+            total = cur.fetchone()[0]
+            cur.execute("SELECT fileID, domain, relativePath, flags, file "
+                        "FROM Files WHERE flags IN (1, 2)")
+            for done, (file_id, domain, rel_path, flags, blob) in \
+                    enumerate(cur, 1):
+                size, mtime, birth = read_file_details(blob)
+                rows.append((file_id, domain, rel_path, flags, size, mtime,
+                             birth))
+                if progress is not None and done % 5000 == 0:
+                    progress(done, total)
+        if progress is not None:
+            progress(len(rows), total)
         return rows
 
     def _extract_all(self, dest, progress):
@@ -642,18 +562,12 @@ class BackupSession:
         return self._extract(file_ids, dest, progress)
 
     def _list_all(self):
-        backup = self._require_backup()
-        rows = []
-        with backup.manifest_db_cursor() as cur:
-            cur.execute(
-                "SELECT fileID, domain, relativePath, file FROM Files "
-                "WHERE flags=1 AND domain IS NOT NULL AND domain != '' "
-                "AND relativePath IS NOT NULL AND relativePath != ''"
-            )
-            for file_id, domain, rel_path, blob in cur.fetchall():
-                size, mtime = read_file_info(blob)
-                rows.append((file_id, domain, rel_path, size or 0, mtime))
-        return rows
+        return [
+            (file_id, domain, rel_path, size or 0, mtime)
+            for file_id, domain, rel_path, flags, size, mtime, _birth
+            in self._scan(None)
+            if flags == 1 and domain and rel_path
+        ]
 
     def _cache_file(self, file_id, cache_dir):
         backup = self._require_backup()
@@ -753,7 +667,7 @@ class BackupExplorer:
         self.root = root
         self.root.title(f"{APP_NAME} v{__version__}")
         self.root.geometry("1200x750")
-        self.root.minsize(900, 550)
+        self.root.minsize(900, 620)
 
         self.session = session or BackupSession()
         self.backup_open = False
@@ -762,10 +676,7 @@ class BackupExplorer:
         self._mount = None           # backup_mount.Mount while mounted
         self._mount_busy = False
         self.mount_btn = None
-        self._scope_domains = None   # None = every domain
-        self._scope_set = False
-        self._request_id = 0         # discards out-of-date file lists
-        self._search_job = None
+        self._index_request = 0      # discards out-of-date indexing runs
         self._extracting = False
         self._backup_kind = None     # ENCRYPTED / UNENCRYPTED / None
         self._detect_job = None
@@ -830,15 +741,21 @@ class BackupExplorer:
                          foreground="#ffffff", font=(font, 10, "bold"),
                          padding=8)
         style.map("TButton",
-                   background=[("active", c["accent_hover"])],
-                   foreground=[("active", "#ffffff")])
+                   background=[("disabled", c["border"]),
+                               ("active", c["accent_hover"])],
+                   foreground=[("disabled", c["muted"]),
+                               ("active", "#ffffff")])
         style.configure("Safe.TButton", background=c["green"],
                          foreground="#ffffff")
         style.map("Safe.TButton",
-                   background=[("active", "#047857")])
+                   background=[("disabled", c["border"]),
+                               ("active", "#047857")],
+                   foreground=[("disabled", c["muted"])])
         style.configure("TEntry", fieldbackground=c["surface"],
                          foreground=c["fg"], insertcolor=c["fg"],
                          padding=4)
+        style.map("TEntry", fieldbackground=[("disabled", c["bg"])],
+                   foreground=[("disabled", c["muted"])])
         style.configure("Treeview", background=c["surface"],
                          foreground=c["fg"], fieldbackground=c["surface"],
                          font=(font, 9), rowheight=26)
@@ -913,68 +830,33 @@ class BackupExplorer:
                                 style="Status.TLabel")
         status_bar.pack(fill="x", pady=(8, 0))
 
-        # Main content
-        paned = ttk.PanedWindow(self.root, orient="horizontal")
-        paned.pack(fill="both", expand=True, padx=20, pady=10)
-
-        # Left: categories
-        left_frame = ttk.LabelFrame(paned, text="Categories", padding=6)
-        paned.add(left_frame, weight=1)
-
-        self.domain_tree = ttk.Treeview(left_frame, show="tree",
-                                         selectmode="browse")
-        domain_scroll = ttk.Scrollbar(left_frame, orient="vertical",
-                                       command=self.domain_tree.yview)
-        self.domain_tree.configure(yscrollcommand=domain_scroll.set)
-        self.domain_tree.pack(side="left", fill="both", expand=True)
-        domain_scroll.pack(side="right", fill="y")
-        self.domain_tree.bind("<<TreeviewSelect>>", self._on_domain_select)
-
-        # Right: file list
-        right_frame = ttk.LabelFrame(paned, text="Files", padding=6)
-        paned.add(right_frame, weight=3)
-
-        toolbar = ttk.Frame(right_frame)
-        toolbar.pack(fill="x", pady=(0, 6))
-        ttk.Label(toolbar, text="Search:").pack(side="left")
-        self.search_var = tk.StringVar()
-        self.search_var.trace_add("write", lambda *a: self._schedule_search())
-        ttk.Entry(toolbar, textvariable=self.search_var, width=35).pack(
-            side="left", padx=8)
-        self.count_var = tk.StringVar(value="")
-        ttk.Label(toolbar, textvariable=self.count_var,
-                  style="Subtitle.TLabel").pack(side="right")
-        ttk.Button(toolbar, text="Extract Selected",
-                    command=self._extract_selected).pack(side="right", padx=6)
-        ttk.Button(toolbar, text="Extract All in View",
-                    command=self._extract_all_view).pack(side="right", padx=2)
-        ttk.Button(toolbar, text="Extract Entire Backup",
-                    command=self._extract_entire).pack(side="right", padx=6)
-        self.mount_btn = ttk.Button(toolbar, text="Mount Backup",
+        # The Files view
+        self.panel = browser_panel.FileBrowserPanel(
+            self.root, post=self._post, on_extract=self._extract_files,
+            on_status=self.status_var.set, page_size=lambda: MAX_ROWS)
+        self.panel.pack(fill="both", expand=True, padx=20, pady=10)
+        ttk.Button(self.panel.actions, text="Extract Entire Backup",
+                   command=self._extract_entire).pack(side="left", padx=6)
+        self.mount_btn = ttk.Button(self.panel.actions, text="Mount Backup",
                                     command=self._toggle_mount)
-        self.mount_btn.pack(side="right", padx=2)
+        self.mount_btn.pack(side="left")
 
-        cols = ("domain", "path", "size", "modified")
-        self.file_tree = ttk.Treeview(right_frame, columns=cols,
-                                       show="headings", selectmode="extended")
-        self.file_tree.heading("domain", text="Domain")
-        self.file_tree.heading("path", text="Relative Path")
-        self.file_tree.heading("size", text="Size")
-        self.file_tree.heading("modified", text="Modified")
-        self.file_tree.column("domain", width=160, minwidth=100)
-        self.file_tree.column("path", width=400, minwidth=200)
-        self.file_tree.column("size", width=80, minwidth=60)
-        self.file_tree.column("modified", width=140, minwidth=100)
+    # The Files view's widgets, under the names used elsewhere.
+    @property
+    def domain_tree(self):
+        return self.panel.domain_tree
 
-        fy = ttk.Scrollbar(right_frame, orient="vertical",
-                            command=self.file_tree.yview)
-        fx = ttk.Scrollbar(right_frame, orient="horizontal",
-                            command=self.file_tree.xview)
-        self.file_tree.configure(yscrollcommand=fy.set, xscrollcommand=fx.set)
-        # Pack order matters: bottom scrollbar first, then right, then tree
-        fx.pack(side="bottom", fill="x")
-        fy.pack(side="right", fill="y")
-        self.file_tree.pack(side="left", fill="both", expand=True)
+    @property
+    def file_tree(self):
+        return self.panel.file_tree
+
+    @property
+    def search_var(self):
+        return self.panel.search_var
+
+    @property
+    def count_var(self):
+        return self.panel.count_var
 
     # ── Background work ──────────────────────────────────────
 
@@ -1150,62 +1032,11 @@ class BackupExplorer:
     def _on_decrypt_success(self, domains, total_files, encrypted=True):
         self.decrypt_btn.configure(state="normal")
         self.backup_open = True
-        self._scope_set = False
-        self._scope_domains = None
-        self._request_id += 1
-        self.file_tree.delete(*self.file_tree.get_children())
-        self.count_var.set("")
         self.status_var.set(
             f"{'Decrypted' if encrypted else 'Opened'}! {total_files:,} "
-            f"files across {len(domains)} domains."
+            f"files across {len(domains)} domains. Building the file index..."
         )
-        self.domain_tree.delete(*self.domain_tree.get_children())
-
-        categories = {}
-        friendly = {
-            "CameraRollDomain": "Camera Roll / Photos",
-            "MediaDomain": "Media (Music, Videos)",
-            "HomeDomain": "Home / Settings",
-            "HealthDomain": "Health Data",
-            "KeychainDomain": "Keychain",
-            "WirelessDomain": "Wireless / Network",
-            "ManagedPreferencesDomain": "Managed Preferences",
-            "RootDomain": "Root / System",
-            "SystemPreferencesDomain": "System Preferences",
-            "DatabaseDomain": "Databases",
-            "InstallDomain": "Installed Apps",
-            "SysContainerDomain": "System Containers",
-            "SysSharedContainerDomain": "Shared Containers",
-        }
-
-        self.domain_tree.insert("", "end", iid="__ALL__",
-                                 text=f"All Files ({total_files:,})")
-
-        for domain in domains:
-            base = domain.split("-")[0] if "-" in domain else domain
-            name = friendly.get(domain, friendly.get(base, None))
-
-            if base.startswith("AppDomain"):
-                cat = "Apps"
-            elif base.startswith("SysContainerDomain") or \
-                    base.startswith("SysSharedContainer"):
-                cat = "System Containers"
-            elif name:
-                cat = name
-            else:
-                cat = "Other"
-
-            categories.setdefault(cat, []).append(domain)
-
-        for cat in sorted(categories):
-            cat_id = f"__CAT__{cat}"
-            self.domain_tree.insert(
-                "", "end", iid=cat_id,
-                text=f"{cat} ({len(categories[cat])})",
-            )
-            for domain in sorted(categories[cat]):
-                self.domain_tree.insert(cat_id, "end", iid=domain,
-                                         text=domain)
+        self._start_indexing()
 
     def _on_decrypt_fail(self, error, passphrase=""):
         self.decrypt_btn.configure(state="normal")
@@ -1243,101 +1074,63 @@ class BackupExplorer:
             messagebox.showerror("Error",
                                   f"Failed to load backup:\n{message}")
 
-    # ── File loading ─────────────────────────────────────────
+    # ── Indexing ─────────────────────────────────────────────
 
-    def _on_domain_select(self, event):
-        sel = self.domain_tree.selection()
-        if not sel or not self.backup_open:
+    def _start_indexing(self):
+        """Read the whole manifest once; browsing then needs no more SQL."""
+        self._index_request += 1
+        request = self._index_request
+        self.panel.set_index(None)
+
+        def progress(done, total):
+            self._post(self._show_index_progress, request, done, total)
+
+        self._when_done(self.session.scan(progress),
+                        lambda fut: self._on_scan_done(fut, request))
+
+    def _show_index_progress(self, request, done, total):
+        if request == self._index_request:
+            self.status_var.set(
+                f"Reading the backup index... {done:,} of {total:,}")
+
+    def _on_scan_done(self, future, request):
+        if request != self._index_request:
             return
-        selected = sel[0]
-        if selected == "__ALL__":
-            self._scope_domains = None
-        elif selected.startswith("__CAT__"):
-            self._scope_domains = list(self.domain_tree.get_children(selected))
-        else:
-            self._scope_domains = [selected]
-        self._scope_set = True
-        self._refresh_files()
-
-    def _schedule_search(self):
-        """Re-query shortly after the user stops typing."""
-        if not self.backup_open:
-            return
-        if self._search_job is not None:
-            self.root.after_cancel(self._search_job)
-        self._search_job = self.root.after(300, self._refresh_files)
-
-    def _refresh_files(self):
-        self._search_job = None
-        if not self.backup_open:
-            return
-        if not self._scope_set:
-            # Searching before choosing a category searches the whole backup.
-            self._scope_domains = None
-            self._scope_set = True
-
-        self._request_id += 1
-        request_id = self._request_id
-        self.status_var.set(
-            "Waiting for the running extraction to finish..."
-            if self._extracting else "Loading files..."
-        )
-        future = self.session.query_files(
-            self._scope_domains, self.search_var.get().strip(), MAX_ROWS
-        )
-        self._when_done(
-            future, lambda fut: self._on_files_loaded(fut, request_id)
-        )
-
-    def _on_files_loaded(self, future, request_id):
-        if request_id != self._request_id:
-            return  # a newer selection or search superseded this one
         error = future.exception()
         if error is not None:
             self.status_var.set(
-                f"Error loading: {str(error) or type(error).__name__}"
-            )
+                f"Could not read the backup index: "
+                f"{str(error) or type(error).__name__}")
             return
-        rows, total = future.result()
-        self._populate_files(rows, total)
+        rows = future.result()
 
-    def _populate_files(self, rows, total):
-        self.file_tree.delete(*self.file_tree.get_children())
-        for file_id, domain, rel_path, size_str, mod_str in rows:
-            self.file_tree.insert("", "end", iid=file_id,
-                                   values=(domain, rel_path, size_str, mod_str))
+        def build():
+            try:
+                index = FileIndex(rows)
+            except Exception as exc:
+                self._post(self.status_var.set,
+                           f"Could not build the file index: {exc}")
+                return
+            self._post(self._on_index_ready, request, index)
 
-        if total > len(rows):
-            self.count_var.set(f"{len(rows):,} of {total:,} files")
-            self.status_var.set(
-                f"Showing the first {len(rows):,} of {total:,} matching "
-                "files. Narrow the category or use the search box to "
-                "see the rest."
-            )
-        else:
-            self.count_var.set(f"{len(rows):,} files")
-            self.status_var.set(f"Loaded {len(rows):,} files.")
+        threading.Thread(target=build, daemon=True,
+                         name="build-index").start()
+
+    def _on_index_ready(self, request, index):
+        if request != self._index_request:
+            return
+        self.panel.set_index(index)
+        self.status_var.set(
+            f"{index.file_count:,} files ready. Choose a folder on the "
+            "left, or use the search box.")
 
     # ── Extraction ───────────────────────────────────────────
 
     def _extract_selected(self):
-        items = self.file_tree.selection()
-        if not items:
-            messagebox.showinfo("Info", "Select files to extract first.")
-            return
-        self._extract_files(items)
+        self.panel.extract_selected()
 
     def _extract_all_view(self):
-        items = self.file_tree.get_children()
-        if not items:
-            messagebox.showinfo("Info", "No files to extract.")
-            return
-        if len(items) > 100:
-            if not messagebox.askyesno(
-                "Confirm", f"Extract {len(items):,} files?"
-            ):
-                return
-        self._extract_files(items)
+        self.panel.extract_all_in_view()
 
     def _extract_files(self, file_ids):
         if self._extracting:
@@ -1588,16 +1381,18 @@ class BackupExplorer:
         ):
             return
         self._cancel_timers()
+        self.panel.close()
         if self._mount is not None:
             self._mount.stop()   # before the session its reads depend on
         self.session.close()
         self.root.destroy()
 
     def _cancel_timers(self):
-        for job in (self._poll_job, self._search_job, self._detect_job):
+        for job in (self._poll_job, self._detect_job):
             if job is not None:
                 self.root.after_cancel(job)
-        self._poll_job = self._search_job = self._detect_job = None
+        self._poll_job = self._detect_job = None
+        self.panel.cancel_timers()
 
 
 def main():
