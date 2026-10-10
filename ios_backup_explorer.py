@@ -63,7 +63,7 @@ from file_index import (  # noqa: F401
     FileIndex, format_size, read_file_details,
 )
 
-__version__ = "1.0.0"
+__version__ = "2.0.0"
 APP_NAME = "iOS Backup Explorer"
 
 # The file list shows this many rows per page; longer listings are paged.
@@ -1540,7 +1540,11 @@ class BackupExplorer:
             panel.cancel_timers()
 
 
-def main():
+def main(argv=None):
+    arguments = sys.argv[1:] if argv is None else argv
+    if arguments and arguments[0] in ("--version", "-V"):
+        print(f"{APP_NAME} {__version__}")
+        return
     root = tk.Tk()
     root.iconname(APP_NAME)
     BackupExplorer(root)

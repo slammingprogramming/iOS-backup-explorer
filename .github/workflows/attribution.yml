@@ -19,3 +19,5 @@ jobs:
           python-version: "3.12"
       - name: Verify original author credit and license notices
         run: python tools/check_attribution.py
+      - name: Verify the version is consistent
+        run: python tools/check_version.py

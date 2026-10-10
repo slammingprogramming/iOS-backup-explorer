@@ -27,7 +27,7 @@ iOS Backup Explorer is designed from the ground up with your privacy and securit
 - We don't know who you are, what you're extracting, or that you even use this tool.
 
 ### Open Source & Auditable
-- The entire codebase is a few plain Python files — small enough to read in an afternoon.
+- The entire codebase is plain Python with no build step (about 17,000 lines in 70 files, tests excluded), organised so that each app's reader is a small file of its own. Read it.
 - We encourage security researchers to audit the code.
 - All dependencies are listed in `requirements.txt` and are open source themselves.
 
@@ -40,15 +40,17 @@ The password you enter into iOS Backup Explorer is the **encryption password you
   - **Windows:** The password is not stored in Windows Credential Manager by default
 - iOS Backup Explorer cannot recover or bypass your password. This is by design — it means no one else can either.
 
-## Unencrypted Backups
+## Unencrypted and Extracted Backups
 
 Unencrypted backups need no password, so none is asked for or used. They are opened read-only (the backup folder is never written to, and no temporary copy of its index is made), and extracted files are copied out as they are.
 
+A folder that was already decrypted and extracted (domain folders such as `HomeDomain`, with no `Manifest.db`) is opened the same way: it is only read, the index is built in memory from what is on disk, symbolic links are never followed, and a path that would leave the folder is refused. Note that such a folder holds your data **decrypted**; protect it as you would the exports.
+
 ## Messages and Other App Views
 
-To show an app such as Messages, Notes, Calls, Contacts, Photos or Voice Memos, iOS Backup Explorer makes a **working copy** of that app's database (and of the address book, to show names instead of numbers) in a private temporary folder. Pictures shown in a note, the thumbnails of the Photos tab and anything you open (a picture, a recording, an attachment) are copied there too, and the thumbnail copies are deleted again as soon as the thumbnail is made. For an encrypted backup all these copies are decrypted. The folder is deleted when you close the app or open another backup; if the app is killed it may be left behind in your system temp folder (named `ios-backup-explorer-apps-...`), so delete it if so.
+To show an app such as Messages, Notes, Calls, Contacts, Photos, Voice Memos, Safari, Calendar, Voicemail, Reminders, Network, Accounts, Screen Time, Health, Maps, Podcasts, Books, Recents, Privacy, Apps or iCloud Drive, iOS Backup Explorer makes a **working copy** of that app's database or files (and of the address book, to show names instead of numbers) in a private temporary folder. Pictures shown in a note, the thumbnails of the Photos tab and anything you open (a picture, a recording, an attachment) are copied there too, and the thumbnail copies are deleted again as soon as the thumbnail is made. For an encrypted backup all these copies are decrypted. The Health database can be hundreds of megabytes, so its working copy can be too (and, for an encrypted backup, it is decrypted into that folder); make sure there is room, and that your disk is encrypted if the data is sensitive. The folder is deleted when you close the app or open another backup; if the app is killed it may be left behind in your system temp folder (named `ios-backup-explorer-apps-...`), so delete it if so.
 
-Exports you create (text, Markdown, web page, PDF, vCard, CSV, JSON, converted pictures, audio files) are ordinary files in the folder you choose and contain your data in readable form. Protect or delete them yourself. The exported web pages load nothing from the internet and contain no scripts; links inside notes are only made clickable if they are web, mail or phone links. Only pictures, videos, audio and ordinary documents (PDF, text, Office files and the like) are opened from the app, in the program your computer uses for them, which is then outside this app's control. Anything else, such as a program, a script or a web page that someone attached to a note or message, is never started from here: use **Save as...** and open it yourself if you trust it.
+Exports you create (text, Markdown, web page, PDF, vCard, iCalendar, GPX routes and places, bookmarks, CSV, JSON, converted pictures, audio files) are ordinary files in the folder you choose and contain your data in readable form. Protect or delete them yourself. The exported web pages load nothing from the internet and contain no scripts; links inside notes are only made clickable if they are web, mail or phone links. Only `http` and `https` addresses are opened in your browser (Safari history and bookmarks, links in notes are limited to web, mail and phone links). Only pictures, videos, audio and ordinary documents (PDF, text, Office files and the like) are opened from the app, in the program your computer uses for them, which is then outside this app's control. Anything else, such as a program, a script or a web page that someone attached to a note or message, is never started from here: use **Save as...** and open it yourself if you trust it.
 
 ## Mounting a Backup
 
@@ -81,7 +83,7 @@ We will respond within 48 hours and work with you to address the issue before an
 ## Dependencies
 
 iOS Backup Explorer depends on:
-- **Python 3.8+** — [python.org](https://python.org)
+- **Python 3.9+** — [python.org](https://python.org)
 - **tkinter** — Included with Python (standard library GUI toolkit)
 - **iphone_backup_decrypt** — [GitHub](https://github.com/jsharkey13/iphone_backup_decrypt) — MIT licensed, open source library for decrypting iOS backups
 

@@ -2,26 +2,28 @@
 
 <p align="center">
   <strong>Your data. Your eyes only.</strong><br>
-  A free, open-source GUI tool to decrypt, browse, and extract files from iPhone and iPad backups, encrypted or not.
+  A free, open-source app to open, browse and extract iPhone and iPad backups, encrypted or not, and to read them app by app: messages, notes, photos, health and more.
 </p>
 
 <p align="center">
-  <a href="#-installation"><img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-blue" alt="Platform"></a>
+  <img src="https://img.shields.io/badge/version-2.0.0-blue" alt="Version 2.0.0">
+  <a href="#installation"><img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-blue" alt="Platform"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0--or--later-blue" alt="License: AGPL-3.0-or-later"></a>
-  <a href="#-security--privacy"><img src="https://img.shields.io/badge/network-100%25%20offline-brightgreen" alt="Offline"></a>
-  <a href="#-security--privacy"><img src="https://img.shields.io/badge/tracking-none-brightgreen" alt="No Tracking"></a>
-  <img src="https://img.shields.io/badge/python-3.8%2B-blue" alt="Python">
+  <a href="#security--privacy"><img src="https://img.shields.io/badge/network-100%25%20offline-brightgreen" alt="Offline"></a>
+  <a href="#security--privacy"><img src="https://img.shields.io/badge/tracking-none-brightgreen" alt="No Tracking"></a>
+  <img src="https://img.shields.io/badge/python-3.9%2B-blue" alt="Python">
 </p>
 
 <p align="center">
-  <img src="assets/screenshot.png" alt="Screenshot of the original BackupLens 1.0.0 interface" width="800"><br>
-  <sub>Screenshot of the original BackupLens 1.0.0 by Eyyup (Eric) Gunes; this fork's interface has since been renamed.</sub>
+  <img src="docs/images/10-messages.png" alt="The Messages tab showing a conversation" width="860"><br>
+  <sub>Every picture here is the program running on an <em>invented</em> demo backup; nothing in it is a real person's data.</sub>
 </p>
 
 > **iOS Backup Explorer is a hard fork of [BackupLens](https://github.com/mrgunes/BackupLens)**
 > by [Eyyup (Eric) Gunes](https://github.com/mrgunes), originally released under the MIT License.
 > The original author's copyright is preserved in [LICENSE-MIT](LICENSE-MIT) and [NOTICE](NOTICE).
-> This fork is licensed under [AGPL-3.0-or-later](LICENSE).
+> This fork is licensed under [AGPL-3.0-or-later](LICENSE). Version 2.0.0 is its first release as a
+> project of its own; see the [changelog](CHANGELOG.md).
 
 ---
 
@@ -46,189 +48,88 @@ You made an encrypted iPhone backup with iTunes, Finder, or the Apple Devices ap
 
 ---
 
-## Features
+## What it does
 
-- **Decrypt encrypted backups** — Supports iOS 13+ encrypted local backups
-- **Unencrypted backups too** — Detected automatically; no password needed
-- **Backups that are already extracted** — A folder of `HomeDomain`, `CameraRollDomain`, `AppDomain-...` folders (what other tools and *Extract Entire Backup* leave behind) opens like a backup, read-only, with every tab working
-- **Browse your phone's apps the way the phone shows them** — A tab each for **Messages** (chat bubbles, tapbacks, attachments), **Notes** (formatting, checklists, pictures, folders), **Calls**, **Contacts**, **Photos** (a thumbnail grid with albums), **Voice Memos**, **Safari** (history, bookmarks, reading list, open tabs), **Calendar**, **Voicemail**, **Reminders**, **Network** (Wi-Fi, Bluetooth, data used by apps), **Accounts**, **Screen Time**, **Health** (activity, workouts and their routes, body measurements, sleep, Medical ID), **Maps**, **Podcasts**, **Books**, **Privacy** (app permissions), **Apps**, **Recents** and **iCloud Drive**, with names from your address book and search everywhere
-- **Export what you find in the format you need** — Text, Markdown, web pages, PDF, CSV spreadsheets, JSON, vCard (.vcf) for contacts, iCalendar (.ics) for events and reminders, audio with transcripts for voicemail, GPX for workout routes and saved places, a bookmarks file any browser imports, JPEG for HEIC photos, web galleries. **The original files can always be extracted untouched**, too
-- **A real file manager** — Folders on the left, files on the right, with back / forward / up, a location bar you can type a path into, and file-type icons
-- **Sort by anything** — Click Name, Kind, Size, Date Modified or Date Created (clicking again reverses it); names sort naturally (`IMG_2` before `IMG_10`), folders can stay on top, and folder sizes are the total of what is inside
-- **Browse by category** — Camera Roll, Messages, Health, Apps, and more
-- **Search across all files** — Instant, searches the folder you are in and everything below it
-- **Right-click** a file or folder to extract it, copy its name or path, or see its properties
-- **Extract individual files or bulk export** — Save to any folder
-- **Extract the entire backup** — One click, straight from the backup index, with no limit on how many files
-- **Mount a backup as a read-only drive or folder** (optional) — Browse it in your file manager; on Windows as `\\ios-backup\...` with no drive letter
-- **Auto-detects backups** — Finds your backup folder automatically
-- **Cross-platform** — Works on Windows, macOS, and Linux
-- **Auditable** — Plain Python files, no build step; read them
+- **Opens any local backup**: encrypted (with your backup password), unencrypted, or a folder that was **already decrypted and extracted**. Nothing in the backup is ever changed.
+- **A real file manager** for the whole backup: folders, sorting, instant search, extraction of any file, folder or the **entire backup**, and optionally **mounting** it as a read-only drive.
+- **One tab for each app**, reading the app's data the way the phone shows it, with search, details and export. A tab appears only when the backup has its data.
+- **Exports in formats you can use**: text, Markdown, web pages, PDF, spreadsheets, JSON, vCard, iCalendar, GPX routes, bookmarks files, JPEG, audio with transcripts. **The original files can always be extracted untouched**, too.
+
+### The tabs
+
+| | | |
+|---|---|---|
+| **Messages**: chat bubbles, tapbacks, attachments, search | **Notes**: formatting, checklists, pictures, folders, call recordings | **Calls** and **Contacts** |
+| **Photos**: a thumbnail grid with albums | **Voice Memos** | **Voicemail** with the phone's transcripts |
+| **Safari**: history, bookmarks, reading list, tabs | **Calendar** and **Reminders** | **Health**: activity, workouts and routes, body measurements, sleep, Medical ID |
+| **Screen Time**: days, weeks, apps, websites | **Network**: Wi-Fi, Bluetooth, data used by apps | **Accounts** and device information |
+| **Maps**, **Podcasts**, **Books** | **Privacy**: app permissions and location access | **Recents**, **Apps**, **iCloud Drive** |
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/images/16-photos.png" alt="Photos: a thumbnail grid with albums"><br><sub><b>Photos</b>: thumbnails made only for what is on screen, with the phone's albums</sub></td>
+    <td width="50%"><img src="docs/images/30-health-workouts.png" alt="Health: workouts with distance, energy and heart rate"><br><sub><b>Health</b>: workouts with routes (export to GPX), measurements, sleep, Medical ID</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/images/12-notes.png" alt="Notes: a recipe with headings, lists and a picture"><br><sub><b>Notes</b>: formatting, checklists and pictures like on the phone</sub></td>
+    <td width="50%"><img src="docs/images/26-screen-time-days.png" alt="Screen Time by day"><br><sub><b>Screen Time</b>: time per day, week, app and website</sub></td>
+  </tr>
+</table>
+
+More pictures are in the [documentation](docs/README.md).
 
 ---
 
 ## Installation
 
-### Prerequisites
-
-- **Python 3.8 or newer** — [Download Python](https://www.python.org/downloads/)
-- **tkinter** — Included with Python on Windows and macOS. On Linux: `sudo apt install python3-tk`
-
-### Quick Start
+You need **Python 3.9 or newer** (tkinter comes with it on Windows and macOS; on Linux: `sudo apt install python3-tk`).
 
 ```bash
-# 1. Clone the repository
 git clone https://github.com/slammingprogramming/iOS-backup-explorer.git
 cd iOS-backup-explorer
-
-# 2. Install dependencies (just one is required)
-pip install -r requirements.txt
-
-# Optional: picture previews, HEIC photos and PDF export (see "Optional extras")
+pip install -r requirements.txt          # one small required package
+# Optional: picture previews, HEIC photos, PDF export
 # pip install -r requirements-optional.txt
-
-# 3. Run iOS Backup Explorer
 python ios_backup_explorer.py
 ```
 
-That's it. No build step, no Docker, no config files.
+No build step, no Docker, no configuration. Details, optional extras and platform notes: [Installation](docs/INSTALL.md).
+
+## Quick start
+
+1. Start the program. It looks for your backups; if it finds none, **Browse...** to the device's folder (the long hex-named one inside `MobileSync/Backup`, containing `Manifest.plist`).
+2. If the backup is encrypted, type its **encryption password** (the one you set in iTunes/Finder, *not* your Apple ID password) and click **Decrypt & Open**; otherwise click **Open Backup**.
+3. Browse the **Files** tab, or click an app's tab. Use **Export...** to save what you see, **Extract original files...** to take the raw files.
+
+<p align="center">
+  <img src="docs/images/02-encrypted-backup.png" alt="The password box for an encrypted backup" width="640">
+</p>
+
+Full walkthrough: [Getting started](docs/GETTING_STARTED.md). Don't have a backup handy? Make the invented demo backup: `python tools/make_demo_backup.py "C:\Demo\Demo iPhone Backup"` and open that folder ([how](docs/SCREENSHOTS.md)).
 
 ---
 
-## Usage
+## Documentation
 
-### 1. Find your backup
-
-iOS Backup Explorer auto-detects your backup location. If it doesn't, here's where iTunes/Finder stores them:
-
-| Platform | Default backup location |
+| | |
 |---|---|
-| **Windows** | `%APPDATA%\Apple Computer\MobileSync\Backup\` (iTunes installer) or `%USERPROFILE%\Apple\MobileSync\Backup\` (Microsoft Store iTunes / Apple Devices app) |
-| **macOS** | `~/Library/Application Support/MobileSync/Backup/` |
-| **Linux** | Backups must be copied from a Windows/Mac machine |
-
-### 2. Enter your password (encrypted backups only)
-
-iOS Backup Explorer detects whether the backup is encrypted. If it is not, the password box is disabled and you can just click **Open Backup**.
-
-For an encrypted backup, this is the **encryption password you set in iTunes, Finder, or the Apple Devices app**, NOT your Apple ID password.
-
-**Forgot your password?**
-- **macOS:** Open Keychain Access, search for `iOS Backup` — the password is stored there
-- **Windows:** Check if you saved it in your password manager
-
-### 3. Browse and extract
-
-- Click a category, domain or folder on the left, or double-click a folder in the list, to open it. Use the arrow buttons (or `Alt+Left` / `Alt+Right`, `Backspace`) to go back, forward and up
-- Click a column heading to sort. **Include subfolders** lists every file below the current folder in one flat list; **Folders first** keeps folders above files
-- Use the search bar to find files in the current folder and below (several words must all match). `Ctrl+F` jumps to it
-- Select files or folders and click **Extract Selected** (a folder extracts everything in it), or export what you see with **Extract All in View**. Very long lists are split into pages
-
-### 4. Read your messages
-
-If the backup contains Messages, a **Messages** tab appears next to **Files**.
-
-- Conversations are listed newest first, with names taken from the backup's address book. An iMessage chat and an SMS chat with the same number are shown as one conversation, like on the phone
-- Your messages are on the right in blue (green for SMS), theirs on the left in grey, with tapbacks, group events and day headings. Click an attachment to save it. Long conversations load a page at a time
-- **Search messages** looks inside every conversation, including messages iOS 16 and later keep only in their archived form, and jumps to the match
-- **Export this conversation / Export all** writes text files, a web page (with the attachments beside it, opens in any browser, no internet needed), a CSV spreadsheet, or JSON
-- **Extract original files** copies the Messages database (with its recent-changes files) and the attachments exactly as the backup holds them, so you always have the raw data too
-
-### 5. Notes
-
-If the backup contains Notes, a **Notes** tab appears.
-
-- Folders (and sub-folders, and *Recently Deleted*) on the left, with the number of notes in each; pinned notes first. Sort by date edited, date created or title
-- A note looks like it does on the phone: title and headings, bullet, dashed, numbered and checklist items (checked items are struck through), bold, italic, underlined and struck-through text, links, and the pictures in it. Click a voice recording or another attachment to open it or save it
-- **Search** looks in titles and in the text (and in hashtags and link titles)
-- Notes locked with a password are listed, but their text is encrypted in the backup and cannot be shown
-- **Call recordings** (iOS 18) show their title, length and the words Notes wrote down. The backup holds the original movie file (`.mov`) with a separate track for each side of the call; click the recording to open or save that file as it is or, if [ffmpeg](https://ffmpeg.org) is installed, a **mixed `.m4a`** made from the tracks. When you export or extract, you choose the mixed audio, the original with the separate tracks, or both
-- **Export** one note, a folder or everything as **text**, **Markdown**, a **web page** (with the pictures; HEIC pictures are converted to JPEG when Pillow and pillow-heif are installed), **PDF**, **JSON** or a **spreadsheet**. Exports follow the Notes folders
-
-### 6. Calls and Contacts
-
-- **Calls** is the call history as a table: click a heading to sort, filter by missed, incoming, outgoing, phone or FaceTime, and search by name, number or place. Names come from the address book. Export what you see, or everything, as a spreadsheet, web page, text or JSON
-- **Contacts** is a list (sorted by last or first name) with each person's card: numbers, emails, addresses, web pages, birthday, notes and more. Export as a **vCard (.vcf) file** that other address books import, a spreadsheet, a web page, text or JSON. Contact photos are not included
-
-### 7. Photos and Voice Memos
-
-- **Photos** shows the camera roll as a grid of thumbnails, made only for what is on screen, so a large library opens at once. The left side lists *All items*, *Photos*, *Videos*, *Favorites*, *Hidden*, *Recently Deleted* and your own albums, as the phone's library records them (without the library database, the DCIM folders are listed instead). Click to select, Ctrl-click and Shift-click for more, double-click to open a picture in your usual viewer
-- **Export** copies the original files (named by what they are, with the date taken as their file date), converts them to **JPEG** so every program can open them, makes a **web gallery**, or lists them in a spreadsheet. **Extract original files** uses the normal extraction (with progress) and keeps the backup's own folders
-- **Voice Memos** lists the recordings with title, date and length; **Play** opens one in your usual audio player. Export them as audio files named by date and title, a web page with a player for each, or a list. The audio is never converted; it is exactly what the phone recorded
-
-### 8. Safari and Calendar
-
-- **Safari** has a table for the *History* (newest first, with the site and failed loads marked), the *Sites visited* (how often and when last), the *Bookmarks* with their folders, the *Reading list* and the *Open tabs*. Click a heading to sort, type to search, and double-click a row to open its address in your web browser (only `http` and `https` addresses are opened). Export any table as a spreadsheet, web page, text or JSON; export the bookmarks as a file that Chrome, Firefox, Edge and Safari import
-- **Calendar** lists the events (newest first, with when, calendar, place and how it repeats) and the calendars with how many events each holds. All-day events keep their date whatever the time zone of your computer, and birthdays that have no year say so. Export as an **iCalendar (.ics) file** that Google Calendar, Outlook, Apple Calendar and others import, or as a spreadsheet, web page, text or JSON. Reminders are not included
-
-### 9. Voicemail, Reminders, Network and Accounts
-
-- **Voicemail** lists the messages with the caller (a name when the number is in your contacts), when, how long and **the words the phone wrote down**; the recording plays or saves from the buttons below, and *Export* copies the audio files named by date and caller with the words beside each. Deleted voicemails still in the backup are marked
-- **Reminders** shows every reminder of every account with its list, due date (all-day ones as dates), priority, notes, and the lists with how many are not done; sub-tasks name their parent, completed and deleted ones are marked. Export as a **to-do file (.ics)** that task programs import, or a spreadsheet, web page, text or JSON
-- **Network** has the *Wi-Fi networks* the phone joined (security, when it last joined, when it was last in range and the last place its router was seen at), the *Bluetooth devices* it knows (paired ones and those it saw nearby) and the *data used by apps* over Wi-Fi and the mobile network. Wi-Fi passwords are in the keychain, not in the file, and are not shown
-- **Accounts** shows what the backup says about the device (name, model, iOS version, serial number, when it was backed up, when the backup folder has that information) and the accounts set up on it with the services each is switched on for. Passwords and sign-in keys are not in a backup's accounts file
-
-### 10. Screen Time and Health
-
-- **Screen Time** has the *Days* (screen time, pickups, notifications and the most used app), the *Weeks*, the *Apps* and *Websites* with their total time, and the *Recent hours*. Days are dated where the phone was; apps appear by the name of the app when it is one of Apple's, else by its identifier
-- **Health** has the *Medical ID* card, the *Daily activity* (the phone's own summaries, in which each step and calorie is counted once), the *Workouts* with their distance, active energy and heart rate (export their **routes as a GPX file**), *Body and vitals* (weight, body fat, BMI, height, resting and walking heart rate, blood oxygen, VO2 max, heart rate variability, breathing rate, with the app or device that recorded each), *Sleep* (each stage), *Health records* (names of what healthcare providers sent) and *Data types*, a count of everything the database holds. The Health database can be very large (hundreds of megabytes), and the tab copies it when first shown, so give it a moment
-
-**How the Health data is read, and what it does not do yet.** Every sample in the database has a number for its kind (heart rate, steps, ...), and Apple does not publish the numbers. This app takes the names from the database itself: its shared summaries are named after a kind and list the numbers they cover, and a number is named only when exactly one name is tied to it. The names, the daily totals and the units of the measurements above were checked against each other in a real backup: the active energy, exercise minutes and stand hours of each day against the phone's own activity summary, and the stored values of each body measurement against the values recorded in the unit the phone showed (pounds, beats per minute, ...). What is *not* done yet, and why:
-
-- Kinds the database does not name (29 of the 92 in the backup this was written against) are listed as "Type N". Naming them needs an independent check per kind, as above; reports of what they are, with a sample, are welcome
-- Values are interpreted only for the kinds listed under *Body and vitals*. Every kind stores its numbers in its own unit (heart rate per second, resting heart rate per minute, a body fat as a fraction...), so each new kind has to be checked against values recorded in a known unit before it is shown. The 486,000 raw heart rate samples, the steps and the walking measurements are counted but not browsable yet
-- Sleep is listed by stage, not summed per night: a night belongs to the day of waking *where the phone was*, which needs the time zone of each sample (the database stores only its name), and time zone names need a time zone database that Windows does not include
-- Medications and their doses, ECG and audiogram waveforms, cycle tracking, symptoms and the contents of health records (labs, immunizations) are not read yet
-
-### 11. Maps, Podcasts and Books
-
-- **Maps** lists the favorites, the places in guides and the search history, and exports the places with coordinates as a GPX file. Places saved from the map (not named by you) keep their name and address inside a binary record that is not read, so they appear by coordinates only
-- **Podcasts** lists the shows and the episodes with what was played; **Books** lists the library (with how far each book was read), the highlights and notes, and the collections
-- These three were written from the layout of the apps' databases. The backup they were written against held the databases but no places, episodes or books, so they are tested only on generated databases. If one does not show what you expect, please report it (without sending your data)
-
-### 12. Privacy, Apps, Recents and iCloud Drive
-
-- **Privacy** lists the permissions apps were given or refused (camera, photos, microphone, contacts, the local network, tracking...), how each was set and when, and which apps may use the location (always, only while in use, never) and when the phone last gave an app its location
-- **Apps** lists the apps the home screen knew of, with the badge each showed. Apple's own apps are named; for the others the backup keeps only the identifier
-- **Recents** is the phone's list of recent contacts: who was last called, messaged or emailed, through what, and how often
-- **iCloud Drive** lists the names of the files that were in iCloud Drive. Only the names are in a backup; the files themselves are in iCloud
-
-### Optional extras
-
-Everything above works with the one required package. These optional ones add more:
-
-```bash
-pip install -r requirements-optional.txt
-```
-
-- **Pillow** — picture previews (JPEG and others) and conversion to JPEG
-- **pillow-heif** — the same for the HEIC pictures iPhones take
-- **fpdf2** — PDF export of notes
-- **ffmpeg** (a separate program, not a pip package; [ffmpeg.org](https://ffmpeg.org)) — mixes the two sides of a call recording into one `.m4a`. The original files with the separate tracks never need it
-
-Without them the app says what is missing and the originals can still be extracted or saved.
+| [Installation](docs/INSTALL.md) · [Getting started](docs/GETTING_STARTED.md) · [The file browser](docs/FILE_BROWSER.md) | Using the program |
+| [The app tabs](docs/apps/README.md) | One page per group of tabs |
+| [Exporting](docs/EXPORTING.md) · [Where the data comes from](docs/DATA_SOURCES.md) · [Health data](docs/HEALTH.md) | Reference |
+| [FAQ](docs/FAQ.md) · [Troubleshooting](docs/TROUBLESHOOTING.md) · [Glossary](docs/GLOSSARY.md) · [How a backup is built](docs/HOW_BACKUPS_WORK.md) | Help and background |
+| [Contributing](CONTRIBUTING.md) · [Architecture](docs/ARCHITECTURE.md) · [Development](docs/DEVELOPMENT.md) · [Testing](docs/TESTING.md) · [Versioning](docs/VERSIONING.md) | Working on it |
+| [Changelog](CHANGELOG.md) · [Security policy](SECURITY.md) | Project |
 
 ---
 
-## Mounting a backup (optional)
+## What is checked, and what is not (yet)
 
-Instead of extracting, you can **mount** the open backup as a read-only drive or folder and browse it with your normal file manager and programs. Click **Mount Backup**; click it again (now **Unmount Backup**) when you are done.
+Honesty matters when you are reading someone's data:
 
-| Platform | What you get | What you need |
-|---|---|---|
-| **Windows** | A network-style path, `\\ios-backup\<backup name>`, with **no drive letter**. Type it into File Explorer's address bar | [WinFsp](https://winfsp.dev) |
-| **macOS** | An empty folder you choose | [macFUSE](https://macfuse.github.io) or [FUSE-T](https://www.fuse-t.org) |
-| **Linux** | An empty folder you choose | FUSE (e.g. `sudo apt install fuse3`) |
-
-On every platform you also need the small Python package (Python 3.9 or newer):
-
-```bash
-pip install -r requirements-mount.txt
-```
-
-Files from an encrypted backup are decrypted into a private temporary folder the first time you open them, and that folder is deleted when you unmount. Files from an unencrypted backup are read straight from the backup folder, with nothing copied. While a backup is mounted, programs running as you can read its decrypted contents; see [SECURITY.md](SECURITY.md). Mounting adds no network access: the Windows path is served by WinFsp on your own computer.
-
-Mounting was tested on Windows 10 with WinFsp. The macOS and Linux code paths follow the same design but have not been run on those systems yet, so please report problems.
+- Every tab has automated tests on **invented** data, and the readers were **mutation-checked** (the code is broken on purpose to prove the tests notice).
+- Most tabs were also checked against a **real backup**: their counts and values were compared with the raw databases. **Maps, Podcasts, Books, Photos and Voice Memos** were written from the apps' database layouts, because the backup used had no data for them, so they are tested on generated data only. [Where the data comes from](docs/DATA_SOURCES.md) lists the status of each tab.
+- **Health** is read reliably where it can be proved, and the rest is listed openly as not yet covered: kinds of data the database does not name, values whose unit was not verified, sleep summed per night, medications, ECG and more. **Why, and what is needed to close each gap, is in [Health data](docs/HEALTH.md).**
+- A backup holds only what the phone kept: iCloud-only photos and messages, passwords (the keychain) and locked notes are not readable. See the [FAQ](docs/FAQ.md).
 
 ---
 
@@ -238,17 +139,17 @@ Mounting was tested on Windows 10 with WinFsp. The macOS and Linux code paths fo
 
 ### Our security promises:
 
-1. **100% Offline** — iOS Backup Explorer makes zero network connections. Disconnect your internet and it works identically. [Verify it yourself.](SECURITY.md)
+1. **100% Offline** — iOS Backup Explorer makes zero network connections. Disconnect your internet and it works identically. [Verify it yourself.](#verify-it-yourself)
 
 2. **Your password is never stored** — It's held in memory only while the app runs. When you close iOS Backup Explorer, it's gone.
 
 3. **No telemetry, no analytics, no tracking** — We don't know you exist. We don't want to.
 
-4. **Fully auditable** — The app is plain Python (about 10,000 lines in all, with no build step): the app itself, the file browser, the file index, a reader, exporter and view for each app (Messages, Notes, Calls, Contacts, Photos, Voice Memos, Safari, Calendar, Voicemail, Reminders, Network, Accounts, Screen Time, Health, Maps, Podcasts, Books, Privacy, Apps, Recents, iCloud Drive), and an optional module that is only used if you mount a backup. Read them. We encourage it.
+4. **Fully auditable** — The app is plain Python (about 17,000 lines in 70 files, with no build step): the app itself, the file browser, the file index, and a reader and a view for each app. Read them. We encourage it.
 
 5. **Open source dependencies** — Our only required dependency ([iphone_backup_decrypt](https://github.com/jsharkey13/iphone_backup_decrypt)) is also open source and MIT licensed.
 
-For our full security policy, see [SECURITY.md](SECURITY.md).
+6. **Read-only** — Backups are never modified; unencrypted and extracted backups are opened read-only. What the program writes (exports, extractions, private temporary working copies it deletes when you close the backup) is described in [SECURITY.md](SECURITY.md).
 
 ---
 
@@ -256,7 +157,7 @@ For our full security policy, see [SECURITY.md](SECURITY.md).
 
 ### Windows
 
-1. Press `Win + R`, type `%APPDATA%\Apple Computer\MobileSync\Backup`, press Enter (or `%USERPROFILE%\Apple\MobileSync\Backup` if you installed iTunes from the Microsoft Store)
+1. Press `Win + R`, type `%APPDATA%\Apple Computer\MobileSync\Backup`, press Enter (or `%USERPROFILE%\Apple\MobileSync\Backup` if you installed iTunes from the Microsoft Store or use the Apple Devices app)
 2. Each subfolder (long alphanumeric name) is one device backup
 
 ### macOS
@@ -268,109 +169,48 @@ For our full security policy, see [SECURITY.md](SECURITY.md).
 ### How to create an encrypted backup
 
 1. Connect your iPhone/iPad to your computer
-2. Open **iTunes** (Windows) or **Finder** (macOS)
-3. Select your device
-4. Check **"Encrypt local backup"**
-5. Set a password — **remember this password!**
-6. Click **Back Up Now**
+2. Open **iTunes** (Windows), **Finder** (macOS) or the **Apple Devices** app
+3. Select your device and tick **"Encrypt local backup"**
+4. Set a password — **remember this password!**
+5. Click **Back Up Now**
+
+(An encrypted backup holds more than an unencrypted one: Health data, for example.)
 
 ---
 
 ## FAQ
 
-<details>
-<summary><strong>Is this safe to use?</strong></summary>
+The full list is in the [FAQ](docs/FAQ.md). A few of the most asked:
 
-Yes. iOS Backup Explorer is 100% offline, open source, and makes no network connections. Your password never leaves your machine. You can verify all of this by reading the source code — it's a single file.
+<details>
+<summary><strong>Can it crack or bypass my backup password?</strong></summary>
+
+No. It needs the correct encryption password. It cannot guess, crack or bypass passwords, which also means no one else can read your backup without it. A forgotten password cannot be recovered (see the FAQ for what you can try).
 </details>
 
 <details>
-<summary><strong>Can iOS Backup Explorer crack/bypass my backup password?</strong></summary>
+<summary><strong>Does it work with iCloud backups?</strong></summary>
 
-No. iOS Backup Explorer requires your correct encryption password to decrypt the backup. It cannot guess, crack, or bypass passwords. This is a feature, not a limitation — it means no one else can access your data without the password either.
+No. Only **local** backups made by iTunes, Finder or the Apple Devices app. iCloud backups live on Apple's servers.
 </details>
 
 <details>
-<summary><strong>Are my messages complete?</strong></summary>
+<summary><strong>Why is something missing?</strong></summary>
 
-The newest messages on a phone are often not yet in the main database file but in a small companion "-wal" file. iOS Backup Explorer copies both together, so nothing recent is lost. Messages that you deleted on the phone before the backup was made are not in the backup. Message text that iOS stores only in its archived form is decoded; if some text looks wrong or is missing, please report it.
-</details>
-
-<details>
-<summary><strong>Why is a note, photo or call missing?</strong></summary>
-
-A backup holds what was on the phone when it was made. Notes locked with a password are listed but cannot be shown. Photos that live only in iCloud (when "Optimize iPhone Storage" is on) are not on the phone and so not in the backup. Unencrypted backups leave out some data that encrypted backups hold. The apps are read from the databases iOS uses; the layouts change between iOS versions, so if something that is in your backup does not show, please report it (without sending your data).
-</details>
-
-<details>
-<summary><strong>Why do my photos show as grey tiles?</strong></summary>
-
-Picture previews need the optional Pillow package, and HEIC pictures (what iPhones take by default) also need pillow-heif: `pip install Pillow pillow-heif`. Videos always show a play symbol. The files themselves are never affected; you can still open, save, export and extract them.
-</details>
-
-<details>
-<summary><strong>Does this work with iCloud backups?</strong></summary>
-
-No. iOS Backup Explorer only works with **local backups** (encrypted or not) created by iTunes, Finder, or the Apple Devices app. iCloud backups are stored on Apple's servers and cannot be accessed by this tool.
-</details>
-
-<details>
-<summary><strong>Does it work with unencrypted backups?</strong></summary>
-
-Yes. Unencrypted backups are detected automatically and opened without a password, read-only: the backup folder is never modified and no temporary copy of its index is made. They must use the `Manifest.db` layout (iTunes/Finder backups of iOS 10 and later); very old `Manifest.mbdb` backups are not supported.
-
-A folder that was already decrypted and extracted (folders named `HomeDomain`, `CameraRollDomain` and so on, with no `Manifest.db`) can be opened in the same way. Files are read where they are and the folder is never changed; the dates shown for files are those of the extracted files, because the original backup's dates are not kept by extraction.
-
-Note that Apple leaves some data out of unencrypted backups (for example Health data and saved passwords), so you may find less in them than in an encrypted backup of the same device.
+A backup holds what was on the phone when it was made: iCloud-only data, unencrypted-backup omissions and password-locked notes are not there, and the apps' layouts change between iOS versions. See [Troubleshooting](docs/TROUBLESHOOTING.md#a-tab-is-missing). If something that is in your backup does not show, please report it, without sending your data.
 </details>
 
 <details>
 <summary><strong>What iOS versions are supported?</strong></summary>
 
-iOS Backup Explorer supports encrypted backups from **iOS 13 and newer** (including iOS 17, 18). This covers iPhone 6s and later.
-</details>
-
-<details>
-<summary><strong>I forgot my backup password. Can iOS Backup Explorer help?</strong></summary>
-
-iOS Backup Explorer cannot recover forgotten passwords. However:
-- **macOS users:** Check Keychain Access (search for "iOS Backup")
-- **All users:** Try common passwords you may have used, or check your password manager
-- As a last resort, you can [reset your backup password](https://support.apple.com/en-us/102566) by resetting all settings on your iPhone (this won't delete your data, but you'll need to create a new backup)
-</details>
-
-<details>
-<summary><strong>Some files show warnings during extraction. Is that normal?</strong></summary>
-
-Yes. Some files (especially app databases) may show size mismatch warnings. This is normal and usually means the file was being written to when the backup was created. The extracted data is still usable in most cases.
-</details>
-
-<details>
-<summary><strong>Can I use this on Linux?</strong></summary>
-
-Yes! Install `python3-tk` (`sudo apt install python3-tk` on Ubuntu/Debian) and follow the normal installation steps. You'll need to copy your backup folder from a Windows or Mac machine first.
+Encrypted backups from **iOS 13 and newer** (including iOS 17 and 18); unencrypted backups with the `Manifest.db` layout (iOS 10 and newer). Details in [Where the data comes from](docs/DATA_SOURCES.md#ios-versions).
 </details>
 
 ---
 
 ## Contributing
 
-Contributions are welcome! Whether it's bug fixes, new features, or documentation improvements.
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Commit your changes: `git commit -m 'Add amazing feature'`
-4. Push to the branch: `git push origin feature/amazing-feature`
-5. Open a Pull Request
-
-Please keep in mind:
-- **Security is paramount.** Any PR that adds network access will be rejected.
-- **Keep it simple.** The app should stay a few plain Python files that anyone can audit, with no build step.
-- **Test on multiple platforms** if possible.
-- **Run the tests** before opening a PR: `python -m unittest discover -s tests -t .` (they build a small encrypted backup and run it through the real decryption library).
-- **Licensing and credit.** By contributing you agree your contribution is licensed under
-  AGPL-3.0-or-later. Never remove or alter the original author's copyright notices
-  ([LICENSE-MIT](LICENSE-MIT), [NOTICE](NOTICE), [AUTHORS](AUTHORS)); CI enforces this.
+Contributions are welcome, and the rules are short: **no network access**, **keep it auditable**, **never put real data anywhere** (tests use invented data), and **never remove the original author's credit**. See [CONTRIBUTING.md](CONTRIBUTING.md), the [development guide](docs/DEVELOPMENT.md) and [Testing](docs/TESTING.md). Releases follow [Semantic Versioning](docs/VERSIONING.md).
 
 ---
 
@@ -387,7 +227,7 @@ sudo lsof -i -P | grep python
 # Option 3: Monitor network activity (Windows PowerShell)
 Get-NetTCPConnection | Where-Object { $_.OwningProcess -eq (Get-Process python).Id }
 
-# Option 4: Read the source — it's plain Python, about 10,000 lines in all.
+# Option 4: Read the source — it's plain Python, and the app contains no networking code.
 ```
 
 ---

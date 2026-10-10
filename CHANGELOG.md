@@ -7,43 +7,33 @@ Eyyup (Eric) Gunes. Entries below the fork point record the original project's h
 
 ## [Unreleased]
 
-### Changed
-- Hard fork of BackupLens 1.0.0, renamed to **iOS Backup Explorer**
-- Relicensed from MIT to **AGPL-3.0-or-later**; the original MIT notice is preserved in
-  `LICENSE-MIT` and `NOTICE`, and the original author is credited in `AUTHORS`
-- Renamed `backuplens.py` to `ios_backup_explorer.py` and the main class to `BackupExplorer`
+Nothing yet.
 
-### Fixed
-- Dates before 1970 (such as the placeholder year birthdays use) made some views fail on Windows; they are now shown correctly
-- Buttons that cannot be used now look disabled, the password box greys out for an unencrypted backup, and the buttons under the file list were squashed away on a short window
-- An error raised inside the library's manifest cursor could keep the library object alive (through its traceback) until it was finalised on another thread, leaving the decrypted temporary `Manifest.db` behind. The backup is now cleaned up explicitly on the thread that owns it
-- **Extracted files were the still-encrypted backup blobs** (unplayable videos, unreadable
-  databases). Extraction passed `domain=` instead of `domain_like=` to `iphone_backup_decrypt`;
-  the resulting `TypeError` was swallowed and the raw encrypted file was copied out instead.
-  Files are now really decrypted, and a failure is reported instead of silently copying
-  encrypted data
-- `SQLite objects created in a thread can only be used in that same thread` when browsing a
-  backup: every backup operation now runs on one dedicated worker thread
-- Errors while loading files were replaced by `NameError: cannot access free variable 'e'`,
-  hiding the real message
-- File lists were silently cut off at 10,000 rows, and search only filtered those rows. The
-  status bar now says when a list is truncated, and search queries the whole backup
-- Backup passwords with leading or trailing spaces were rejected (the password was stripped)
-- Extraction failed for names Windows cannot store (`? : *` ...) and for paths over 260
-  characters, such as Notes attachments
-- Auto-detect missed backups made by Microsoft Store iTunes / the Apple Devices app
-  (`%USERPROFILE%\Apple\MobileSync\Backup`)
-- Startup crash on macOS when the OS refuses to list `MobileSync/Backup`; the app now asks you
-  to use Browse instead (also reported and fixed upstream in
-  [mrgunes/BackupLens#5](https://github.com/mrgunes/BackupLens/pull/5))
-- Wrong-password detection no longer matches any error that merely contains "key"
-- Two domains differing only at a `_`/`%` could extract the wrong domain's file
-- Zero-byte files failed to extract
-- The decrypted temporary `Manifest.db` was never deleted; it is now removed on exit or when
-  another backup is opened, and `SECURITY.md` documents it
-- Extraction now shows progress and lists which files failed and why
+## [2.0.0] - 2026-10-10
+
+The first release of iOS Backup Explorer as a project of its own, and a major
+version: everything below is new since BackupLens 1.0.0, the project this
+is a hard fork of. In short:
+
+- the app is split into a file manager and **one tab for each app on the
+  phone** (21 of them: Messages, Notes, Calls, Contacts, Photos, Voice Memos,
+  Safari, Calendar, Voicemail, Reminders, Network, Accounts, Screen Time,
+  Health, Maps, Podcasts, Books, Recents, Privacy, Apps and iCloud Drive),
+  each able to export what it shows;
+- **unencrypted backups** and **already-extracted backup folders** open as
+  well as encrypted ones, and a backup can be **mounted** as a read-only drive;
+- extraction was fixed (it used to copy still-encrypted files) and made
+  faster and safer;
+- relicensed from MIT to **AGPL-3.0-or-later**, with the original author's
+  copyright and credit preserved.
+
+From now on versions follow [Semantic Versioning](https://semver.org); see
+[docs/VERSIONING.md](docs/VERSIONING.md).
 
 ### Added
+- **Full documentation** in [`docs/`](docs/README.md): installation, getting started, the file browser, a page for every group of tabs, exporting, where each tab's data comes from (and how well it was checked), Health data (how it is read and what is not covered yet), the FAQ, troubleshooting, how an iPhone backup is built, a glossary, the architecture, a development guide, testing, versioning and releases, plus `CONTRIBUTING.md`, a pull request template and updated issue templates. All pictures are screenshots of the program on an invented demo backup, free of any metadata
+- **A demo backup** (`tools/make_demo_backup.py`): an invented backup of an invented person, with data for all 21 tabs, to try the program on and to take the documentation's screenshots (`tools/make_screenshots.py`) from
+- **Versioning from this release on**: Semantic Versioning, the version in one place (`__version__`), `python ios_backup_explorer.py --version`, and a check (`tools/check_version.py`, run in CI and in the tests) that the changelog and the README badge agree with it
 - The row of tabs shrinks (less padding, a smaller font) to fit when there are many of them
 - **Privacy, Apps, Recents and iCloud Drive tabs.** Which apps may use the camera, photos, local network and so on (and when that was set); the apps the home screen knew of; the people last called, messaged or emailed; and the names of the files that were in iCloud Drive. Privacy also lists which apps may use the location
 - **A Screen Time tab.** Time per day and week, per app and per website, pickups and notifications, and the most recent hours, from the small files the phone keeps for each. Days are dated where the phone was (found from when its days begin), and a week's total is the sum of its days
@@ -77,6 +67,43 @@ Eyyup (Eric) Gunes. Entries below the fork point record the original project's h
 - Test suite (`tests/`) that builds a real encrypted backup and runs it end to end, plus CI
 - `NOTICE`, `AUTHORS`, `LICENSE-MIT`, SPDX license headers
 - CI check that fails if the original author's attribution is removed
+
+### Changed
+- Hard fork of BackupLens 1.0.0, renamed to **iOS Backup Explorer**
+- The README now shows this program (screenshots of the invented demo backup) instead of a screenshot of the original BackupLens 1.0.0 interface, and is shorter, pointing to the new documentation. The Python version needed is stated as 3.9 or newer, which is what the tests cover
+- Relicensed from MIT to **AGPL-3.0-or-later**; the original MIT notice is preserved in
+  `LICENSE-MIT` and `NOTICE`, and the original author is credited in `AUTHORS`
+- Renamed `backuplens.py` to `ios_backup_explorer.py` and the main class to `BackupExplorer`
+
+### Fixed
+- Dates before 1970 (such as the placeholder year birthdays use) made some views fail on Windows; they are now shown correctly
+- Buttons that cannot be used now look disabled, the password box greys out for an unencrypted backup, and the buttons under the file list were squashed away on a short window
+- An error raised inside the library's manifest cursor could keep the library object alive (through its traceback) until it was finalised on another thread, leaving the decrypted temporary `Manifest.db` behind. The backup is now cleaned up explicitly on the thread that owns it
+- **Extracted files were the still-encrypted backup blobs** (unplayable videos, unreadable
+  databases). Extraction passed `domain=` instead of `domain_like=` to `iphone_backup_decrypt`;
+  the resulting `TypeError` was swallowed and the raw encrypted file was copied out instead.
+  Files are now really decrypted, and a failure is reported instead of silently copying
+  encrypted data
+- `SQLite objects created in a thread can only be used in that same thread` when browsing a
+  backup: every backup operation now runs on one dedicated worker thread
+- Errors while loading files were replaced by `NameError: cannot access free variable 'e'`,
+  hiding the real message
+- File lists were silently cut off at 10,000 rows, and search only filtered those rows. The
+  status bar now says when a list is truncated, and search queries the whole backup
+- Backup passwords with leading or trailing spaces were rejected (the password was stripped)
+- Extraction failed for names Windows cannot store (`? : *` ...) and for paths over 260
+  characters, such as Notes attachments
+- Auto-detect missed backups made by Microsoft Store iTunes / the Apple Devices app
+  (`%USERPROFILE%\Apple\MobileSync\Backup`)
+- Startup crash on macOS when the OS refuses to list `MobileSync/Backup`; the app now asks you
+  to use Browse instead (also reported and fixed upstream in
+  [mrgunes/BackupLens#5](https://github.com/mrgunes/BackupLens/pull/5))
+- Wrong-password detection no longer matches any error that merely contains "key"
+- Two domains differing only at a `_`/`%` could extract the wrong domain's file
+- Zero-byte files failed to extract
+- The decrypted temporary `Manifest.db` was never deleted; it is now removed on exit or when
+  another backup is opened, and `SECURITY.md` documents it
+- Extraction now shows progress and lists which files failed and why
 
 ## [1.0.0 — BackupLens, original project] - 2026-04-03
 
