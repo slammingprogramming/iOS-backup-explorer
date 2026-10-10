@@ -24,6 +24,7 @@ clean under it.
 | **Backup tests** | `test_backup_session.py`, `test_unencrypted.py`, `test_folder_backup.py`, `test_gui*.py`, `test_mount.py` | Build a real encrypted backup (`fixture_backup.py`, with a real key bag and AES) and run it through the real decryption library; open unencrypted and extracted folders; the file browser; mounting |
 | **Helpers** | `tests/gui_apps.py`, `tests/keyed_builder.py` | `AppGuiCase`; a writer of `NSKeyedArchiver` lists |
 | **Checks** | `tools/check_attribution.py`, `tools/check_version.py` | Run in CI, and from `test_version.py` |
+| **Release** | `test_release.py` | The release notes, the tag check and the archives (`tools/release.py`), and the shape of `release.yml` (who may write, what runs first) |
 
 ### `AppGuiCase`
 
@@ -95,4 +96,6 @@ Keep what you see in your own notes. **Never commit it, paste it, or post it.**
 3.9 and 3.13, once without the optional packages and once with them.
 `attribution.yml` runs `tools/check_attribution.py` (the original author's credit
 and the licence notices must be intact) and `tools/check_version.py` (the
-version is consistent).
+version is consistent). `release.yml` runs both of these workflows again on a
+tagged commit before it publishes a release
+([Versioning and releases](VERSIONING.md)).

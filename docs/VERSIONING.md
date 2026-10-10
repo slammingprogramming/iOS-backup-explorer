@@ -60,11 +60,39 @@ people and upstream issues where they shaped it.
 7. **Tag** it, signed and annotated, and push both:
    `git tag -s vX.Y.Z -m "iOS Backup Explorer X.Y.Z"` then `git push` and
    `git push origin vX.Y.Z`.
-8. **Publish a GitHub release** from the tag, using the changelog section as the
-   notes.
+8. **Watch the release workflow** (Actions, *Release*). Pushing the tag is the
+   whole release: GitHub Actions does the rest (see below).
 
 Never move or reuse a published tag. If a release is wrong, fix it in a new
 patch release.
+
+## What the release workflow does
+
+`.github/workflows/release.yml` runs when a tag like `v2.1.0` or `v2.1.0-rc.1`
+is pushed. Its steps are in `tools/release.py`, which you can run yourself:
+
+| Job | What happens |
+|---|---|
+| **verify** | The tag must be `v` plus `__version__`, the changelog must have a section for it and the README badge must agree (`python tools/release.py verify vX.Y.Z`), and the tagged commit must be on the default branch. Otherwise nothing is published |
+| **tests**, **attribution** | The same checks as for every push ([tests.yml](../.github/workflows/tests.yml), [attribution.yml](../.github/workflows/attribution.yml)) run on the tagged commit. A failure stops the release |
+| **publish** | Builds `iOS-Backup-Explorer-X.Y.Z.zip` and `.tar.gz` from the tag with `git archive` (so only committed files, the same bytes every time) and a `SHA256SUMS` file; writes the notes from the changelog section, a short guide to running the download and a link comparing with the previous release; and creates the GitHub release. A version with a suffix (`-rc.1`) is marked a *pre-release*; any other is marked *latest* |
+
+Only the **publish** job can write to the repository (`contents: write`); the
+other jobs only read. The workflow never creates, moves or deletes a tag.
+
+To try the pieces locally from a clone:
+
+```bash
+python tools/release.py verify v2.1.0       # is the tag releasable?
+python tools/release.py notes  v2.1.0       # the notes the release will have
+python tools/release.py build  v2.1.0       # the files, in dist/ (the tag must exist)
+```
+
+**If publishing fails** after the tag is pushed (a network error, say), run the
+*Release* workflow again from the tag: Actions, *Release*, *Run workflow*, with
+"Use workflow from" set to the tag. It updates the release in place. If the
+*verify* or test jobs fail, the tag is wrong: do not move it; fix the problem
+and make a new patch release.
 
 ## Tags
 

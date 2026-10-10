@@ -24,7 +24,8 @@ correct.
          <app>_export.py       exporters, for the apps that have their own
          common.py, export_util.py, dialogs.py, keyed_archive.py, ics.py,
          imaging.py, audio_tools.py, pdf_export.py   shared helpers
- tools/                        checks and the demo backup / screenshot makers
+ tools/                        checks, the release tool, and the demo backup /
+                               screenshot makers
  tests/                        the test suite and its generated fixtures
 ```
 

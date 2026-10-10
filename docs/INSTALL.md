@@ -25,6 +25,12 @@ pip install -r requirements.txt
 python ios_backup_explorer.py
 ```
 
+Or, without git, download **iOS-Backup-Explorer-X.Y.Z.zip** (or `.tar.gz`) from
+the [releases page](https://github.com/slammingprogramming/iOS-backup-explorer/releases),
+unpack it and run the same two commands inside the folder. The release also has a
+`SHA256SUMS` file to check the download against (`sha256sum -c SHA256SUMS`, or
+`Get-FileHash <file>` in PowerShell); see [Versioning and releases](VERSIONING.md).
+
 To see the version without opening the window:
 
 ```bash
