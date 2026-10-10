@@ -7,6 +7,15 @@ Eyyup (Eric) Gunes. Entries below the fork point record the original project's h
 
 ## [Unreleased]
 
+## [2.0.1-rc.3] - 2026-10-10
+
+The third try. rc.2 got further (the tests pass on Linux with Python 3.9) but
+was stopped by two tests that only fail on GitHub's machines. The program is
+the same as rc.2.
+
+### Fixed
+- Two tests of the test suite itself: one compared file paths without allowing for Windows' short folder names, and one asked for the logged-in user where there is no terminal
+
 ## [2.0.1-rc.2] - 2026-10-10
 
 The second try at a pre-release through the release workflow: the first

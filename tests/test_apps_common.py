@@ -156,14 +156,15 @@ class SqliteSourceTests(unittest.TestCase):
         self.addCleanup(source.close)
         self.assertEqual(source.run(lambda conn: "ran").result(10), "ran")
         # ... and can say which file it is without asking SQLite to read it
-        self.assertEqual(source.run(common.own_path).result(10),
-                         os.path.abspath(path))
+        self.assertTrue(os.path.samefile(source.run(common.own_path).result(10),
+                                         path))
 
     def test_own_path_of_a_plain_connection_asks_sqlite(self):
         conn = sqlite3.connect(self.path)
         self.addCleanup(conn.close)
-        self.assertEqual(os.path.normcase(common.own_path(conn)),
-                         os.path.normcase(os.path.realpath(self.path)))
+        # (the same file, however the system spells its folder: Windows
+        # has short and long names for it)
+        self.assertTrue(os.path.samefile(common.own_path(conn), self.path))
 
     def test_table_columns(self):
         columns = self.source.run(common.table_columns, "t").result(10)

@@ -3,6 +3,7 @@
 """The invented demo backup (tools/make_demo_backup.py) makes a backup that
 the program opens, with every tab, and that holds only invented data."""
 
+import getpass
 import importlib.util
 import io
 import os
@@ -92,8 +93,11 @@ class DemoBackupTests(unittest.TestCase):
 
     def test_nothing_in_it_names_the_computer_it_was_made_on(self):
         home = os.path.expanduser("~")
-        names = {os.path.basename(home), os.getlogin() if hasattr(
-            os, "getlogin") else ""} - {""}
+        try:
+            login = os.getlogin()
+        except (AttributeError, OSError):       # no terminal (CI)
+            login = ""
+        names = {os.path.basename(home), getpass.getuser(), login} - {""}
         for folder, _dirs, files in os.walk(self.root):
             for name in files:
                 data = (Path(folder) / name).read_bytes()
