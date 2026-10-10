@@ -76,8 +76,10 @@ it again.
 
 ## When to refresh them
 
-When a tab's look changes, a tab is added, or the version changes (the title
-bar shows the version). Run the two commands, look at every picture, and commit
+When a tab's look changes, a tab is added, or the major or minor version
+changes (the title bar shows the version; the pictures may keep showing the
+number of an earlier patch release, such as 2.0.0 in 2.0.1, as long as the
+window looks the same). Run the two commands, look at every picture, and commit
 the changed PNGs. Look at them before publishing: the tool cannot know whether a
 future tab shows something it should not.
 

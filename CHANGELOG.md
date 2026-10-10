@@ -7,6 +7,18 @@ Eyyup (Eric) Gunes. Entries below the fork point record the original project's h
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-10-10
+
+The first release made by GitHub Actions, and a fix for tabs that read only property lists. Three pre-releases (2.0.1-rc.1 to rc.3, below) tried the release workflow; only rc.3 was published.
+
+### Added
+- **Releases are made by GitHub Actions.** Pushing a version tag (`v2.1.0`) checks that the tag matches `__version__` and the changelog, runs the tests, and publishes a GitHub release with the changelog section as its notes, a `.zip` and a `.tar.gz` of the tagged files, and a `SHA256SUMS` file; a tag with a suffix (`v2.1.0-rc.1`) makes a pre-release. The steps are in `tools/release.py`, described in [docs/VERSIONING.md](docs/VERSIONING.md)
+
+### Fixed
+- **Tabs whose data is only property lists did not load with the older SQLite that comes with Python 3.9 on Windows**: Screen Time, and Network, Accounts, Health and Privacy when the backup held only plists and no database, showed "file is not a database". The copy of the main file is no longer required to be a database
+- A backup folder whose file or domain names hold a backslash is refused on every system, as it was on Windows (on Linux and macOS the name was accepted)
+- Python 3.9 compatibility of the release tool and of two window tests; two tests of the suite that failed only on GitHub's machines
+
 ## [2.0.1-rc.3] - 2026-10-10
 
 The third try. rc.2 got further (the tests pass on Linux with Python 3.9) but

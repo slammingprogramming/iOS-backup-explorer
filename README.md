@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-2.0.1--rc.3-blue" alt="Version 2.0.1-rc.3">
+  <img src="https://img.shields.io/badge/version-2.0.1-blue" alt="Version 2.0.1">
   <a href="#installation"><img src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-blue" alt="Platform"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0--or--later-blue" alt="License: AGPL-3.0-or-later"></a>
   <a href="#security--privacy"><img src="https://img.shields.io/badge/network-100%25%20offline-brightgreen" alt="Offline"></a>
