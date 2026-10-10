@@ -7,6 +7,17 @@ Eyyup (Eric) Gunes. Entries below the fork point record the original project's h
 
 ## [Unreleased]
 
+## [2.0.1-rc.2] - 2026-10-10
+
+The second try at a pre-release through the release workflow: the first
+(2.0.1-rc.1) was stopped, as designed, by tests that failed on Python 3.9 and
+on Linux. Nothing was published for it.
+
+### Fixed
+- **Tabs whose data is only property lists did not load with the older SQLite that comes with Python 3.9 on Windows**: Screen Time, and Network, Accounts, Health, Privacy when the backup held only plists and no database, showed "file is not a database". The copy of the main file is no longer required to be a database
+- A backup folder whose file or domain names hold a backslash is refused on every system, as it was on Windows (on Linux and macOS the name was accepted)
+- Python 3.9 compatibility of the release tool and two window tests
+
 ## [2.0.1-rc.1] - 2026-10-10
 
 A pre-release that tries out the new release workflow. The program itself is

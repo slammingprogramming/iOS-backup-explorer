@@ -25,6 +25,7 @@ import re
 import sqlite3
 
 from . import keyed_archive
+from .common import own_path
 from .export_util import describe_duration, safe_filename, write_text_file
 from .records import Column, Dataset, fetch_dicts
 
@@ -110,7 +111,7 @@ def voicemail_rows(conn, book, index, folder=None):
     if folder is None:
         try:
             folder = os.path.dirname(
-                conn.execute("PRAGMA database_list").fetchone()[2])
+                own_path(conn))
         except sqlite3.Error:
             folder = ""
     audio, words = folder_files(index)

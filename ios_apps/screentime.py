@@ -29,7 +29,7 @@ import plistlib
 from datetime import datetime, timezone
 
 from .appnames import app_name
-from .common import utc_datetime
+from .common import own_path, utc_datetime
 from .records import Column, Dataset
 
 FOLDER = ("SysSharedContainerDomain-systemgroup.com.apple.DeviceActivity/"
@@ -334,5 +334,5 @@ class ScreenTimeReader:
         self.conn = conn
 
     def datasets(self):
-        own = self.conn.execute("PRAGMA database_list").fetchone()[2]
+        own = own_path(self.conn)
         return datasets(os.path.dirname(own))

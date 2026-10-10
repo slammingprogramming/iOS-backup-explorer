@@ -312,6 +312,7 @@ class ChatViewTests(MessagesGuiCase):
     def test_resizing_the_window_wraps_the_chat_again(self):
         tab = self.tab
         with mock.patch.object(tab, "_rewrap") as rewrap:
+            rewrap.__name__ = "_rewrap"      # Tk (before 3.10) wants one
             tab._on_resize(mock.Mock(width=tab._rendered_width + 5))
             self.assertIsNone(tab._resize_job)       # too small a change
             tab._on_resize(mock.Mock(width=tab._rendered_width + 300))
@@ -453,6 +454,7 @@ class SearchTests(MessagesGuiCase):
 
     def test_typing_is_debounced(self):
         with mock.patch.object(self.tab, "_run_search") as run:
+            run.__name__ = "_run_search"     # Tk (before 3.10) wants one
             for text in ("s", "sn", "sna"):
                 self.tab.search_var.set(text)
             self.assertEqual(run.call_count, 0)

@@ -28,7 +28,7 @@ and is tested on generated databases. Whatever is missing is left empty.
 
 import os
 
-from .common import apple_time, format_datetime
+from .common import own_path, apple_time, format_datetime
 from .records import Column, Dataset, fetch_dicts, open_copies
 
 IBOOKS = "AppDomainGroup-group.com.apple.iBooks/Documents"
@@ -219,6 +219,6 @@ class BooksReader:
         self.conn, self.index = conn, index
 
     def datasets(self):
-        own = self.conn.execute("PRAGMA database_list").fetchone()[2]
+        own = own_path(self.conn)
         return datasets(self.conn, os.path.dirname(own),
                         discover(self.index))

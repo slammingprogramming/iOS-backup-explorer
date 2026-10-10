@@ -145,6 +145,26 @@ class SqliteSourceTests(unittest.TestCase):
             lambda c: c.execute("SELECT COUNT(*) FROM t").fetchone()[0])
         self.assertEqual(total.result(10), 3)
 
+    def test_a_file_that_is_not_a_database_still_runs_the_function(self):
+        # Screen Time's "main file" is a property list; older SQLite
+        # versions refuse it at the first pragma, which must not stop a
+        # loader that never queries it
+        path = os.path.join(self.tmp, "not-a-database.plist")
+        with open(path, "wb") as stream:
+            stream.write(b"bplist00" + b"x" * 200)
+        source = common.SqliteSource(path)
+        self.addCleanup(source.close)
+        self.assertEqual(source.run(lambda conn: "ran").result(10), "ran")
+        # ... and can say which file it is without asking SQLite to read it
+        self.assertEqual(source.run(common.own_path).result(10),
+                         os.path.abspath(path))
+
+    def test_own_path_of_a_plain_connection_asks_sqlite(self):
+        conn = sqlite3.connect(self.path)
+        self.addCleanup(conn.close)
+        self.assertEqual(os.path.normcase(common.own_path(conn)),
+                         os.path.normcase(os.path.realpath(self.path)))
+
     def test_table_columns(self):
         columns = self.source.run(common.table_columns, "t").result(10)
         self.assertEqual(columns, {"n"})

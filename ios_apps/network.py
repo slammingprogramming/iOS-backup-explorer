@@ -28,7 +28,7 @@ here look them up by name in that one folder.
 import os
 import plistlib
 
-from .common import apple_time, format_datetime, unix_time
+from .common import own_path, apple_time, format_datetime, unix_time
 from .records import Column, Dataset, open_copies, sqlite_rows
 
 WIFI_KNOWN = "SystemPreferencesDomain/com.apple.wifi.known-networks.plist"
@@ -241,7 +241,7 @@ def _usage_note(rows):
 
 
 def datasets(conn, index):
-    folder = os.path.dirname(conn.execute("PRAGMA database_list").fetchone()[2])
+    folder = os.path.dirname(own_path(conn))
     paths = [p for p in (BLUETOOTH_PAIRED, BLUETOOTH_OTHER, DATA_USAGE)
              if index is not None and index.get(p) is not None]
     result = []

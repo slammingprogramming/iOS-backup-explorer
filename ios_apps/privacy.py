@@ -28,7 +28,7 @@ import os
 import plistlib
 import re
 
-from .common import apple_time, format_datetime
+from .common import own_path, apple_time, format_datetime
 from .records import Column, Dataset, sqlite_rows
 
 DATABASE = "HomeDomain/Library/TCC/TCC.db"
@@ -165,7 +165,7 @@ class PrivacyReader:
         self.conn = conn
 
     def datasets(self):
-        own = self.conn.execute("PRAGMA database_list").fetchone()[2]
+        own = own_path(self.conn)
         folder = os.path.dirname(own)
         found = [] if own.lower().endswith(".plist") else datasets(self.conn)
         return found + location_datasets(folder)

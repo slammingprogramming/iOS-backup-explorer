@@ -28,7 +28,7 @@ import os
 import sqlite3
 from dataclasses import dataclass, field
 
-from .common import (apple_time, format_datetime, table_columns,  # noqa: F401
+from .common import (own_path, apple_time, format_datetime, table_columns,  # noqa: F401
                      utc_datetime)
 from .export_util import describe_duration, describe_size
 
@@ -149,7 +149,7 @@ def open_copies(conn, backup_paths):
     ``AppPanel.DATABASES``). *conn* itself stands in for its own file; the
     others are opened read-only and closed again afterwards. Used on the
     database thread."""
-    own = conn.execute("PRAGMA database_list").fetchone()[2]
+    own = own_path(conn)
     folder = os.path.dirname(own)
     opened, found = [], {}
     try:

@@ -170,6 +170,22 @@ def locate_database(index, path):
     return items
 
 
+class _Connection(sqlite3.Connection):
+    """A connection that remembers the file it was opened on."""
+    file_path = None
+
+
+def own_path(conn):
+    """The file a connection was opened on. For a connection made by
+    ``SqliteSource`` it is remembered, because asking SQLite
+    (``PRAGMA database_list``) reads the file, and the older SQLite that
+    comes with some Pythons refuses a file that is not a database, such as
+    the property lists Screen Time and others are read from."""
+    return conn.file_path if isinstance(conn, _Connection) \
+        and conn.file_path else \
+        conn.execute("PRAGMA database_list").fetchone()[2]
+
+
 class SqliteSource:
     """Runs functions against a working copy of a database, all on one
     dedicated thread (an SQLite connection may only be used on the thread
@@ -188,8 +204,16 @@ class SqliteSource:
 
     def _call(self, func, args):
         if self._conn is None:
-            self._conn = sqlite3.connect(self.path)
-            self._conn.execute("PRAGMA query_only = ON")
+            self._conn = sqlite3.connect(self.path, factory=_Connection)
+            self._conn.file_path = os.path.abspath(self.path)
+            try:
+                self._conn.execute("PRAGMA query_only = ON")
+            except sqlite3.DatabaseError:
+                # A tab whose main file is a property list, not a database
+                # (Screen Time, or Network with only Wi-Fi): older SQLite
+                # versions read the file for this pragma and refuse; the
+                # tab's loader never queries it.
+                pass
         return func(self._conn, *args)
 
     def close(self):

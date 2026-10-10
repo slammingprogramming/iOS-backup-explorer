@@ -124,8 +124,9 @@ def build(version, ref, out, root=ROOT):
              f"--prefix={prefix}/", "-o", str(target), ref], check=True)
         made.append(target)
     sums = out / "SHA256SUMS"
-    sums.write_text("".join(f"{sha256(p)}  {p.name}\n" for p in made),
-                    encoding="utf-8", newline="\n")
+    # (open(), not Path.write_text(newline=), which needs Python 3.10)
+    with open(sums, "w", encoding="utf-8", newline="\n") as stream:
+        stream.write("".join(f"{sha256(p)}  {p.name}\n" for p in made))
     return made + [sums]
 
 

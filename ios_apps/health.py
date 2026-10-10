@@ -44,7 +44,7 @@ import re
 from datetime import datetime
 
 from . import keyed_archive
-from .common import apple_time, format_datetime, utc_datetime
+from .common import own_path, apple_time, format_datetime, utc_datetime
 from .export_util import describe_duration, write_text_file
 from .records import Column, Dataset, open_copies, sqlite_rows
 
@@ -604,7 +604,7 @@ class HealthReader:
         self.conn = conn
 
     def datasets(self):
-        own = self.conn.execute("PRAGMA database_list").fetchone()[2]
+        own = own_path(self.conn)
         folder = os.path.dirname(own)
         if own.lower().endswith(".archive"):     # (no Health database)
             return medical_only(folder)

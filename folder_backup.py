@@ -145,7 +145,9 @@ class FolderBackend:
         """Where a file is on disk. *domain* and *rel_path* come from the
         index built from the disk, but are checked all the same."""
         parts = [domain] + rel_path.split("/")
-        separators = [x for x in (os.sep, os.altsep) if x]
+        # a backslash counts everywhere: it separates folders on Windows, and
+        # a name holding one could not be written out there
+        separators = {x for x in (os.sep, os.altsep, "\\") if x}
         if any(p in ("", ".", "..") or any(x in p for x in separators)
                for p in parts):
             raise ValueError("unsafe path in the extracted backup")

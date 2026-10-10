@@ -30,7 +30,7 @@ import os
 import plistlib
 import re
 
-from .common import apple_time, format_datetime, unix_time
+from .common import own_path, apple_time, format_datetime, unix_time
 from .records import Column, Dataset, sqlite_rows
 
 ACCOUNTS = "HomeDomain/Library/Accounts/Accounts3.sqlite"
@@ -276,6 +276,6 @@ class AccountsReader:
         self.backup_folder = backup_folder
 
     def datasets(self):
-        own = self.conn.execute("PRAGMA database_list").fetchone()[2]
+        own = own_path(self.conn)
         return datasets(self.conn, os.path.dirname(own), self.backup_folder,
                         not own.lower().endswith(".plist"))
