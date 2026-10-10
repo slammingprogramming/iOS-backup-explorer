@@ -88,7 +88,8 @@ class AppPanel(ttk.Frame):
         if found:
             self.DATABASES = tuple(found)
         path = self.database_path()
-        future = self.ctx.copy_database(path, self.FOLDER) if path else None
+        future = self.ctx.copy_database(
+            path, self.FOLDER, self.local_name(path)) if path else None
         if future is None:
             if self.OPTIONAL:
                 self.on_loaded(self.load_without_database())
@@ -100,7 +101,8 @@ class AppPanel(ttk.Frame):
         self._last_copy = None
         for other in self.DATABASES:
             if other != path:
-                copy = self.ctx.copy_database(other, self.FOLDER)
+                copy = self.ctx.copy_database(other, self.FOLDER,
+                                              self.local_name(other))
                 self._last_copy = copy or self._last_copy
         post_when_done(self.ctx.post, future, self._database_copied)
 
@@ -122,11 +124,18 @@ class AppPanel(ttk.Frame):
                 return path
         return None
 
+    def local_name(self, backup_path):
+        """What the working copy of *backup_path* is called, or None for
+        the file's own name. A tab that reads files of the same name from
+        different folders gives each its own."""
+        return None
+
     def local_copy(self, backup_path):
         """Where the working copy of the database at *backup_path* is (it
         is copied next to the main one), or None if there is none."""
         path = os.path.join(self.ctx.workspace.subfolder(self.FOLDER),
-                            os.path.basename(backup_path))
+                            self.local_name(backup_path)
+                            or os.path.basename(backup_path))
         return path if os.path.isfile(path) else None
 
     def load_without_database(self):
@@ -158,8 +167,9 @@ class AppPanel(ttk.Frame):
             self._with_contacts(None)
 
     def _with_contacts(self, book):
+        main = self.database_path()
         path = os.path.join(self.ctx.workspace.subfolder(self.FOLDER),
-                            os.path.basename(self.database_path()))
+                            self.local_name(main) or os.path.basename(main))
         self.source = SqliteSource(path)
         holder, loader, ctx_index = self._holder, self.LOADER, self.ctx.index
 

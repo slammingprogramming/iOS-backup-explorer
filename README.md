@@ -51,8 +51,8 @@ You made an encrypted iPhone backup with iTunes, Finder, or the Apple Devices ap
 - **Decrypt encrypted backups** — Supports iOS 13+ encrypted local backups
 - **Unencrypted backups too** — Detected automatically; no password needed
 - **Backups that are already extracted** — A folder of `HomeDomain`, `CameraRollDomain`, `AppDomain-...` folders (what other tools and *Extract Entire Backup* leave behind) opens like a backup, read-only, with every tab working
-- **Browse your phone's apps the way the phone shows them** — A tab each for **Messages** (chat bubbles, tapbacks, attachments), **Notes** (formatting, checklists, pictures, folders), **Calls**, **Contacts**, **Photos** (a thumbnail grid with albums), **Voice Memos**, **Safari** (history, bookmarks, reading list, open tabs), **Calendar**, **Voicemail**, **Reminders**, **Network** (Wi-Fi, Bluetooth, data used by apps) and **Accounts**, with names from your address book and search everywhere
-- **Export what you find in the format you need** — Text, Markdown, web pages, PDF, CSV spreadsheets, JSON, vCard (.vcf) for contacts, iCalendar (.ics) for events and reminders, audio with transcripts for voicemail, a bookmarks file any browser imports, JPEG for HEIC photos, web galleries. **The original files can always be extracted untouched**, too
+- **Browse your phone's apps the way the phone shows them** — A tab each for **Messages** (chat bubbles, tapbacks, attachments), **Notes** (formatting, checklists, pictures, folders), **Calls**, **Contacts**, **Photos** (a thumbnail grid with albums), **Voice Memos**, **Safari** (history, bookmarks, reading list, open tabs), **Calendar**, **Voicemail**, **Reminders**, **Network** (Wi-Fi, Bluetooth, data used by apps), **Accounts**, **Screen Time**, **Health** (activity, workouts and their routes, body measurements, sleep, Medical ID), **Maps**, **Podcasts**, **Books**, **Privacy** (app permissions), **Apps**, **Recents** and **iCloud Drive**, with names from your address book and search everywhere
+- **Export what you find in the format you need** — Text, Markdown, web pages, PDF, CSV spreadsheets, JSON, vCard (.vcf) for contacts, iCalendar (.ics) for events and reminders, audio with transcripts for voicemail, GPX for workout routes and saved places, a bookmarks file any browser imports, JPEG for HEIC photos, web galleries. **The original files can always be extracted untouched**, too
 - **A real file manager** — Folders on the left, files on the right, with back / forward / up, a location bar you can type a path into, and file-type icons
 - **Sort by anything** — Click Name, Kind, Size, Date Modified or Date Created (clicking again reverses it); names sort naturally (`IMG_2` before `IMG_10`), folders can stay on top, and folder sizes are the total of what is inside
 - **Browse by category** — Camera Roll, Messages, Health, Apps, and more
@@ -168,6 +168,31 @@ If the backup contains Notes, a **Notes** tab appears.
 - **Network** has the *Wi-Fi networks* the phone joined (security, when it last joined, when it was last in range and the last place its router was seen at), the *Bluetooth devices* it knows (paired ones and those it saw nearby) and the *data used by apps* over Wi-Fi and the mobile network. Wi-Fi passwords are in the keychain, not in the file, and are not shown
 - **Accounts** shows what the backup says about the device (name, model, iOS version, serial number, when it was backed up, when the backup folder has that information) and the accounts set up on it with the services each is switched on for. Passwords and sign-in keys are not in a backup's accounts file
 
+### 10. Screen Time and Health
+
+- **Screen Time** has the *Days* (screen time, pickups, notifications and the most used app), the *Weeks*, the *Apps* and *Websites* with their total time, and the *Recent hours*. Days are dated where the phone was; apps appear by the name of the app when it is one of Apple's, else by its identifier
+- **Health** has the *Medical ID* card, the *Daily activity* (the phone's own summaries, in which each step and calorie is counted once), the *Workouts* with their distance, active energy and heart rate (export their **routes as a GPX file**), *Body and vitals* (weight, body fat, BMI, height, resting and walking heart rate, blood oxygen, VO2 max, heart rate variability, breathing rate, with the app or device that recorded each), *Sleep* (each stage), *Health records* (names of what healthcare providers sent) and *Data types*, a count of everything the database holds. The Health database can be very large (hundreds of megabytes), and the tab copies it when first shown, so give it a moment
+
+**How the Health data is read, and what it does not do yet.** Every sample in the database has a number for its kind (heart rate, steps, ...), and Apple does not publish the numbers. This app takes the names from the database itself: its shared summaries are named after a kind and list the numbers they cover, and a number is named only when exactly one name is tied to it. The names, the daily totals and the units of the measurements above were checked against each other in a real backup: the active energy, exercise minutes and stand hours of each day against the phone's own activity summary, and the stored values of each body measurement against the values recorded in the unit the phone showed (pounds, beats per minute, ...). What is *not* done yet, and why:
+
+- Kinds the database does not name (29 of the 92 in the backup this was written against) are listed as "Type N". Naming them needs an independent check per kind, as above; reports of what they are, with a sample, are welcome
+- Values are interpreted only for the kinds listed under *Body and vitals*. Every kind stores its numbers in its own unit (heart rate per second, resting heart rate per minute, a body fat as a fraction...), so each new kind has to be checked against values recorded in a known unit before it is shown. The 486,000 raw heart rate samples, the steps and the walking measurements are counted but not browsable yet
+- Sleep is listed by stage, not summed per night: a night belongs to the day of waking *where the phone was*, which needs the time zone of each sample (the database stores only its name), and time zone names need a time zone database that Windows does not include
+- Medications and their doses, ECG and audiogram waveforms, cycle tracking, symptoms and the contents of health records (labs, immunizations) are not read yet
+
+### 11. Maps, Podcasts and Books
+
+- **Maps** lists the favorites, the places in guides and the search history, and exports the places with coordinates as a GPX file. Places saved from the map (not named by you) keep their name and address inside a binary record that is not read, so they appear by coordinates only
+- **Podcasts** lists the shows and the episodes with what was played; **Books** lists the library (with how far each book was read), the highlights and notes, and the collections
+- These three were written from the layout of the apps' databases. The backup they were written against held the databases but no places, episodes or books, so they are tested only on generated databases. If one does not show what you expect, please report it (without sending your data)
+
+### 12. Privacy, Apps, Recents and iCloud Drive
+
+- **Privacy** lists the permissions apps were given or refused (camera, photos, microphone, contacts, the local network, tracking...), how each was set and when, and which apps may use the location (always, only while in use, never) and when the phone last gave an app its location
+- **Apps** lists the apps the home screen knew of, with the badge each showed. Apple's own apps are named; for the others the backup keeps only the identifier
+- **Recents** is the phone's list of recent contacts: who was last called, messaged or emailed, through what, and how often
+- **iCloud Drive** lists the names of the files that were in iCloud Drive. Only the names are in a backup; the files themselves are in iCloud
+
 ### Optional extras
 
 Everything above works with the one required package. These optional ones add more:
@@ -219,7 +244,7 @@ Mounting was tested on Windows 10 with WinFsp. The macOS and Linux code paths fo
 
 3. **No telemetry, no analytics, no tracking** — We don't know you exist. We don't want to.
 
-4. **Fully auditable** — The app is plain Python (about 10,000 lines in all, with no build step): the app itself, the file browser, the file index, a reader, exporter and view for each app (Messages, Notes, Calls, Contacts, Photos, Voice Memos, Safari, Calendar, Voicemail, Reminders, Network, Accounts), and an optional module that is only used if you mount a backup. Read them. We encourage it.
+4. **Fully auditable** — The app is plain Python (about 10,000 lines in all, with no build step): the app itself, the file browser, the file index, a reader, exporter and view for each app (Messages, Notes, Calls, Contacts, Photos, Voice Memos, Safari, Calendar, Voicemail, Reminders, Network, Accounts, Screen Time, Health, Maps, Podcasts, Books, Privacy, Apps, Recents, iCloud Drive), and an optional module that is only used if you mount a backup. Read them. We encourage it.
 
 5. **Open source dependencies** — Our only required dependency ([iphone_backup_decrypt](https://github.com/jsharkey13/iphone_backup_decrypt)) is also open source and MIT licensed.
 

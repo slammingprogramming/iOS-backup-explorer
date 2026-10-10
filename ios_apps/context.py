@@ -75,13 +75,18 @@ class AppContext:
 
     # -- helpers for panels -----------------------------------
 
-    def copy_database(self, path, folder_name):
+    def copy_database(self, path, folder_name, local_name=None):
         """Make a working copy of the database at *path* (``Domain/dir/db``)
         together with its journal files. Future -> the folder, or None if
-        the backup has no such database."""
+        the backup has no such database. The copy is called *local_name*
+        when given (for files of the same name from different folders)."""
         items = locate_database(self.index, path)
         if not items:
             return None
+        if local_name:
+            base = os.path.basename(path)
+            items = [(file_id, local_name + name[len(base):])
+                     for file_id, name in items]
         return self.session.export_files(
             items, self.workspace.subfolder(folder_name))
 

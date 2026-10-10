@@ -20,8 +20,10 @@
 line to :data:`APPS`; a tab appears for it whenever the backup has its data.
 """
 
-from . import (accounts, calendar_events, calls, contacts, messages, network,
-               notes, photos, reminders, safari, voicemail, voice_memos)
+from . import (accounts, books, calendar_events, calls, contacts, health,
+               icloud_drive, installed_apps, maps, messages, network, notes,
+               photos, podcasts, privacy, recents, reminders, safari,
+               screentime, voicemail, voice_memos)
 
 
 def _has_file(index, path):
@@ -86,6 +88,51 @@ def _create_accounts(master, context):
     return AccountsPanel(master, context)
 
 
+def _create_screentime(master, context):
+    from .screentime_view import ScreenTimePanel
+    return ScreenTimePanel(master, context)
+
+
+def _create_health(master, context):
+    from .health_view import HealthPanel
+    return HealthPanel(master, context)
+
+
+def _create_maps(master, context):
+    from .maps_view import MapsPanel
+    return MapsPanel(master, context)
+
+
+def _create_podcasts(master, context):
+    from .podcasts_view import PodcastsPanel
+    return PodcastsPanel(master, context)
+
+
+def _create_books(master, context):
+    from .books_view import BooksPanel
+    return BooksPanel(master, context)
+
+
+def _create_privacy(master, context):
+    from .privacy_view import PrivacyPanel
+    return PrivacyPanel(master, context)
+
+
+def _create_installed_apps(master, context):
+    from .installed_apps_view import AppsPanel
+    return AppsPanel(master, context)
+
+
+def _create_recents(master, context):
+    from .recents_view import RecentsPanel
+    return RecentsPanel(master, context)
+
+
+def _create_icloud_drive(master, context):
+    from .icloud_drive_view import ICloudDrivePanel
+    return ICloudDrivePanel(master, context)
+
+
 def _create_photos(master, context):
     from .photos_view import PhotosPanel
     return PhotosPanel(master, context)
@@ -131,6 +178,31 @@ APPS = [
     AppEntry("accounts", "Accounts",
              lambda index: bool(accounts.discover(index)),
              _create_accounts),
+    AppEntry("screentime", "Screen Time",
+             lambda index: bool(screentime.discover(index)),
+             _create_screentime),
+    AppEntry("health", "Health",
+             lambda index: bool(health.discover(index)),
+             _create_health),
+    AppEntry("maps", "Maps",
+             lambda index: bool(maps.discover(index)), _create_maps),
+    AppEntry("podcasts", "Podcasts",
+             lambda index: bool(podcasts.discover(index)),
+             _create_podcasts),
+    AppEntry("books", "Books",
+             lambda index: bool(books.discover(index)), _create_books),
+    AppEntry("recents", "Recents",
+             lambda index: _has_file(index, recents.DATABASE),
+             _create_recents),
+    AppEntry("privacy", "Privacy",
+             lambda index: bool(privacy.discover(index)),
+             _create_privacy),
+    AppEntry("installed_apps", "Apps",
+             lambda index: _has_file(index, installed_apps.DATABASE),
+             _create_installed_apps),
+    AppEntry("icloud_drive", "iCloud Drive",
+             lambda index: _has_file(index, icloud_drive.DATABASE),
+             _create_icloud_drive),
 ]
 
 

@@ -44,6 +44,12 @@ Eyyup (Eric) Gunes. Entries below the fork point record the original project's h
 - Extraction now shows progress and lists which files failed and why
 
 ### Added
+- The row of tabs shrinks (less padding, a smaller font) to fit when there are many of them
+- **Privacy, Apps, Recents and iCloud Drive tabs.** Which apps may use the camera, photos, local network and so on (and when that was set); the apps the home screen knew of; the people last called, messaged or emailed; and the names of the files that were in iCloud Drive. Privacy also lists which apps may use the location
+- **A Screen Time tab.** Time per day and week, per app and per website, pickups and notifications, and the most recent hours, from the small files the phone keeps for each. Days are dated where the phone was (found from when its days begin), and a week's total is the sum of its days
+- **A Health tab.** The daily activity (steps, active energy, exercise, stand hours, flights, walking distance), workouts with distance, energy and heart rate and **their routes as a GPX file**, body measurements and vitals (weight, body fat, BMI, resting heart rate, blood oxygen, VO2 max...), sleep stages, health records, the Medical ID card, and a count of every kind of data. The kinds of data are named from the database's own shared summaries, and only the kinds whose units were checked against the stored values are interpreted; the rest is listed as "Type N". See the README for what is not covered yet
+- **Maps, Podcasts and Books tabs** (favorites, guides and search history with a GPX export; shows and episodes; the library, highlights and collections). Written from the tables of the apps; the backup they were written against held no places, episodes or books, so they are tested on generated databases only
+- Working copies of files of the same name from different folders can be given their own names (`AppPanel.local_name`)
 - **A Voicemail tab.** Who called (with names from the address book), when, how long, and the words the phone wrote down; play or save the recording, or export the audio with the words beside it
 - **A Reminders tab.** Every reminder from every account (list, due date, priority, flag, notes, sub-tasks, completed and deleted ones) and the lists; export as a to-do file (.ics) that task programs import
 - **A Network tab.** The Wi-Fi networks the phone joined (security, when joined, the last place it was seen at), the Bluetooth devices it knows, and the data each app used over Wi-Fi and the mobile network

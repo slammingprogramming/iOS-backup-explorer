@@ -36,6 +36,7 @@ https://github.com/mrgunes/BackupLens
 """
 
 import tkinter as tk
+import tkinter.font as tkfont
 from tkinter import ttk, filedialog, messagebox
 import collections
 import concurrent.futures
@@ -729,6 +730,7 @@ class BackupExplorer:
         self._extracting = False
         self._backup_kind = None     # ENCRYPTED / UNENCRYPTED / None
         self._detect_job = None
+        self._fit_job = None
         self._auto_path = None       # folder chosen by auto-detect
 
         # Worker threads must never call into Tk (it can hang at shutdown),
@@ -761,6 +763,7 @@ class BackupExplorer:
         style = ttk.Style()
         style.theme_use("clam")
         font = self._system_font()
+        self._font_family = font
 
         # Warm, trustworthy palette
         self.colors = {
@@ -904,6 +907,7 @@ class BackupExplorer:
             on_status=self.status_var.set, page_size=lambda: MAX_ROWS)
         self.notebook.add(self.panel, text="Files")
         self.notebook.bind("<<NotebookTabChanged>>", self._on_tab_changed)
+        self.notebook.bind("<Configure>", self._schedule_fit_tabs)
         ttk.Button(self.panel.actions, text="Extract Entire Backup",
                    command=self._extract_entire).pack(side="left", padx=6)
         self.mount_btn = ttk.Button(self.panel.actions, text="Mount Backup",
@@ -1221,6 +1225,33 @@ class BackupExplorer:
             panel = entry.create(self.notebook, self.apps)
             self.notebook.add(panel, text=entry.title)
             self._app_panels.append(panel)
+        self._schedule_fit_tabs()
+
+    TAB_SIZES = ((16, 10), (10, 10), (8, 9), (6, 9), (4, 8))
+    """(side padding, font size) for the tabs, from roomy to tight."""
+
+    def _schedule_fit_tabs(self, _event=None):
+        if self._fit_job is None:
+            self._fit_job = self.root.after_idle(self._fit_tabs)
+
+    def _fit_tabs(self):
+        """With many tabs, give each less padding and a smaller font so that
+        all of them fit in the window's width."""
+        self._fit_job = None
+        names = [self.notebook.tab(t, "text") for t in self.notebook.tabs()]
+        width = self.notebook.winfo_width()
+        if width <= 1 or not names:
+            return
+        for padding, size in self.TAB_SIZES:
+            font = tkfont.Font(family=self._font_family, size=size,
+                               weight="bold")
+            needed = sum(font.measure(name) + 2 * padding + 6
+                         for name in names)
+            if needed <= width:
+                break
+        style = ttk.Style()
+        style.configure("TNotebook.Tab", padding=(padding, 6),
+                        font=(self._font_family, size, "bold"))
 
     def _clear_app_tabs(self):
         for panel in self._app_panels:
@@ -1500,10 +1531,10 @@ class BackupExplorer:
         self.root.destroy()
 
     def _cancel_timers(self):
-        for job in (self._poll_job, self._detect_job):
+        for job in (self._poll_job, self._detect_job, self._fit_job):
             if job is not None:
                 self.root.after_cancel(job)
-        self._poll_job = self._detect_job = None
+        self._poll_job = self._detect_job = self._fit_job = None
         self.panel.cancel_timers()
         for panel in self._app_panels:
             panel.cancel_timers()
