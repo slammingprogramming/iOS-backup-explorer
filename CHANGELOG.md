@@ -7,6 +7,11 @@ Eyyup (Eric) Gunes. Entries below the fork point record the original project's h
 
 ## [Unreleased]
 
+## [2.0.1-rc.1] - 2026-10-10
+
+A pre-release that tries out the new release workflow. The program itself is
+the same as 2.0.0.
+
 ### Added
 - **Releases are made by GitHub Actions.** Pushing a version tag (`v2.1.0`) checks that the tag matches `__version__` and the changelog, runs the tests, and publishes a GitHub release with the changelog section as its notes, a `.zip` and a `.tar.gz` of the tagged files, and a `SHA256SUMS` file; a tag with a suffix (`v2.1.0-rc.1`) makes a pre-release. The steps are in `tools/release.py`, described in [docs/VERSIONING.md](docs/VERSIONING.md)
 

@@ -63,7 +63,7 @@ from file_index import (  # noqa: F401
     FileIndex, format_size, read_file_details,
 )
 
-__version__ = "2.0.0"
+__version__ = "2.0.1-rc.1"
 APP_NAME = "iOS Backup Explorer"
 
 # The file list shows this many rows per page; longer listings are paged.
