@@ -55,6 +55,7 @@ import platform
 import re
 
 import browser_panel
+import folder_backup
 from ios_apps import registry as app_registry
 from ios_apps.context import AppContext
 from file_index import (  # noqa: F401
@@ -170,6 +171,7 @@ def is_wrong_passphrase(exc):
 
 ENCRYPTED = "encrypted"
 UNENCRYPTED = "unencrypted"
+EXTRACTED = "extracted"     # already decrypted and extracted into folders
 
 _FILE_ID = re.compile(r"[0-9a-f]{40}\Z")
 
@@ -183,7 +185,9 @@ class PassphraseRequiredError(ValueError):
 
 
 def detect_backup(backup_dir):
-    """Return ENCRYPTED or UNENCRYPTED for the backup in *backup_dir*.
+    """Return ENCRYPTED, UNENCRYPTED or EXTRACTED for the backup in
+    *backup_dir* (EXTRACTED: a folder of domain folders that a tool already
+    decrypted and extracted, with no Manifest of its own).
 
     Raises BackupFormatError, with a message fit to show the user, if the
     folder is not a backup this app can open.
@@ -197,10 +201,13 @@ def detect_backup(backup_dir):
     except FileNotFoundError:
         if os.path.exists(os.path.join(backup_dir, "Manifest.mbdb")):
             raise BackupFormatError(_LEGACY_FORMAT) from None
+        if folder_backup.looks_extracted(backup_dir):
+            return EXTRACTED
         raise BackupFormatError(
             "This folder has no Manifest.plist, so it does not look like an "
             "iOS backup. Select the long hex-named folder inside "
-            "MobileSync/Backup."
+            "MobileSync/Backup (or a folder of extracted domain folders, "
+            "such as HomeDomain)."
         ) from None
     except Exception as exc:
         raise BackupFormatError(
@@ -527,6 +534,8 @@ class BackupSession:
                     "This backup is encrypted. Enter its password."
                 )
             backup = EncryptedBackend(self._factory, backup_dir, passphrase)
+        elif kind == EXTRACTED:
+            backup = folder_backup.FolderBackend(backup_dir, fs_path)
         else:
             backup = PlainBackend(backup_dir)
         try:
@@ -1022,7 +1031,7 @@ class BackupExplorer:
                 problem = str(exc)
         self._backup_kind = kind
 
-        unencrypted = kind == UNENCRYPTED
+        unencrypted = kind in (UNENCRYPTED, EXTRACTED)
         self.pass_entry.configure(state="disabled" if unencrypted
                                   else "normal")
         self.decrypt_btn.configure(
@@ -1038,6 +1047,11 @@ class BackupExplorer:
             self.status_var.set(
                 prefix + "This backup is encrypted. Enter its password "
                 "to decrypt it.")
+        elif kind == EXTRACTED:
+            self.status_var.set(
+                prefix + "This folder is a backup that was already "
+                "decrypted and extracted, so no password is needed. Click "
+                "Open Backup.")
         elif unencrypted:
             self.status_var.set(
                 prefix + "This backup is not encrypted, so no password is "
@@ -1071,7 +1085,7 @@ class BackupExplorer:
                 "encryption password.",
             )
             return
-        if kind == UNENCRYPTED:
+        if kind in (UNENCRYPTED, EXTRACTED):
             passphrase = None  # never needed, never passed on
 
         self.decrypt_btn.configure(state="disabled")
@@ -1194,6 +1208,7 @@ class BackupExplorer:
             return
         self.panel.set_index(index)
         self.apps.index = index
+        self.apps.backup_dir = self.backup_dir
         self._add_app_tabs(index)
         self.status_var.set(
             f"{index.file_count:,} files ready. Choose a folder on the "

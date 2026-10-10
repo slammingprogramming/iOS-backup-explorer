@@ -14,6 +14,7 @@ Eyyup (Eric) Gunes. Entries below the fork point record the original project's h
 - Renamed `backuplens.py` to `ios_backup_explorer.py` and the main class to `BackupExplorer`
 
 ### Fixed
+- Dates before 1970 (such as the placeholder year birthdays use) made some views fail on Windows; they are now shown correctly
 - Buttons that cannot be used now look disabled, the password box greys out for an unencrypted backup, and the buttons under the file list were squashed away on a short window
 - An error raised inside the library's manifest cursor could keep the library object alive (through its traceback) until it was finalised on another thread, leaving the decrypted temporary `Manifest.db` behind. The backup is now cleaned up explicitly on the thread that owns it
 - **Extracted files were the still-encrypted backup blobs** (unplayable videos, unreadable
@@ -43,6 +44,14 @@ Eyyup (Eric) Gunes. Entries below the fork point record the original project's h
 - Extraction now shows progress and lists which files failed and why
 
 ### Added
+- **A Voicemail tab.** Who called (with names from the address book), when, how long, and the words the phone wrote down; play or save the recording, or export the audio with the words beside it
+- **A Reminders tab.** Every reminder from every account (list, due date, priority, flag, notes, sub-tasks, completed and deleted ones) and the lists; export as a to-do file (.ics) that task programs import
+- **A Network tab.** The Wi-Fi networks the phone joined (security, when joined, the last place it was seen at), the Bluetooth devices it knows, and the data each app used over Wi-Fi and the mobile network
+- **An Accounts tab.** The accounts set up on the phone (iCloud, calendars, Game Center and the services behind them) and what the backup says about the device: name, model, iOS version, serial number, when it was backed up
+- Tabs whose data is spread over many files (one database for each account, one file for each recording) copy the files they find; export formats that copy files out of the backup (the voicemail audio) join the table formats
+- **A Safari tab and a Calendar tab.** Safari: history, sites visited, bookmarks (with folders), the reading list and the open tabs, each a sortable, searchable table with details; bookmarks export as a file browsers import. Calendar: the events and calendars, with repeats and places, all-day events kept as dates, and birthdays without a year; export as an iCalendar (.ics) file or as a spreadsheet, web page, text or JSON
+- **Backups that were already decrypted and extracted** (a folder of `HomeDomain`, `AppDomain-...` folders and so on, with no `Manifest.db`) open like any other backup, read-only. The index is made in memory from what is on disk, so every tab and extraction works, and symbolic links are never followed
+- A shared table framework (`ios_apps/records*.py`) that new tabs use: columns, sorting, searching, a details pane, exports and extracting the originals, plus a reader for the archives iOS stores some values in (`keyed_archive.py`)
 - **A Notes tab.** Folders, sub-folders and *Recently Deleted*; the formatting of a note (title and headings, bullet, dashed, numbered and checklist items, bold, italic, links) and the pictures in it; voice recordings and other attachments you can open or save; search; notes locked with a password are listed with an explanation. Export as text, Markdown, a web page, PDF (optional fpdf2), JSON or a spreadsheet, with the attachments, following the Notes folders; the originals can always be extracted
 - Call recordings are kept by the phone as a movie file with a separate track for each side of the call. Choose when you export (and when you extract the originals) between the mixed audio, the original file with the separate tracks, or both; opening or saving a recording offers the same. The mixed `.m4a` is made from the tracks with ffmpeg when it is installed; the original is never changed
 - Call recordings in Notes (iOS 18): the audio file, title, length and the words that were said are found, shown under the recording and included in exports and search. They are stored as a recording with no file of its own and a child entry that holds the audio, which was missed at first

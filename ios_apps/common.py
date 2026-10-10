@@ -35,7 +35,7 @@ import re
 import shutil
 import sqlite3
 import tempfile
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 APPLE_EPOCH = 978_307_200
 """Seconds from 1970-01-01 to 2001-01-01, the start of Apple's clock."""
@@ -60,14 +60,39 @@ def apple_time(value):
     return seconds + APPLE_EPOCH
 
 
+def utc_datetime(stamp):
+    """The UTC date and time of a Unix time, for any year (the system's own
+    conversion fails for dates before 1970 on Windows)."""
+    return datetime(1970, 1, 1, tzinfo=timezone.utc) + timedelta(
+        seconds=stamp)
+
+
+def unix_time(value):
+    """Unix time of a date read from a property list (a naive one is
+    UTC), or None if *value* is not a date."""
+    if not isinstance(value, datetime):
+        return None
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    try:
+        return value.timestamp()
+    except (OverflowError, OSError, ValueError):
+        return None
+
+
 def format_datetime(stamp, seconds=False):
-    """A local date and time such as ``2026-10-09 14:05``, or ``""``."""
+    """A local date and time such as ``2026-10-09 14:05``, or ``""``. Dates
+    the system cannot turn into local time (very old ones) are shown in UTC."""
     if stamp is None:
         return ""
+    pattern = "%Y-%m-%d %H:%M:%S" if seconds else "%Y-%m-%d %H:%M"
     try:
-        return datetime.fromtimestamp(stamp).strftime(
-            "%Y-%m-%d %H:%M:%S" if seconds else "%Y-%m-%d %H:%M")
+        return datetime.fromtimestamp(stamp).strftime(pattern)
     except (OverflowError, OSError, ValueError):
+        pass
+    try:
+        return utc_datetime(stamp).strftime(pattern)
+    except (OverflowError, ValueError, TypeError):
         return ""
 
 

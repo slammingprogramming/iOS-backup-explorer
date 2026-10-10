@@ -20,7 +20,8 @@
 line to :data:`APPS`; a tab appears for it whenever the backup has its data.
 """
 
-from . import calls, contacts, messages, notes, photos, voice_memos
+from . import (accounts, calendar_events, calls, contacts, messages, network,
+               notes, photos, reminders, safari, voicemail, voice_memos)
 
 
 def _has_file(index, path):
@@ -55,6 +56,36 @@ def _create_contacts(master, context):
     return ContactsPanel(master, context)
 
 
+def _create_safari(master, context):
+    from .safari_view import SafariPanel
+    return SafariPanel(master, context)
+
+
+def _create_calendar(master, context):
+    from .calendar_view import CalendarPanel
+    return CalendarPanel(master, context)
+
+
+def _create_voicemail(master, context):
+    from .voicemail_view import VoicemailPanel
+    return VoicemailPanel(master, context)
+
+
+def _create_reminders(master, context):
+    from .reminders_view import RemindersPanel
+    return RemindersPanel(master, context)
+
+
+def _create_network(master, context):
+    from .network_view import NetworkPanel
+    return NetworkPanel(master, context)
+
+
+def _create_accounts(master, context):
+    from .accounts_view import AccountsPanel
+    return AccountsPanel(master, context)
+
+
 def _create_photos(master, context):
     from .photos_view import PhotosPanel
     return PhotosPanel(master, context)
@@ -82,6 +113,24 @@ APPS = [
              _create_photos),
     AppEntry("voice_memos", "Voice Memos", voice_memos.has_recordings,
              _create_voice_memos),
+    AppEntry("safari", "Safari",
+             lambda index: any(_has_file(index, p) for p in safari.DATABASES),
+             _create_safari),
+    AppEntry("calendar", "Calendar",
+             lambda index: _has_file(index, calendar_events.DATABASE),
+             _create_calendar),
+    AppEntry("voicemail", "Voicemail",
+             lambda index: _has_file(index, voicemail.DATABASE),
+             _create_voicemail),
+    AppEntry("reminders", "Reminders",
+             lambda index: bool(reminders.discover(index)),
+             _create_reminders),
+    AppEntry("network", "Network",
+             lambda index: bool(network.discover(index)),
+             _create_network),
+    AppEntry("accounts", "Accounts",
+             lambda index: bool(accounts.discover(index)),
+             _create_accounts),
 ]
 
 

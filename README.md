@@ -50,8 +50,9 @@ You made an encrypted iPhone backup with iTunes, Finder, or the Apple Devices ap
 
 - **Decrypt encrypted backups** — Supports iOS 13+ encrypted local backups
 - **Unencrypted backups too** — Detected automatically; no password needed
-- **Browse your phone's apps the way the phone shows them** — A tab each for **Messages** (chat bubbles, tapbacks, attachments), **Notes** (formatting, checklists, pictures, folders), **Calls**, **Contacts**, **Photos** (a thumbnail grid with albums) and **Voice Memos**, with names from your address book and search everywhere
-- **Export what you find in the format you need** — Text, Markdown, web pages, PDF, CSV spreadsheets, JSON, vCard (.vcf) for contacts, JPEG for HEIC photos, web galleries. **The original files can always be extracted untouched**, too
+- **Backups that are already extracted** — A folder of `HomeDomain`, `CameraRollDomain`, `AppDomain-...` folders (what other tools and *Extract Entire Backup* leave behind) opens like a backup, read-only, with every tab working
+- **Browse your phone's apps the way the phone shows them** — A tab each for **Messages** (chat bubbles, tapbacks, attachments), **Notes** (formatting, checklists, pictures, folders), **Calls**, **Contacts**, **Photos** (a thumbnail grid with albums), **Voice Memos**, **Safari** (history, bookmarks, reading list, open tabs), **Calendar**, **Voicemail**, **Reminders**, **Network** (Wi-Fi, Bluetooth, data used by apps) and **Accounts**, with names from your address book and search everywhere
+- **Export what you find in the format you need** — Text, Markdown, web pages, PDF, CSV spreadsheets, JSON, vCard (.vcf) for contacts, iCalendar (.ics) for events and reminders, audio with transcripts for voicemail, a bookmarks file any browser imports, JPEG for HEIC photos, web galleries. **The original files can always be extracted untouched**, too
 - **A real file manager** — Folders on the left, files on the right, with back / forward / up, a location bar you can type a path into, and file-type icons
 - **Sort by anything** — Click Name, Kind, Size, Date Modified or Date Created (clicking again reverses it); names sort naturally (`IMG_2` before `IMG_10`), folders can stay on top, and folder sizes are the total of what is inside
 - **Browse by category** — Camera Roll, Messages, Health, Apps, and more
@@ -155,6 +156,18 @@ If the backup contains Notes, a **Notes** tab appears.
 - **Export** copies the original files (named by what they are, with the date taken as their file date), converts them to **JPEG** so every program can open them, makes a **web gallery**, or lists them in a spreadsheet. **Extract original files** uses the normal extraction (with progress) and keeps the backup's own folders
 - **Voice Memos** lists the recordings with title, date and length; **Play** opens one in your usual audio player. Export them as audio files named by date and title, a web page with a player for each, or a list. The audio is never converted; it is exactly what the phone recorded
 
+### 8. Safari and Calendar
+
+- **Safari** has a table for the *History* (newest first, with the site and failed loads marked), the *Sites visited* (how often and when last), the *Bookmarks* with their folders, the *Reading list* and the *Open tabs*. Click a heading to sort, type to search, and double-click a row to open its address in your web browser (only `http` and `https` addresses are opened). Export any table as a spreadsheet, web page, text or JSON; export the bookmarks as a file that Chrome, Firefox, Edge and Safari import
+- **Calendar** lists the events (newest first, with when, calendar, place and how it repeats) and the calendars with how many events each holds. All-day events keep their date whatever the time zone of your computer, and birthdays that have no year say so. Export as an **iCalendar (.ics) file** that Google Calendar, Outlook, Apple Calendar and others import, or as a spreadsheet, web page, text or JSON. Reminders are not included
+
+### 9. Voicemail, Reminders, Network and Accounts
+
+- **Voicemail** lists the messages with the caller (a name when the number is in your contacts), when, how long and **the words the phone wrote down**; the recording plays or saves from the buttons below, and *Export* copies the audio files named by date and caller with the words beside each. Deleted voicemails still in the backup are marked
+- **Reminders** shows every reminder of every account with its list, due date (all-day ones as dates), priority, notes, and the lists with how many are not done; sub-tasks name their parent, completed and deleted ones are marked. Export as a **to-do file (.ics)** that task programs import, or a spreadsheet, web page, text or JSON
+- **Network** has the *Wi-Fi networks* the phone joined (security, when it last joined, when it was last in range and the last place its router was seen at), the *Bluetooth devices* it knows (paired ones and those it saw nearby) and the *data used by apps* over Wi-Fi and the mobile network. Wi-Fi passwords are in the keychain, not in the file, and are not shown
+- **Accounts** shows what the backup says about the device (name, model, iOS version, serial number, when it was backed up, when the backup folder has that information) and the accounts set up on it with the services each is switched on for. Passwords and sign-in keys are not in a backup's accounts file
+
 ### Optional extras
 
 Everything above works with the one required package. These optional ones add more:
@@ -206,7 +219,7 @@ Mounting was tested on Windows 10 with WinFsp. The macOS and Linux code paths fo
 
 3. **No telemetry, no analytics, no tracking** — We don't know you exist. We don't want to.
 
-4. **Fully auditable** — The app is plain Python (about 10,000 lines in all, with no build step): the app itself, the file browser, the file index, a reader, exporter and view for each app (Messages, Notes, Calls, Contacts, Photos, Voice Memos), and an optional module that is only used if you mount a backup. Read them. We encourage it.
+4. **Fully auditable** — The app is plain Python (about 10,000 lines in all, with no build step): the app itself, the file browser, the file index, a reader, exporter and view for each app (Messages, Notes, Calls, Contacts, Photos, Voice Memos, Safari, Calendar, Voicemail, Reminders, Network, Accounts), and an optional module that is only used if you mount a backup. Read them. We encourage it.
 
 5. **Open source dependencies** — Our only required dependency ([iphone_backup_decrypt](https://github.com/jsharkey13/iphone_backup_decrypt)) is also open source and MIT licensed.
 
@@ -280,6 +293,8 @@ No. iOS Backup Explorer only works with **local backups** (encrypted or not) cre
 <summary><strong>Does it work with unencrypted backups?</strong></summary>
 
 Yes. Unencrypted backups are detected automatically and opened without a password, read-only: the backup folder is never modified and no temporary copy of its index is made. They must use the `Manifest.db` layout (iTunes/Finder backups of iOS 10 and later); very old `Manifest.mbdb` backups are not supported.
+
+A folder that was already decrypted and extracted (folders named `HomeDomain`, `CameraRollDomain` and so on, with no `Manifest.db`) can be opened in the same way. Files are read where they are and the folder is never changed; the dates shown for files are those of the extracted files, because the original backup's dates are not kept by extraction.
 
 Note that Apple leaves some data out of unencrypted backups (for example Health data and saved passwords), so you may find less in them than in an encrypted backup of the same device.
 </details>

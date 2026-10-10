@@ -45,6 +45,7 @@ class AppContext:
         self.set_status = set_status
         self.extract = extract
         self.index = None
+        self.backup_dir = None          # the backup's folder, if it has one
         self._workspace = None
         self._fetches = itertools.count(1)
         self._contacts = None            # the ContactBook, once loaded

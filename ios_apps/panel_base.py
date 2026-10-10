@@ -49,6 +49,9 @@ class _ReaderHolder:
 
 class AppPanel(ttk.Frame):
     DATABASE = None             # "Domain/dir/file" in the backup
+    DATABASES = ()              # or several: the first that exists is the
+                                # main one (the loader's connection); all
+                                # that exist are copied side by side
     FOLDER = "app"              # the working-copy folder's name
     WITH_CONTACTS = False       # wait for the address book before loading
     LOADER = None               # staticmethod: (conn, contacts, ctx) ->
@@ -63,6 +66,7 @@ class AppPanel(ttk.Frame):
         self._holder = _ReaderHolder()   # closures use the holder, never
                                          # the panel (see the module notes)
         self._loaded = False
+        self._last_copy = None
         self._closed = False        # set once the tab is gone; late results
                                     # from worker threads are then ignored
         self._timers = {}
@@ -80,6 +84,9 @@ class AppPanel(ttk.Frame):
             return
         self._loaded = True
         self.state_var.set("Loading...")
+        found = self.discover(self.ctx.index)
+        if found:
+            self.DATABASES = tuple(found)
         path = self.database_path()
         future = self.ctx.copy_database(path, self.FOLDER) if path else None
         if future is None:
@@ -88,12 +95,39 @@ class AppPanel(ttk.Frame):
             else:
                 self.state_var.set(self.MISSING)
             return
+        # the other databases are copied right behind it (the backup is read
+        # by one thread, in order, so when the last is there all are)
+        self._last_copy = None
+        for other in self.DATABASES:
+            if other != path:
+                copy = self.ctx.copy_database(other, self.FOLDER)
+                self._last_copy = copy or self._last_copy
         post_when_done(self.ctx.post, future, self._database_copied)
+
+    def discover(self, index):
+        """The files to copy beside the main database, for a tab whose
+        files are named by what the backup holds (one database for each
+        account, one file for each recording): a list of backup paths, the
+        first being the main database. Empty to use ``DATABASE`` /
+        ``DATABASES``."""
+        return ()
 
     def database_path(self):
         """The database to copy (``Domain/dir/file``), or None. Panels that
         may find one of several databases override this."""
-        return self.DATABASE
+        if self.DATABASE:
+            return self.DATABASE
+        for path in self.DATABASES:
+            if self.ctx.file_id_for(path) is not None:
+                return path
+        return None
+
+    def local_copy(self, backup_path):
+        """Where the working copy of the database at *backup_path* is (it
+        is copied next to the main one), or None if there is none."""
+        path = os.path.join(self.ctx.workspace.subfolder(self.FOLDER),
+                            os.path.basename(backup_path))
+        return path if os.path.isfile(path) else None
 
     def load_without_database(self):
         """For an OPTIONAL panel: the data to show when there is no
@@ -108,6 +142,15 @@ class AppPanel(ttk.Frame):
                     f"The library database could not be copied: {error}"))
                 return
             self.fail("Could not read this data", error)
+            return
+        if self._last_copy is not None:
+            post_when_done(self.ctx.post, self._last_copy, self._extras_copied)
+            return
+        self._extras_copied(None)
+
+    def _extras_copied(self, done):
+        # (a database that could not be copied is just missing for the loader)
+        if self._closed:
             return
         if self.WITH_CONTACTS:
             self.ctx.load_contacts(self._with_contacts)
