@@ -65,7 +65,8 @@ report it.
 
 **Why is a note, photo, call or message missing?**
 A backup holds what was on the phone when it was made. Notes locked with a
-password are listed but cannot be shown. Photos that live only in iCloud
+password are listed, and open when you type their password
+([Notes](apps/notes.md#locked-notes)). Photos that live only in iCloud
 ("Optimize iPhone Storage") are not on the phone. Unencrypted backups leave out
 some data. And the apps' layouts change between iOS versions, so if something
 that is in your backup does not show, please report it (without sending your

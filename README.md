@@ -129,7 +129,7 @@ Honesty matters when you are reading someone's data:
 - Every tab has automated tests on **invented** data, and the readers were **mutation-checked** (the code is broken on purpose to prove the tests notice).
 - Most tabs were also checked against a **real backup**: their counts and values were compared with the raw databases. **Maps, Podcasts, Books, Photos and Voice Memos** were written from the apps' database layouts, because the backup used had no data for them, so they are tested on generated data only. [Where the data comes from](docs/DATA_SOURCES.md) lists the status of each tab.
 - **Health** is read reliably where it can be proved, and the rest is listed openly as not yet covered: kinds of data the database does not name, values whose unit was not verified, sleep summed per night, medications, ECG and more. **Why, and what is needed to close each gap, is in [Health data](docs/HEALTH.md).**
-- A backup holds only what the phone kept: iCloud-only photos and messages, passwords (the keychain) and locked notes are not readable. See the [FAQ](docs/FAQ.md).
+- A backup holds only what the phone kept: iCloud-only photos and messages, and passwords (the keychain) are not readable. Locked notes open with their own password, but that part has not been checked against a real locked note ([how](docs/apps/notes.md#locked-notes)). See the [FAQ](docs/FAQ.md).
 
 ---
 
@@ -197,7 +197,7 @@ No. Only **local** backups made by iTunes, Finder or the Apple Devices app. iClo
 <details>
 <summary><strong>Why is something missing?</strong></summary>
 
-A backup holds what was on the phone when it was made: iCloud-only data, unencrypted-backup omissions and password-locked notes are not there, and the apps' layouts change between iOS versions. See [Troubleshooting](docs/TROUBLESHOOTING.md#a-tab-is-missing). If something that is in your backup does not show, please report it, without sending your data.
+A backup holds what was on the phone when it was made: iCloud-only data and unencrypted-backup omissions are not there, locked notes need their password, and the apps' layouts change between iOS versions. See [Troubleshooting](docs/TROUBLESHOOTING.md#a-tab-is-missing). If something that is in your backup does not show, please report it, without sending your data.
 </details>
 
 <details>

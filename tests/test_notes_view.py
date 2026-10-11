@@ -129,7 +129,8 @@ class TreeTests(NotesGuiCase):
         notes = next(r for r, (k, o) in self.tab._items.items()
                      if k == "folder" and o.title == "Notes")
         self.assertEqual(self.rows(notes), [
-            "Shopping list", "Untitled note", "Secret", "Broken", "Empty"])
+            "Shopping list", "Untitled note", "Secret  (locked)", "Broken",
+            "Empty"])
 
     def test_sorting_by_title_and_by_date_created(self):
         tab = self.tab
@@ -138,11 +139,13 @@ class TreeTests(NotesGuiCase):
         tab.sort_var.set("Title")
         tab._show_tree()
         self.assertEqual(self.rows(notes), [
-            "Shopping list", "Broken", "Empty", "Secret", "Untitled note"])
+            "Shopping list", "Broken", "Empty", "Secret  (locked)",
+            "Untitled note"])
         tab.sort_var.set("Date created")
         tab._show_tree()
         self.assertEqual(self.rows(notes), [
-            "Shopping list", "Secret", "Untitled note", "Broken", "Empty"])
+            "Shopping list", "Secret  (locked)", "Untitled note", "Broken",
+            "Empty"])
 
     def test_the_date_column_shows_when_a_note_was_edited(self):
         tab = self.tab

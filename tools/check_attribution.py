@@ -110,6 +110,8 @@ REQUIRED = {
     "ios_apps/icloud_drive_view.py": ["SPDX-License-Identifier: AGPL-3.0-or-later"],
     "tools/check_version.py": ["SPDX-License-Identifier: AGPL-3.0-or-later"],
     "tools/release.py": ["SPDX-License-Identifier: AGPL-3.0-or-later"],
+    "ios_apps/notes_crypto.py": ["SPDX-License-Identifier: AGPL-3.0-or-later"],
+    "ios_apps/notes_unlock.py": ["SPDX-License-Identifier: AGPL-3.0-or-later"],
     "tools/make_demo_backup.py": ["SPDX-License-Identifier: AGPL-3.0-or-later"],
     "tools/make_screenshots.py": ["SPDX-License-Identifier: AGPL-3.0-or-later"],
     "tools/demo/__init__.py": ["SPDX-License-Identifier: AGPL-3.0-or-later"],

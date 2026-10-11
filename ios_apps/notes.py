@@ -33,6 +33,7 @@ import sqlite3
 import zlib
 from dataclasses import dataclass, field
 
+from . import notes_crypto
 from .common import apple_time, table_columns
 from .export_util import describe_duration
 
@@ -407,7 +408,11 @@ class Note:
     snippet: str = ""
     created: float = None
     modified: float = None
-    locked: bool = False
+    locked: bool = False            # protected by a password
+    unlocked: bool = False          # ... and opened with one just now
+    hint: str = ""                  # the password hint the person wrote
+    crypto: dict = field(default=None, repr=False)   # see NotesReader
+    tried: int = -1                 # how many passwords had been tried
     pinned: bool = False
     deleted: bool = False
     has_data: bool = True
@@ -416,6 +421,14 @@ class Note:
     paragraphs: list = field(default_factory=list)
     attachments: dict = field(default_factory=dict)
     error: str = ""
+
+    @property
+    def unlockable(self):
+        """Whether the backup holds what a password could open this note
+        with (a locked note that lacks it can never be read)."""
+        details = self.crypto or {}
+        return bool(self.locked and details.get("salt")
+                    and details.get("wrapped") and details.get("rounds"))
 
     @property
     def text(self):
@@ -461,6 +474,9 @@ class NotesReader:
         self.folders_by_pk = {}
         self._notes = []
         self._notes_read = False
+        # Passwords typed for locked notes. In memory only, and only for as
+        # long as this reader lives (it goes with the backup that is open).
+        self._passwords = []
 
     # -- schema -----------------------------------------------
 
@@ -534,21 +550,31 @@ class NotesReader:
                        if self._has_data_table else "0")
         notes = []
         for (pk, title, snippet, folder, made, changed, locked, pinned,
-             removed, has_data) in self.conn.execute(
+             removed, has_data, hint, salt, rounds, wrapped
+             ) in self.conn.execute(
                 f"SELECT n.Z_PK, {self._first_of(['ZTITLE1', 'ZTITLE'])}, "
                 f"{self._col('ZSNIPPET')}, {self._col('ZFOLDER')}, "
                 f"{created}, {modified}, {self._col('ZISPASSWORDPROTECTED')}, "
                 f"{self._col('ZISPINNED')}, {self._col('ZMARKEDFORDELETION')},"
-                f" {data_exists} "
+                f" {data_exists}, {self._col('ZPASSWORDHINT')}, "
+                f"{self._col('ZCRYPTOSALT')}, "
+                f"{self._col('ZCRYPTOITERATIONCOUNT')}, "
+                f"{self._col('ZCRYPTOWRAPPEDKEY')} "
                 f"FROM ZICCLOUDSYNCINGOBJECT n WHERE {note_filter}"):
             if removed:
                 continue
             folder_row = self.folders_by_pk.get(folder)
-            notes.append(Note(
+            note = Note(
                 pk, title or "", folder or 0, snippet or "",
                 apple_time(made), apple_time(changed), bool(locked),
-                bool(pinned), bool(folder_row and folder_row.is_trash),
-                bool(has_data)))
+                pinned=bool(pinned),
+                deleted=bool(folder_row and folder_row.is_trash),
+                has_data=bool(has_data))
+            if locked:
+                note.hint = hint if isinstance(hint, str) else ""
+                note.crypto = {"salt": salt, "rounds": rounds,
+                               "wrapped": wrapped}
+            notes.append(note)
         notes.sort(key=lambda n: (n.modified or 0), reverse=True)
         for note in notes:
             folder = self.folders_by_pk.get(note.folder)
@@ -560,14 +586,121 @@ class NotesReader:
 
     # -- one note ---------------------------------------------
 
+    # -- locked notes -----------------------------------------
+
+    LOCKED = ("This note is locked with a password. Its text is encrypted in "
+              "the backup; enter the password to read it.")
+
+    def remember_password(self, password):
+        """Keep *password* (in memory) to try on locked notes."""
+        if password and password not in self._passwords:
+            self._passwords.append(password)
+
+    def forget_passwords(self):
+        """Drop every password and lock the notes opened with them again."""
+        self._passwords.clear()
+        for note in self._notes:
+            if note.unlocked:
+                note.unlocked = False
+                note.loaded = False
+                note.paragraphs = []
+                note.attachments = {}
+                note.error = ""
+                note.tried = -1
+
+    @property
+    def password_count(self):
+        return len(self._passwords)
+
+    def locked_notes(self, notes=None):
+        """The notes (of *notes*, or all) that have a password on them."""
+        return [n for n in (self._notes if notes is None else notes)
+                if n.locked]
+
+    def _encrypted_row(self, note):
+        """``(data, iv, tag)`` of a locked note, or None."""
+        if not self._has_data_table:
+            return None
+        have = table_columns(self.conn, "ZICNOTEDATA")
+        return self.conn.execute(
+            "SELECT ZDATA, "
+            + ("ZCRYPTOINITIALIZATIONVECTOR"
+               if "ZCRYPTOINITIALIZATIONVECTOR" in have else "NULL") + ", "
+            + ("ZCRYPTOTAG" if "ZCRYPTOTAG" in have else "NULL")
+            + " FROM ZICNOTEDATA WHERE ZNOTE = ?", (note.pk,)).fetchone()
+
+    def _open_with(self, note, password):
+        """The plain data of a locked note, or ``WrongPassword``."""
+        details = note.crypto or {}
+        row = self._encrypted_row(note)
+        if row is None or not row[0]:
+            raise notes_crypto.WrongPassword("the note holds no data")
+        data, iv, tag = row
+        return notes_crypto.decrypt(
+            password, details.get("salt"), details.get("rounds"),
+            details.get("wrapped"), iv, tag, data)
+
+    def unlock(self, note, passwords=None):
+        """Try the passwords (the remembered ones if none are given) on a
+        locked *note*. True if the note is open afterwards. A wrong password
+        is not an error: the note stays locked."""
+        if not note.locked or note.unlocked:
+            return True
+        for password in (self._passwords if passwords is None else passwords):
+            try:
+                plain = self._open_with(note, password)
+            except notes_crypto.WrongPassword:
+                continue
+            note.error = ""
+            try:
+                note.paragraphs = decode_note_data(plain)
+            except ValueError as exc:
+                note.error = f"The text of this note could not be read ({exc})."
+                note.paragraphs = []
+            note.unlocked = True
+            note.loaded = False          # (load() adds the attachments)
+            return True
+        return False
+
+    def try_remembered(self, notes):
+        """Open the locked notes of *notes* with the passwords typed so far.
+        Returns the notes that are open afterwards (among the locked)."""
+        opened = []
+        for note in self.locked_notes(notes):
+            if self.unlock(note):
+                self.load(note)
+                opened.append(note)
+        return opened
+
+    def try_password(self, notes, password):
+        """Try *password* on each locked note of *notes* and remember it if
+        it opened any. Returns ``(opened, still_locked)``, two lists."""
+        opened, still = [], []
+        for note in self.locked_notes(notes):
+            if self.unlock(note, [password]):
+                opened.append(note)
+            else:
+                still.append(note)
+        if opened:
+            self.remember_password(password)
+        for note in opened:
+            self.load(note)
+        return opened, still
+
     def load(self, note):
-        """Fill in *note*'s paragraphs and attachments (once)."""
-        if note.loaded:
+        """Fill in *note*'s paragraphs and attachments (once; a locked note
+        is looked at again when it has been given new passwords)."""
+        if note.loaded and not (note.locked and not note.unlocked
+                                and note.tried != len(self._passwords)):
             return note
         note.loaded = True
         if note.locked:
-            note.error = ("This note is locked with a password. Its text is "
-                          "encrypted in the backup and cannot be shown.")
+            if not note.unlocked:
+                self.unlock(note)
+                note.tried = len(self._passwords)
+            if not note.unlocked:
+                note.error = self.LOCKED
+                note.paragraphs = []
         else:
             row = self.conn.execute(
                 "SELECT ZDATA FROM ZICNOTEDATA WHERE ZNOTE = ?",
@@ -583,7 +716,21 @@ class NotesReader:
                           if p.text.strip()), "")
             note.title = (first or note.snippet or "Untitled note")[:80]
         note.attachments = self._attachments(note)
+        if note.locked and note.unlocked:
+            self._withhold_encrypted_files(note)
         return note
+
+    def _withhold_encrypted_files(self, note):
+        """The files attached to a locked note are encrypted too, in a way
+        this program does not read yet: do not offer them as if they could
+        be opened."""
+        held = [a for a in note.attachments.values() if a.path]
+        for attachment in held:
+            attachment.path = ""
+        if held and not note.error:
+            note.error = (f"{len(held)} attached file"
+                          f"{'' if len(held) == 1 else 's'} of this locked "
+                          "note stay encrypted and cannot be shown.")
 
     def _attachments(self, note):
         if "ZNOTE" not in self.cols or "ZIDENTIFIER" not in self.cols:

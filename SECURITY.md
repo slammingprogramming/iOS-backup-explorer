@@ -40,6 +40,10 @@ The password you enter into iOS Backup Explorer is the **encryption password you
   - **Windows:** The password is not stored in Windows Credential Manager by default
 - iOS Backup Explorer cannot recover or bypass your password. This is by design — it means no one else can either.
 
+## Passwords of Locked Notes
+
+A note locked with a password in the Notes app is opened with that password, which you type into the program when you click the note, use *Unlock notes...* or export. **Passwords are kept in memory only**, in the program that has the backup open: they are never written to a file, a log or the working copies, and they are dropped with *Forget passwords*, when another backup is opened and when the program closes. A wrong password never produces wrong text (the encryption is authenticated), and the program never guesses passwords. Opened notes are shown, searched and exported in readable form: exported files carry no password, so protect or delete them yourself.
+
 ## Unencrypted and Extracted Backups
 
 Unencrypted backups need no password, so none is asked for or used. They are opened read-only (the backup folder is never written to, and no temporary copy of its index is made), and extracted files are copied out as they are.

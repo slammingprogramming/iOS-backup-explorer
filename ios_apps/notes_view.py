@@ -40,6 +40,8 @@ from . import notes as nt
 from . import notes_export as nx
 from .common import format_datetime
 from .dialogs import ask_choice, ask_export
+from .notes_unlock import (KEEP, LEAVE, ONLY, LockedNotesDialog,
+                           ask_password)
 from .panel_base import AppPanel
 
 SORTS = {"Date edited": lambda n: n.modified or 0,
@@ -74,6 +76,7 @@ class NotesPanel(AppPanel):
         self.folders = {}
         self._items = {}                 # tree row -> ("note"|"folder", obj)
         self.current = None
+        self._ask_request = -1           # the click that may ask for a password
         self.rendered = None             # the note now on screen
         self._request = 0
         self._photos = []                # keep Tk pictures alive
@@ -110,6 +113,12 @@ class NotesPanel(AppPanel):
         bottom.pack(side="bottom", fill="x", pady=(6, 0))
         ttk.Button(bottom, text="Export...", command=self.export).pack(
             side="left")
+        self.unlock_all_button = ttk.Button(
+            bottom, text="Unlock notes...", command=self.unlock_all)
+        self.unlock_all_button.pack(side="left", padx=(8, 0))
+        self.forget_button = ttk.Button(
+            bottom, text="Forget passwords", command=self.forget_passwords)
+        self.forget_button.pack(side="left", padx=(8, 0))
         ttk.Button(bottom, text="Extract original files...",
                    command=self.extract_originals).pack(side="right")
 
@@ -139,6 +148,8 @@ class NotesPanel(AppPanel):
                   style="Title.TLabel").pack(anchor="w")
         ttk.Label(header, textvariable=self.info_var,
                   style="Subtitle.TLabel").pack(anchor="w")
+        self.unlock_button = ttk.Button(
+            header, text="Unlock this note...", command=self.unlock_current)
         self.body = tk.Text(right, wrap="word", state="disabled",
                             cursor="arrow", borderwidth=0,
                             highlightthickness=0, padx=12, pady=8,
@@ -262,9 +273,16 @@ class NotesPanel(AppPanel):
         for note in loose:
             self._add_note_row("", note)
 
+    @staticmethod
+    def _row_title(note):
+        title = note.display_title
+        if note.locked:
+            title += "  (unlocked)" if note.unlocked else "  (locked)"
+        return title
+
     def _add_note_row(self, parent, note, show_folder=False):
         row = f"n{note.pk}"
-        title = note.display_title
+        title = self._row_title(note)
         if show_folder:
             folder = self.folders.get(note.folder)
             title += f"  — {folder.title}" if folder else ""
@@ -282,8 +300,12 @@ class NotesPanel(AppPanel):
         if kind == "note":
             self.select_note(item)
 
-    def select_note(self, note):
+    def select_note(self, note, ask=True):
+        """Show *note*. A locked one asks for its password if *ask* (a click
+        does; showing the same note again after something else changed does
+        not)."""
         self._request += 1
+        self._ask_request = self._request if ask else -1
         self.current = note
         self.title_var.set(note.display_title)
         self.info_var.set(self._describe(note))
@@ -314,9 +336,122 @@ class NotesPanel(AppPanel):
         self.title_var.set(note.display_title)
         row = f"n{note.pk}"
         if self.tree.exists(row) and not self.search_var.get().strip():
-            self.tree.item(row, text=note.display_title)
+            self.tree.item(row, text=self._row_title(note))
         self._render(note)
         self._load_pictures(note, request)
+        self._update_unlock_button(note)
+        if note.locked and not note.unlocked and note.unlockable \
+                and request == self._ask_request:
+            # (asked once for each click; "Unlock this note" asks again)
+            self.after_idle(self.unlock_current)
+
+    # ── Locked notes ─────────────────────────────────────────
+
+    def _update_unlock_button(self, note):
+        if note is not None and note.locked and not note.unlocked \
+                and note.unlockable:
+            self.unlock_button.pack(anchor="w", pady=(4, 0))
+        else:
+            self.unlock_button.pack_forget()
+
+    def _refresh_rows(self, notes):
+        """Show the new state of the notes' rows (locked / unlocked)."""
+        for note in notes:
+            row = f"n{note.pk}"
+            if self.tree.exists(row):
+                self.tree.item(row, text=self._row_title(note))
+
+    def try_password(self, password, method, *args, notes=None):
+        """Try *password* on the locked notes among *notes* (all, if none are
+        given), in the background. ``method(done, *args)`` (a method of this
+        panel) gets a future whose result is ``(opened, still_locked)``."""
+        wanted = list(self.notes if notes is None else notes)
+        self.run_query(lambda reader: reader.try_password(wanted, password),
+                       method, *args)
+
+    def unlock_current(self):
+        """Ask for the password of the note on screen."""
+        note = self.current
+        if note is None or not note.locked or note.unlocked \
+                or not note.unlockable:
+            return
+        password = ask_password(
+            self, "Locked note",
+            f"\u201c{note.display_title}\u201d is locked with a password. "
+            "Enter it to read the note.", note.hint)
+        if password is None:
+            return
+        self.try_password(password, self._unlock_tried, note)
+
+    def _unlock_tried(self, done, note):
+        error = done.exception()
+        if error is not None:
+            self.fail("Could not unlock", error)
+            return
+        opened, _still = done.result()
+        self._refresh_rows(self.notes)
+        if note in opened:
+            if self.current is note:
+                self.select_note(note, ask=False)
+            self.state_var.set(
+                f"Opened {len(opened):,} locked "
+                f"note{'' if len(opened) == 1 else 's'}")
+            return
+        messagebox.showwarning(
+            "Locked note", "That password does not open this note.")
+        if self.current is note:
+            self.after_idle(self.unlock_current)
+
+    def unlock_all(self):
+        """Ask for a password and try it on every locked note."""
+        if self.source is None:
+            messagebox.showinfo("Info", "Notes are not loaded yet.")
+            return
+        locked = [n for n in self.notes if n.locked and n.unlockable
+                  and not n.unlocked]
+        if not locked:
+            messagebox.showinfo(
+                "Locked notes",
+                "There are no locked notes waiting for a password."
+                if not any(n.locked for n in self.notes) else
+                "Every locked note that can be opened is open already.")
+            return
+        password = ask_password(
+            self, "Unlock notes",
+            f"{len(locked):,} note{'' if len(locked) == 1 else 's'} "
+            "locked with a password. Enter a password to try on all of "
+            "them.")
+        if password is None:
+            return
+        self.try_password(password, self._unlock_all_tried, len(locked))
+
+    def _unlock_all_tried(self, done, count):
+        error = done.exception()
+        if error is not None:
+            self.fail("Could not unlock", error)
+            return
+        opened, _still = done.result()
+        self._refresh_rows(self.notes)
+        self.state_var.set(f"Opened {len(opened):,} of {count:,} locked notes")
+        if not opened:
+            messagebox.showwarning(
+                "Locked notes",
+                "That password does not open any of the locked notes.")
+        elif self.current is not None and self.current.locked:
+            self.select_note(self.current, ask=False)
+
+    def forget_passwords(self):
+        """Drop the remembered passwords and lock the notes again."""
+        if self.source is None:
+            return
+        self.run_query(lambda reader: reader.forget_passwords(),
+                       self._forgotten)
+
+    def _forgotten(self, done):
+        self._refresh_rows(self.notes)
+        if self.current is not None and self.current.locked:
+            self.select_note(self.current, ask=False)
+        self.state_var.set("Passwords forgotten")
 
     def _render(self, note):
         text = self.body
@@ -603,7 +738,59 @@ class NotesPanel(AppPanel):
         chosen = {"one": lambda: [self.current],
                   "folder": lambda: self._notes_in(folder),
                   "all": lambda: list(self.notes)}[scope]()
+        if not any(n.locked for n in chosen):
+            self.export_to(chosen, fmt, destination, recordings)
+            return
+        # Locked notes: the passwords already typed are tried first; if some
+        # that could be opened are still locked, ask for more.
+        self.run_query(lambda reader: reader.try_remembered(chosen),
+                       self._export_locked, chosen, fmt, destination,
+                       recordings)
+
+    def _export_locked(self, done, chosen, fmt, destination, recordings):
+        error = done.exception()
+        if error is not None:
+            self.fail("Could not unlock", error)
+            return
+        self._refresh_rows(chosen)
+        waiting = [n for n in chosen if n.locked and not n.unlocked
+                   and n.unlockable]
+        if waiting:
+            # (not from here: this runs while results are being delivered,
+            # and a window that waits would hold the next ones up)
+            self.after_idle(self._ask_about_locked, chosen, fmt, destination,
+                            recordings)
+        else:
+            self._export_chosen(chosen, KEEP, fmt, destination, recordings)
+
+    def _ask_about_locked(self, chosen, fmt, destination, recordings):
+        dialog = LockedNotesDialog(
+            self, chosen,
+            lambda password, finished: self.try_password(
+                password, self._dialog_tried, finished, notes=chosen))
+        dialog.grab_set()
+        dialog.wait_window()
+        if dialog.result is None:
+            return
+        self._refresh_rows(chosen)
+        self._export_chosen(chosen, dialog.result, fmt, destination,
+                            recordings)
+
+    def _export_chosen(self, chosen, what, fmt, destination, recordings):
+        if what == LEAVE:
+            chosen = [n for n in chosen if not n.locked or n.unlocked]
+        elif what == ONLY:
+            chosen = [n for n in chosen if n.locked and n.unlocked]
+        if not chosen:
+            messagebox.showinfo("Info", "There is nothing left to export.")
+            return
         self.export_to(chosen, fmt, destination, recordings)
+
+    def _dialog_tried(self, done, finished):
+        if done.exception() is not None:
+            finished([], [])
+        else:
+            finished(*done.result())
 
     def export_to(self, notes, fmt, destination, recordings="mixed"):
         """Export *notes* as *fmt* into *destination* (in the background).

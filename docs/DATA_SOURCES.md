@@ -65,6 +65,8 @@ is in your backup does not show, please report it.
   example Health data and saved passwords, so some tabs show less (or do not
   appear).
 - **Passwords and keys** are in the keychain, which this program does not open.
-- **Locked notes** are stored encrypted inside the backup and cannot be shown.
+- **Locked notes** are stored encrypted inside the backup; they open with the
+  note's own password (see [Notes](apps/notes.md#locked-notes)). The files
+  attached to a locked note stay encrypted.
 - **Third-party apps'** own data is in their `AppDomain-...` folders and is not
   interpreted; the file browser can extract it.

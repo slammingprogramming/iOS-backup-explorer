@@ -48,10 +48,60 @@ The original is never changed.
 
 ### Notes that cannot be shown
 
-- **Locked notes** (protected with a password in Notes) are listed, but their
-  text is encrypted in the backup and cannot be shown.
 - A note whose stored text cannot be read is still listed, with a message
   saying so and the short preview iOS keeps, so you know it exists.
+- A locked note whose password you do not have (see below), or whose backup
+  lacks the details needed to open it, is listed as *(locked)* and shows a
+  message instead of its text.
+
+## Locked notes
+
+Notes protected with a password are listed with **(locked)** after their title.
+Their text is encrypted in the backup, and only the password you chose in
+Notes can open it. (This is the password for locked notes, not the backup
+password; different notes can have different passwords.)
+
+- **Click a locked note** and the program asks for its password. The password
+  hint you wrote on the phone is shown if there is one. If the password is
+  right the note opens, and **every other locked note with the same password
+  opens too**, marked **(unlocked)**. If you cancel, the *Unlock this note...*
+  button above the note asks again.
+- **The password is remembered** while this backup is open, so you are asked
+  again only when you click a note locked with a *different* password. A wrong
+  password never shows wrong text: the note simply stays locked.
+- **Unlock notes...** (bottom of the tab) asks for one password and tries it on
+  every locked note at once. **Forget passwords** drops everything that was
+  typed and locks the notes again.
+- **Searching** looks inside the notes that are open.
+- **Exporting** a selection that holds locked notes first tries the passwords
+  you already typed. If notes that could be opened are still locked, a window
+  lists them (with their hints) and lets you try another password, and another,
+  until you have them all or decide what to do with the rest: export
+  everything and list the still-locked notes without their text, export
+  everything *except* those, or export *only* the locked notes that are open.
+  Exported files are ordinary files **without a password**: keep them somewhere
+  you trust.
+
+What is **not** done yet: the pictures and files attached to a locked note are
+encrypted separately and stay encrypted (the note says how many), and the
+program does not guess passwords.
+
+**How well this is checked:** Apple describes the scheme in its Platform
+Security Guide (a 16-byte key made from the password with PBKDF2 and SHA-256,
+and AES-GCM), and the details used here (a 16-byte salt and the stored
+iteration count, an RFC 3394 unwrap of the note's key, the stored nonce and
+tag, which table each value is read from) agree with two open-source tools
+that are used on real notes: the password-recovery module for Apple Secure
+Notes in hashcat, and the Apple Cloud Notes Parser. The tests lock notes with
+this program's own test code, so they prove that locking and unlocking agree,
+that the key unwrap matches the RFC 3394 test vector, and that a wrong password
+can never produce wrong text. **They are not a test against a real locked
+note**, because the backup this was written against held none, and a few things
+are untested: notes edited on the phone but not yet synced keep their lock
+details elsewhere (in `ZUNAPPLIEDENCRYPTEDRECORD`), which is not read. If you
+open a locked note of your own and it works (or does not), please
+[report it](../../CONTRIBUTING.md#reporting-a-problem) without sending the
+note.
 
 ## Searching
 

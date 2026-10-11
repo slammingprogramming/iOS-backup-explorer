@@ -7,6 +7,9 @@ Eyyup (Eric) Gunes. Entries below the fork point record the original project's h
 
 ## [Unreleased]
 
+### Added
+- **Locked notes can be opened.** A note protected with a password in Notes is listed as *(locked)*; click it and type its password, and it opens, along with every other note locked with the same password. The passwords you type are remembered in memory while the backup is open, so you are asked again only for a note with a different password; *Unlock notes...* tries one password on all of them, and *Forget passwords* locks them again. Searching includes the open notes. Exporting a selection with locked notes tries the remembered passwords, then lets you try more, one after another, until all are open, or export everything but the still-locked ones, or only the locked notes that are open. The files attached to a locked note stay encrypted. **Not yet checked against a real locked note** (the backup used had none): see [docs/apps/notes.md](docs/apps/notes.md#locked-notes)
+
 ## [2.0.1] - 2026-10-10
 
 The first release made by GitHub Actions, and a fix for tabs that read only property lists. Three pre-releases (2.0.1-rc.1 to rc.3, below) tried the release workflow; only rc.3 was published.
