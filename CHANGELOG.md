@@ -7,6 +7,14 @@ Eyyup (Eric) Gunes. Entries below the fork point record the original project's h
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-10-11
+
+Two things that a backup holds but that were closed until now: the **keychain**
+(saved passwords, Wi-Fi passwords, certificates and keys) and **notes locked
+with a password**, with their attachments. The Keychain tab was run on a real
+encrypted backup; the locked notes were not (none of the backups at hand held
+one), and the documentation says so.
+
 ### Added
 - **Credits** for the projects whose published research the Keychain tab and the opening of locked notes build on (iphone-dataprotection, the Apple Cloud Notes Parser, hashcat, Apple's Platform Security Guide, the RFC 3394 and NIST SP 800-38D standards, PyCryptodome), in [AUTHORS](AUTHORS), [NOTICE](NOTICE) and the README. No code was copied from them
 - **A Keychain tab.** The saved passwords of an encrypted backup (websites, apps, Wi-Fi networks), certificates and keys, with every stored attribute, shown in the clear; items that are locked to the phone ("this device only", which no backup can open) are counted and explained in a table of their own. The tab opens at once for an encrypted backup. **Extract Entire Backup** from an encrypted backup now also keeps the backup's key bag in a small `Manifest.plist`, so the extracted folder can be opened again here with the backup password and still show its keychain (the key bag is locked by the password; no password or key is written). Exporting passwords asks you to confirm and warns first, and nothing readable is written to the working folder. Opening a folder that holds only such a `Manifest.plist` now counts as an extracted backup. **Run on a real encrypted backup**: every item that a backup can open opened, and only the "this device only" items stayed locked (see [docs/apps/keychain.md](docs/apps/keychain.md))
