@@ -251,7 +251,7 @@ iOS Backup Explorer is built on top of the excellent [iphone_backup_decrypt](htt
 The Keychain tab and the opening of locked notes were written independently, but only because others published how those formats work. No code was copied, and thanks go to:
 
 - [iphone-dataprotection](https://github.com/dinosec/iphone-dataprotection) by Jean-Baptiste Bedrune and Jean Sigwald (Sogeti ESEC Lab), for the layout of keychain items in an encrypted backup (and, through `iphone_backup_decrypt`, the key bag code)
-- the [Apple Cloud Notes Parser](https://github.com/threeplanetssoftware/apple_cloud_notes_parser) by threeplanetssoftware (Jon Baumann), for where locked notes and their attachments keep their lock details and how they are opened
+- the [Apple Cloud Notes Parser](https://github.com/threeplanetssoftware/apple_cloud_notes_parser) by Jon Baumann of Ciofeca Forensics (threeplanetssoftware), for where locked notes and their attachments keep their lock details and how they are opened
 - [hashcat](https://hashcat.net/hashcat/), whose Apple Secure Notes module confirms how a locked note's key is made
 - Apple's [Platform Security Guide](https://support.apple.com/guide/security/), RFC 3394 and NIST SP 800-38D, and [PyCryptodome](https://www.pycryptodome.org)
 

@@ -60,7 +60,7 @@ AUTHORS and in README:
 iphone-dataprotection (Jean-Baptiste Bedrune and Jean Sigwald, Sogeti ESEC Lab;
     BSD 3-Clause): the layout of keychain items in an encrypted backup.
     https://github.com/dinosec/iphone-dataprotection
-Apple Cloud Notes Parser (threeplanetssoftware, Jon Baumann; MIT License): where
+Apple Cloud Notes Parser (Jon Baumann, Ciofeca Forensics, threeplanetssoftware; MIT License): where
     locked notes and their attachments keep their lock details, and how they
     are opened. https://github.com/threeplanetssoftware/apple_cloud_notes_parser
 hashcat (the hashcat developers; MIT License): the Apple Secure Notes module

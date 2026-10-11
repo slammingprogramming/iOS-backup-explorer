@@ -52,7 +52,7 @@ Lab). The layout of the keychain items in an encrypted backup (version 3: a key
 wrapped with the class key, AES-GCM with an empty nonce, DER-encoded
 attributes) and the protection classes.
     https://github.com/dinosec/iphone-dataprotection
-Apple Cloud Notes Parser — threeplanetssoftware (Jon Baumann). Where a locked
+Apple Cloud Notes Parser — Jon Baumann, Ciofeca Forensics (threeplanetssoftware). Where a locked
 note and its attachments keep their lock details (salt, rounds, wrapped key,
 nonce, tag) and how they are opened.
     https://github.com/threeplanetssoftware/apple_cloud_notes_parser
