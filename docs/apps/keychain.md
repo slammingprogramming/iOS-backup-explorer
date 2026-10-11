@@ -41,7 +41,7 @@ safe to delete the file if you do not need the keychain from that folder.)
 | **Passwords** | Saved passwords for websites and servers, the passwords of apps, and **Wi-Fi passwords** (with the network's name). Columns: kind, where, account, password, the app that saved it, when it changed. |
 | **Certificates** | Certificates the phone holds. |
 | **Keys** | Cryptographic keys. |
-| **Cannot be opened** | What could not be opened and why, counted by kind and by when the phone makes it available. |
+| **Cannot be opened** | What could not be opened and why, counted by kind and by when the phone makes it available (in practice, the *this device only* items). |
 
 The details pane shows every stored attribute of the selected item (service,
 account, groups, dates, comments...) and, for a value that is not text, its
@@ -83,15 +83,23 @@ passwords and Wi-Fi passwords usually are not.
 
 The format (each item is an AES-GCM-locked record whose key is wrapped with a
 class key from the key bag, holding a small DER-encoded set of
-name/value pairs) follows the open-source `iphone-dataprotection` tools. In this
-project it is tested on keychains **made by this program's own test code**:
-the AES-GCM (including the empty nonce the keychain uses) is checked against
-`pycryptodome` and a published test vector, the key wrapping against the RFC
-3394 vector, the key bag against the decryption library's own, and wrong keys
-and damaged items are shown to be refused rather than shown wrong. **It has
-not been run on a real keychain**: the real backup used while writing this was
-an extraction without its key bag, so its items could not be unlocked. If you open
-a real encrypted backup and the tab works (or does not), please
+name/value pairs) follows the open-source `iphone-dataprotection` tools.
+
+- **On a real encrypted backup** (made on a phone with a recent iOS, about 2,100
+  items), every item of the three classes a backup can open was opened: each one
+  passed its AES-GCM check, which a wrong reading of the format cannot, and the
+  attributes read were the expected ones (accounts, services, servers, ports,
+  dates, Wi-Fi networks). Only the items marked *this device only* stayed locked.
+  That run also showed how a real key bag behaves: it lists keys for the *this
+  device only* classes too, but they do not unwrap those items (the phone wrapped
+  them with its own keys), so such an item is reported as locked to the phone.
+- **In the tests** the keychains are made by this program's own test code: the
+  AES-GCM (including the empty nonce the keychain uses) is checked against
+  `pycryptodome` and a published test vector, the key wrapping against the RFC
+  3394 vector, the key bag against the decryption library's own, and wrong keys
+  and damaged items are shown to be refused rather than shown wrong.
+
+If the tab misbehaves on your backup, please
 [report it](../../CONTRIBUTING.md#reporting-a-problem) without sending the
 contents.
 

@@ -167,6 +167,102 @@ class EncryptedBackupTests(LockedGuiCase):
         self.settle(lambda: "nothing happened" in self.body_text(), "text")
 
 
+class AttachmentTests(LockedGuiCase):
+    """The picture attached to "Bank PINs" is locked in the backup; once the
+    note is open, every copy of it is opened."""
+
+    def setUp(self):
+        super().setUp()
+        self.answers = [fl.SHARED]
+        self.note_ = self.click(fl.BANK)
+        self.settle(lambda: self.note_.unlocked, "the note to open")
+        self.settle(lambda: self.note_.attachments
+                    and self.tab.ctx.file_filters, "its files")
+        self.path = self.note_.attachments["ATT-LOCKED"].path
+
+    def test_the_file_in_the_backup_is_locked(self):
+        self.assertNotEqual(fl.locked_file(), fl.LOCKED_PLAIN)
+        self.assertIn(self.path, self.tab.ctx.file_filters)
+
+    def test_a_working_copy_is_opened(self):
+        copies = self.tab.ctx.fetch_local([self.path], "t").result(30)
+        with open(copies[self.path], "rb") as handle:
+            self.assertEqual(handle.read(), fl.LOCKED_PLAIN)
+
+    def test_saving_a_file_gives_the_opened_one(self):
+        out = os.path.join(self.tmp, "saved.png")
+        self.tab.ctx.save_file(self.path, out).result(30)
+        with open(out, "rb") as handle:
+            self.assertEqual(handle.read(), fl.LOCKED_PLAIN)
+
+    def test_the_copier_and_the_fetcher_open_it_too(self):
+        folder = os.path.join(self.tmp, "c")
+        os.makedirs(folder)
+        self.assertTrue(self.tab.ctx.copier()(self.path, folder, "a.png"))
+        with open(os.path.join(folder, "a.png"), "rb") as handle:
+            self.assertEqual(handle.read(), fl.LOCKED_PLAIN)
+        item = self.note_.attachments["ATT-LOCKED"]
+        arrived = self.tab.ctx.fetcher(self.tmp)([(item, "b.png")])
+        self.assertEqual(arrived, ["b.png"])
+        with open(os.path.join(self.tmp, "attachments", "b.png"), "rb") as h:
+            self.assertEqual(h.read(), fl.LOCKED_PLAIN)
+
+    def test_an_export_holds_the_opened_file(self):
+        out = os.path.join(self.tmp, "export")
+        before = len(self.dialogs)
+        self.tab.export_to([self.note_], "html", out)
+        self.wait_for(lambda: len(self.dialogs) > before, "the export")
+        found = []
+        for folder, _dirs, files in os.walk(os.path.join(out, "attachments")):
+            for name in files:
+                with open(os.path.join(folder, name), "rb") as handle:
+                    found.append(handle.read())
+        self.assertIn(fl.LOCKED_PLAIN, found)
+        self.assertNotIn(fl.locked_file(), found)
+
+    def test_a_file_that_will_not_open_is_not_passed_on_locked(self):
+        def broken(local):
+            raise ValueError("no")
+
+        self.tab.ctx.add_file_filter(self.path, broken)
+        self.assertEqual(self.tab.ctx.fetch_local([self.path], "t").result(30),
+                         {})
+        out = os.path.join(self.tmp, "saved.png")
+        with self.assertRaises(ValueError):
+            self.tab.ctx.save_file(self.path, out).result(30)
+        self.assertFalse(os.path.exists(out))
+        folder = os.path.join(self.tmp, "c")
+        os.makedirs(folder)
+        self.assertFalse(self.tab.ctx.copier()(self.path, folder, "a.png"))
+        self.assertEqual(os.listdir(folder), [])
+
+    def test_forgetting_and_closing_drop_the_means_of_opening(self):
+        self.tab.forget_passwords()
+        self.settle(lambda: not self.note_.unlocked, "locked again")
+        self.explorer.apps.reset()
+        self.assertEqual(self.tab.ctx.file_filters, {})
+
+
+class ExportWithoutClickingTests(LockedGuiCase):
+    def test_an_export_of_a_note_that_was_never_shown_holds_the_opened_file(
+            self):
+        self.answers = [fl.SHARED]
+        self.tab.unlock_all()                      # (no note is clicked)
+        self.settle(lambda: self.note(fl.BANK).unlocked, "the note to open")
+        self.assertEqual(self.tab.ctx.file_filters, {})
+        out = os.path.join(self.tmp, "export")
+        before = len(self.dialogs)
+        self.tab.export_to([self.note(fl.BANK)], "html", out)
+        self.wait_for(lambda: len(self.dialogs) > before, "the export")
+        found = []
+        for folder, _dirs, files in os.walk(os.path.join(out, "attachments")):
+            for name in files:
+                with open(os.path.join(folder, name), "rb") as handle:
+                    found.append(handle.read())
+        self.assertIn(fl.LOCKED_PLAIN, found)
+        self.assertNotIn(fl.locked_file(), found)
+
+
 class ButtonTests(LockedGuiCase):
     def test_unlock_notes_tries_one_password_on_all(self):
         self.answers = [fl.SHARED]

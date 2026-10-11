@@ -172,6 +172,17 @@ class ItemTests(unittest.TestCase):
         self.assertTrue(caught.exception.device_only)
         self.assertIn("phone", caught.exception.reason)
 
+    def test_a_device_only_item_whose_class_key_does_not_fit(self):
+        # a real backup's key bag lists keys for these classes, but the
+        # items were wrapped with the phone's own keys
+        for clas in (9, 10, 11):
+            blob = fk.make_item(self.ATTRS, clas)
+            with self.subTest(clas=clas), \
+                    self.assertRaises(kc.ItemError) as caught:
+                kc.open_item(blob, b"\x99" * 32)
+            self.assertTrue(caught.exception.device_only)
+            self.assertIn("phone", caught.exception.reason)
+
     def test_no_key_for_another_class_is_not_device_only(self):
         blob = fk.make_item(self.ATTRS, 7)
         with self.assertRaises(kc.ItemError) as caught:

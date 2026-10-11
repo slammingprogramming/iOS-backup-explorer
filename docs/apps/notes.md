@@ -82,9 +82,16 @@ password; different notes can have different passwords.)
   Exported files are ordinary files **without a password**: keep them somewhere
   you trust.
 
-What is **not** done yet: the pictures and files attached to a locked note are
-encrypted separately and stay encrypted (the note says how many), and the
-program does not guess passwords.
+**Attachments.** The pictures, recordings and files attached to a locked note
+are locked too, with the same password. Once the note is open they open with it:
+the previews in the note, *Open* and *Save*, and exports all give the readable
+file. (*Extract original files...* still copies the files exactly as the backup
+has them, locked.) If the backup holds no lock details for a file, it is
+listed but cannot be opened, and the note says how many.
+
+What is **not** done: the program does not guess passwords, and the names that
+Notes keeps for the files of a locked note are locked as well, so they are shown
+by their kind.
 
 **How well this is checked:** Apple describes the scheme in its Platform
 Security Guide (a 16-byte key made from the password with PBKDF2 and SHA-256,
@@ -96,8 +103,10 @@ Notes in hashcat, and the Apple Cloud Notes Parser. The tests lock notes with
 this program's own test code, so they prove that locking and unlocking agree,
 that the key unwrap matches the RFC 3394 test vector, and that a wrong password
 can never produce wrong text. **They are not a test against a real locked
-note**, because the backup this was written against held none, and a few things
-are untested: notes edited on the phone but not yet synced keep their lock
+note**, because none of the backups this was written against held one. The
+unlocking of the attached files follows the same tools' description (each file
+has its own salt, key, nonce and tag, kept with its media row) and is untested
+on real files too. A few other things are untested: notes edited on the phone but not yet synced keep their lock
 details elsewhere (in `ZUNAPPLIEDENCRYPTEDRECORD`), which is not read. If you
 open a locked note of your own and it works (or does not), please
 [report it](../../CONTRIBUTING.md#reporting-a-problem) without sending the

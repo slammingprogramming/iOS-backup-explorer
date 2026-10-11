@@ -10,6 +10,7 @@ the scheme is the one Apple uses (see ``docs/apps/notes.md``).
 
 from ios_apps import notes_crypto
 from tests import fixture_notes as fn
+from tests.fixture_apps import PNG_BYTES
 
 SHARED = "correct horse"          # locks "Bank PINs" and "Diary"
 OTHER = "Zürich 2026"             # locks "Vault" (an accented letter)
@@ -17,6 +18,9 @@ HINT = "my city and a year"
 ROUNDS = 1000                     # (iOS uses more; fewer keeps tests quick)
 
 BANK, DIARY, VAULT, BROKEN = 40, 41, 42, 43
+LOCKED_MEDIA = "MEDIA-LOCKED"
+LOCKED_FILE = f"{fn.NOTES_ACCOUNT}/Media/{LOCKED_MEDIA}/1_GEN-L/{LOCKED_MEDIA}"
+LOCKED_PLAIN = PNG_BYTES            # what the locked file holds
 BANK_TEXT = "PIN for the card is 4821\n"
 DIARY_TEXT = "Dear diary, nothing happened.\n"
 VAULT_TEXT = "The vault holds a spare key.\n"
@@ -43,6 +47,9 @@ def build(conn):
                      f"{column} {kind}")
     for column in ("ZCRYPTOINITIALIZATIONVECTOR", "ZCRYPTOTAG"):
         conn.execute(f"ALTER TABLE ZICNOTEDATA ADD COLUMN {column} BLOB")
+    for column in ("ZASSETCRYPTOINITIALIZATIONVECTOR", "ZASSETCRYPTOTAG"):
+        conn.execute(f"ALTER TABLE ZICCLOUDSYNCINGOBJECT ADD COLUMN "
+                     f"{column} BLOB")
 
     def locked(pk, title, password, text, hint=None, runs=None):
         salt, wrapped, iv, tag, data = _lock(
@@ -73,17 +80,44 @@ def build(conn):
         ", 'NOTE-43', 1)", (BROKEN,))
     conn.execute("INSERT INTO ZICNOTEDATA (ZNOTE, ZDATA) VALUES (?, ?)",
                  (BROKEN, b"not encrypted data"))
-    # the photo of the note "Bank PINs" (the same media file as note 10's)
+    # a photo of the note "Bank PINs" that holds no lock details (the same
+    # media file as note 10's): it cannot be opened
     conn.execute(
         "INSERT INTO ZICCLOUDSYNCINGOBJECT (Z_PK, Z_ENT, ZNOTE, ZIDENTIFIER, "
         "ZTYPEUTI, ZMEDIA) VALUES (44, 3, ?, ?, ?, 20)",
         (BANK, fn.PHOTO[0], fn.PHOTO[1]))
+    # and a locked picture: its media row (no file name: that is locked
+    # too) holds what opens the file
+    salt, key, iv = b"m" * 16, b"n" * 16, b"o" * 16
+    wrapped, tag, _data = notes_crypto.encrypt(SHARED, salt, ROUNDS, key, iv,
+                                               LOCKED_PLAIN)
+    conn.execute(
+        "INSERT INTO ZICCLOUDSYNCINGOBJECT (Z_PK, Z_ENT, ZIDENTIFIER, "
+        "ZCRYPTOSALT, ZCRYPTOWRAPPEDKEY, ZCRYPTOITERATIONCOUNT, "
+        "ZASSETCRYPTOINITIALIZATIONVECTOR, ZASSETCRYPTOTAG) "
+        "VALUES (45, 11, ?, ?, ?, ?, ?, ?)",
+        (LOCKED_MEDIA, salt, wrapped, ROUNDS, iv, tag))
+    conn.execute(
+        "INSERT INTO ZICCLOUDSYNCINGOBJECT (Z_PK, Z_ENT, ZNOTE, ZIDENTIFIER, "
+        "ZTYPEUTI, ZMEDIA) VALUES (46, 3, ?, 'ATT-LOCKED', 'public.png', 45)",
+        (BANK,))
     conn.commit()
+
+
+def locked_file():
+    """What the backup holds for the locked picture: its data, locked."""
+    salt, key, iv = b"m" * 16, b"n" * 16, b"o" * 16
+    _wrapped, _tag, data = notes_crypto.encrypt(SHARED, salt, ROUNDS, key, iv,
+                                                LOCKED_PLAIN)
+    return data
 
 
 def backup_files():
     """The ``(domain, path, bytes)`` list for a backup with these notes."""
     from tests.fixture_apps import database_bytes
     files = fn.backup_files()
-    return [(domain, path, database_bytes(build) if path == "NoteStore.sqlite"
-             else data) for domain, path, data in files]
+    files = [(domain, path, database_bytes(build)
+              if path == "NoteStore.sqlite" else data)
+             for domain, path, data in files]
+    return files + [(fn.NOTES_DOMAIN, LOCKED_FILE.split(
+        fn.NOTES_DOMAIN + "/")[-1], locked_file())]

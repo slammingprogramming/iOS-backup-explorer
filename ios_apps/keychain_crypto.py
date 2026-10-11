@@ -17,8 +17,9 @@ the rest                  the data, AES-GCM, with the 16-byte tag last
 
 The class keys are in the backup's key bag (``Manifest.plist``), which the
 backup password unlocks. Classes 9, 10 and 11 are the "this device only"
-ones: they are wrapped with a key that never leaves the phone, so a backup
-holds no key for them and those items cannot be opened anywhere else.
+ones: they are wrapped with a key that never leaves the phone. (A real backup's
+key bag lists a key for them too, but it does not unwrap their items.) Those
+items cannot be opened anywhere else.
 
 The GCM nonce is empty. That is allowed by the GCM definition (the first
 counter block is then all zeros, rather than one made from the nonce) but not
@@ -26,11 +27,12 @@ by most libraries, so GCM is done here. The decrypted data is a DER-encoded
 set of name/value pairs (``acct``, ``svce``, ``v_Data``...) in version 3, and
 a binary property list in version 2.
 
-The format follows the open-source ``iphone-dataprotection`` tools. It has been
-tested here on items made by this module's own encoder, with the GCM and key
-wrap code checked against ``pycryptodome`` and the RFC 3394 vector, **not**
-on a real keychain (the extracted backup this was written against has no
-key bag); see ``docs/apps/keychain.md``. A wrong class key or damaged item
+The format follows the open-source ``iphone-dataprotection`` tools, and has
+been run on a real encrypted backup: every item of classes 6, 7 and 8 opened
+(each one passes its GCM tag check, which a wrong reading of the format would
+not), and only the "this device only" items did not. The tests use items made
+by this module's own encoder, with the GCM and key wrap code checked against
+``pycryptodome`` and the RFC 3394 vector. A wrong class key or damaged item
 fails the GCM tag check, so nothing wrong is ever shown as right.
 
 Needs ``pycryptodome`` (installed with ``iphone_backup_decrypt``).
@@ -245,6 +247,11 @@ def open_item(blob, class_key):
     try:
         item_key = notes_crypto.key_unwrap(class_key, wrapped)
     except notes_crypto.WrongPassword:
+        if clas in DEVICE_ONLY:
+            # (a real backup's key bag lists these classes too, but their
+            # items were wrapped with the phone's own keys)
+            raise ItemError("locked to the phone it came from",
+                            device_only=True) from None
         raise ItemError("its key could not be unwrapped") from None
     try:
         plain = gcm_decrypt(item_key, b"", ciphertext, tag)

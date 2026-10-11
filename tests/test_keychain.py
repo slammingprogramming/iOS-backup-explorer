@@ -115,6 +115,41 @@ class ReaderTests(unittest.TestCase):
         self.assertEqual(len(keys_), len(set(keys_)))
 
 
+class OddAttributesTests(unittest.TestCase):
+    """What a real keychain does: names stored as bytes, the protocol as the
+    number of its four letters."""
+
+    def rows(self, items):
+        data = kn.read_plist(fk.keychain_plist(items))
+        table, = kn.datasets_for(data, keys())
+        return table.rows
+
+    def test_the_protocol_as_a_number_or_as_text(self):
+        number = int.from_bytes(b"htps", "big")
+        rows = self.rows([
+            ("inet", {"srvr": "a.example.com", "ptcl": number, "port": 443,
+                      "path": "", "acct": "x", "v_Data": b"p"}, 6),
+            ("inet", {"srvr": "b.example.com", "ptcl": "imps", "port": 993,
+                      "path": "", "acct": "x", "v_Data": b"p"}, 6),
+            ("inet", {"srvr": "c.example.com", "ptcl": 0, "port": 0,
+                      "path": "/x", "acct": "x", "v_Data": b"p"}, 6),
+            ("inet", {"srvr": "d.example.com", "ptcl": 7, "port": 0,
+                      "path": "", "acct": "x", "v_Data": b"p"}, 6)])
+        self.assertEqual(sorted(r["where"] for r in rows), [
+            "c.example.com/x", "d.example.com", "https://a.example.com",
+            "imaps://b.example.com:993"])
+
+    def test_names_stored_as_bytes(self):
+        rows = self.rows([
+            ("genp", {"svce": b"Some service", "acct": b"an account",
+                      "labl": "Label", "v_Data": b"p"}, 6),
+            ("genp", {"svce": "Binary", "acct": bytes([0, 255, 7]),
+                      "v_Data": b"p"}, 6)])
+        by = {r["where"]: r for r in rows}
+        self.assertEqual(by["Some service"]["account"], "an account")
+        self.assertEqual(by["Binary"]["account"], "00ff07")
+
+
 class WithoutKeysTests(unittest.TestCase):
     def test_nothing_opens_without_a_key_bag(self):
         data = kn.read_plist(fk.keychain_plist())

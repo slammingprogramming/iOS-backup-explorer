@@ -337,6 +337,7 @@ class NotesPanel(AppPanel):
         row = f"n{note.pk}"
         if self.tree.exists(row) and not self.search_var.get().strip():
             self.tree.item(row, text=self._row_title(note))
+        self._register_filters([note])
         self._render(note)
         self._load_pictures(note, request)
         self._update_unlock_button(note)
@@ -360,6 +361,15 @@ class NotesPanel(AppPanel):
             row = f"n{note.pk}"
             if self.tree.exists(row):
                 self.tree.item(row, text=self._row_title(note))
+
+    def _register_filters(self, notes):
+        """Tell the context which files of these notes are locked (the
+        attachments of open locked notes), so every copy of them is opened."""
+        for note in notes:
+            for attachment in note.attachments.values():
+                if attachment.decrypt is not None and attachment.path:
+                    self.ctx.add_file_filter(attachment.path,
+                                             attachment.decrypt)
 
     def try_password(self, password, method, *args, notes=None):
         """Try *password* on the locked notes among *notes* (all, if none are
@@ -797,8 +807,18 @@ class NotesPanel(AppPanel):
         *recordings* says which file of a call recording to export (see
         ``notes_export.RECORDINGS``)."""
         folders = dict(self.folders)
+        add_filter = self.ctx.add_file_filter   # (not the panel: see AppPanel)
+
+        def load(reader):
+            loaded = [reader.load(n) for n in notes]
+            for note in loaded:                  # (before the files are copied)
+                for attachment in note.attachments.values():
+                    if attachment.decrypt is not None and attachment.path:
+                        add_filter(attachment.path, attachment.decrypt)
+            return loaded
+
         self.start_export(
-            lambda reader: [reader.load(n) for n in notes],
+            load,
             lambda data, fetch: nx.export(data, folders, fmt, destination,
                                           fetch, recordings),
             destination)

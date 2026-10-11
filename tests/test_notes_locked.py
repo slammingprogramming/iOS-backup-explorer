@@ -2,7 +2,10 @@
 # Copyright (C) 2026 slammingprogramming and contributors
 """Notes locked with a password: the cryptography and the reader."""
 
+import os
+import shutil
 import sqlite3
+import tempfile
 import unicodedata
 import unittest
 
@@ -141,6 +144,8 @@ class ReaderTests(unittest.TestCase):
     def setUp(self):
         self.conn = open_database()
         self.addCleanup(self.conn.close)
+        self.tmp = tempfile.mkdtemp(prefix="ibe-locked-")
+        self.addCleanup(shutil.rmtree, self.tmp, True)
         self.reader = nt.NotesReader(
             self.conn, lambda media, name: f"Media/{media}/{name}")
         self.notes = {n.pk: n for n in self.reader.notes()}
@@ -236,16 +241,72 @@ class ReaderTests(unittest.TestCase):
             self.assertFalse(self.reader.unlock(note, [fl.SHARED, fl.OTHER]))
             self.assertIn("locked", self.reader.load(note).error)
 
-    def test_the_files_of_a_locked_note_are_not_offered(self):
+    def attachments(self):
         self.reader.try_password([self.notes[fl.BANK]], fl.SHARED)
-        note = self.reader.load(self.notes[fl.BANK])
-        self.assertTrue(note.attachments)
-        self.assertTrue(all(not a.path for a in note.attachments.values()))
-        self.assertIn("stay encrypted", note.error)
-        # an ordinary note keeps its file
-        self.assertTrue(any(a.path for a in
-                            self.reader.load(self.notes[10]).attachments
-                            .values()))
+        return self.reader.load(self.notes[fl.BANK]).attachments
+
+    def test_a_locked_file_with_its_details_can_be_opened(self):
+        attachment = self.attachments()["ATT-LOCKED"]
+        self.assertIn("MEDIA-LOCKED", attachment.path)
+        self.assertTrue(callable(attachment.decrypt))
+        local = os.path.join(self.tmp, "copy.bin")
+        with open(local, "wb") as handle:
+            handle.write(fl.locked_file())         # a copy as the backup has it
+        attachment.decrypt(local)
+        with open(local, "rb") as handle:
+            self.assertEqual(handle.read(), fl.LOCKED_PLAIN)
+
+    def test_a_file_without_details_is_not_offered(self):
+        attachments = self.attachments()
+        self.assertEqual(attachments["ATT-PHOTO"].path, "")
+        self.assertIsNone(attachments["ATT-PHOTO"].decrypt)
+        note = self.notes[fl.BANK]
+        self.assertIn("1 attached file of this locked note cannot be opened",
+                      note.error)
+
+    def test_an_ordinary_notes_files_are_left_alone(self):
+        found = self.reader.load(self.notes[10]).attachments.values()
+        self.assertTrue(any(a.path for a in found))
+        self.assertTrue(all(a.decrypt is None for a in found))
+
+    def test_a_file_that_does_not_open_is_left_as_it_was(self):
+        attachment = self.attachments()["ATT-LOCKED"]
+        local = os.path.join(self.tmp, "copy.bin")
+        damaged = bytearray(fl.locked_file())
+        damaged[3] ^= 1
+        with open(local, "wb") as handle:
+            handle.write(damaged)
+        with self.assertRaises(nc.WrongPassword):
+            attachment.decrypt(local)
+        with open(local, "rb") as handle:
+            self.assertEqual(handle.read(), bytes(damaged))
+        self.assertEqual(os.listdir(self.tmp), ["copy.bin"])
+
+    def test_a_failure_while_writing_leaves_nothing_behind(self):
+        from unittest import mock
+        attachment = self.attachments()["ATT-LOCKED"]
+        local = os.path.join(self.tmp, "copy.bin")
+        with open(local, "wb") as handle:
+            handle.write(fl.locked_file())
+        with mock.patch("ios_apps.notes_crypto.os.replace",
+                        side_effect=OSError("disk full")),                 self.assertRaises(OSError):
+            attachment.decrypt(local)
+        self.assertEqual(os.listdir(self.tmp), ["copy.bin"])
+        with open(local, "rb") as handle:
+            self.assertEqual(handle.read(), fl.locked_file())
+
+    def test_the_media_folder_of_a_path(self):
+        self.assertEqual(nt._media_id_of("D/Accounts/A/Media/ID/1_G/f"), "ID")
+        self.assertEqual(nt._media_id_of("D/Media/ID/f"), "ID")
+        self.assertEqual(nt._media_id_of("D/Media/f"), "")
+        self.assertEqual(nt._media_id_of("D/x/f"), "")
+
+    def test_forgetting_takes_the_means_of_opening_away(self):
+        self.attachments()
+        self.reader.forget_passwords()
+        note = self.notes[fl.BANK]
+        self.assertIsNone(note.password)
+        self.assertEqual(note.attachments, {})
 
     def test_ordinary_notes_are_not_touched(self):
         self.assertIn("Milk", self.text(10))

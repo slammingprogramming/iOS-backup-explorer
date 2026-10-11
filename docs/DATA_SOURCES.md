@@ -34,7 +34,7 @@ Paths are `Domain/path inside the domain`. See
 | **Reminders** | `HomeDomain/Library/Reminders/Container_v1/Stores/Data-*.sqlite` | Real (both table layouts are tested) |
 | **Network** | `SystemPreferencesDomain/com.apple.wifi.known-networks.plist` (older: `.../SystemConfiguration/com.apple.wifi.plist`); `SysSharedContainerDomain-systemgroup.com.apple.bluetooth/Library/Database/*.db` and `.../Preferences/com.apple.MobileBluetooth.devices.plist`; `WirelessDomain/Library/Databases/DataUsage.sqlite` | Real |
 | **Accounts** | `HomeDomain/Library/Accounts/Accounts3.sqlite`; `SystemPreferencesDomain/SystemConfiguration/preferences.plist`; `Info.plist`, `Manifest.plist`, `Status.plist` in the backup folder (when it has them) | Real (the device-information files were checked on generated ones) |
-| **Keychain** | `KeychainDomain/keychain-backup.plist`, opened with the class keys of the backup's key bag (`Manifest.plist`) | Layout (the format follows published tools; tested on generated keychains only) |
+| **Keychain** | `KeychainDomain/keychain-backup.plist`, opened with the class keys of the backup's key bag (`Manifest.plist`) | Real (a real encrypted backup opened every item a backup can open; also tested on generated keychains) |
 | **Screen Time** | `SysSharedContainerDomain-systemgroup.com.apple.DeviceActivity/Library/com.apple.DeviceActivity/Cloud/.../{Daily,Weekly,Hourly}/ActivitySegments/*.plist` | Real |
 | **Health** | `HealthDomain/Health/healthdb_secure.sqlite`, `healthdb.sqlite`, `HealthDomain/MedicalID/MedicalIDData.archive` | Real for the parts [listed](HEALTH.md) |
 | **Maps** | `AppDomainGroup-group.com.apple.Maps/Maps/MapsSync_0.0.1` | Layout |
@@ -70,7 +70,7 @@ is in your backup does not show, please report it.
   "this device only" cannot be opened from any backup. See
   [Keychain](apps/keychain.md).
 - **Locked notes** are stored encrypted inside the backup; they open with the
-  note's own password (see [Notes](apps/notes.md#locked-notes)). The files
-  attached to a locked note stay encrypted.
+  note's own password (see [Notes](apps/notes.md#locked-notes)), and so do the
+  files attached to them.
 - **Third-party apps'** own data is in their `AppDomain-...` folders and is not
   interpreted; the file browser can extract it.

@@ -51,6 +51,9 @@ class AppContext:
         self._contacts = None            # the ContactBook, once loaded
         self._contact_source = None
         self._contact_callbacks = None   # waiting for it, while loading
+        # backup path -> ``open(local copy)``: files that are locked in the
+        # backup (attachments of locked notes) and are opened after copying
+        self.file_filters = {}
 
     # -- lifetime ---------------------------------------------
 
@@ -62,6 +65,7 @@ class AppContext:
         self._contact_source = None
         self._contacts = None
         self._contact_callbacks = None
+        self.file_filters.clear()        # (they hold passwords)
         if self._workspace is not None:
             self._workspace.close()
             self._workspace = None
@@ -95,6 +99,28 @@ class AppContext:
         node = self.index.get(path) if self.index is not None else None
         return None if node is None or node.is_dir else node.file_id
 
+    def add_file_filter(self, path, open_copy):
+        """The file at backup *path* is locked: after every copy of it,
+        ``open_copy(local path)`` makes the copy readable (in place)."""
+        self.file_filters[path] = open_copy
+
+    def _open_copy(self, path, local):
+        """Run the filter of *path*, if it has one, on the copy at *local*.
+        False if the filter failed (the copy is then deleted: a locked file
+        must not be passed on as if it were the picture)."""
+        open_copy = self.file_filters.get(path)
+        if open_copy is None:
+            return True
+        try:
+            open_copy(local)
+            return True
+        except Exception:                    # (wrong password, damage)
+            try:
+                os.remove(local)
+            except OSError:
+                pass
+            return False
+
     def save_file(self, path, destination):
         """Copy the file at *path* in the backup to *destination*.
         Future -> None."""
@@ -107,8 +133,12 @@ class AppContext:
 
         def finish(done):
             done.result()
-            shutil.copyfile(os.path.join(folder, name), destination)
-            os.remove(os.path.join(folder, name))
+            local = os.path.join(folder, name)
+            if not self._open_copy(path, local):
+                raise ValueError("this file is locked and could not be "
+                                 "opened")
+            shutil.copyfile(local, destination)
+            os.remove(local)
 
         return _chain(future, finish)
 
@@ -136,7 +166,9 @@ class AppContext:
         def finish(done):
             written = set(done.result())
             return {path: os.path.join(folder, name)
-                    for path, name in names.items() if name in written}
+                    for path, name in names.items()
+                    if name in written
+                    and self._open_copy(path, os.path.join(folder, name))}
 
         return _chain(self.session.export_files(items, folder), finish)
 
@@ -147,17 +179,21 @@ class AppContext:
         ``folder/subfolder`` and returns the names that arrived. Call it
         from a background thread (it waits for the copy)."""
         index, session = self.index, self.session
+        open_copy = self._open_copy
 
         def fetch(wanted):
-            pairs = []
+            pairs, paths = [], {}
             for item, name in wanted:
                 node = index.get(path_of(item))
                 if node is not None and not node.is_dir:
                     pairs.append((node.file_id, name))
+                    paths[name] = path_of(item)
             if not pairs:
                 return []
-            return session.export_files(
-                pairs, os.path.join(folder, subfolder)).result()
+            target = os.path.join(folder, subfolder)
+            arrived = session.export_files(pairs, target).result()
+            return [name for name in arrived
+                    if open_copy(paths.get(name), os.path.join(target, name))]
 
         return fetch
 
@@ -167,13 +203,16 @@ class AppContext:
         until it is there (call it from a background thread). False when
         the backup does not hold that file."""
         index, session = self.index, self.session
+        open_copy = self._open_copy
 
         def copy(path, directory, name):
             node = index.get(path)
             if node is None or node.is_dir:
                 return False
-            return name in session.export_files(
-                [(node.file_id, name)], directory).result()
+            if name not in session.export_files(
+                    [(node.file_id, name)], directory).result():
+                return False
+            return open_copy(path, os.path.join(directory, name))
 
         return copy
 

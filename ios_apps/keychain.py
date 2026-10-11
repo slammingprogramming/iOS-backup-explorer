@@ -91,21 +91,41 @@ def _shown_secret(value):
     return "" if value is None else str(value)
 
 
+def _text(value):
+    """An attribute as text: names are usually text, but some are stored as
+    bytes (and the protocol as a number)."""
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, (bytes, bytearray)):
+        text = secret_text(value)
+        return text if text is not None else bytes(value).hex()
+    return str(value)
+
+
+def _protocol(value):
+    """``https`` for the code ``htps``, which a keychain stores as text or
+    as the number of its four letters."""
+    if isinstance(value, int):
+        letters = value.to_bytes(4, "big").decode("latin-1").strip("\0 ") \
+            if 0 < value < 2 ** 32 else ""
+        code = letters if letters.isprintable() and letters.isalnum() else ""
+    else:
+        code = _text(value).strip()
+    return _PROTOCOLS.get(code.lower(), code)
+
+
 def _where(attrs, kind):
     if kind == "inet":
-        scheme = _PROTOCOLS.get(str(attrs.get("ptcl", "")).strip().lower(),
-                                str(attrs.get("ptcl", "")).strip())
+        scheme = _protocol(attrs.get("ptcl"))
         port = attrs.get("port")
         text = f"{scheme}://" if scheme else ""
-        text += str(attrs.get("srvr", ""))
+        text += _text(attrs.get("srvr"))
         if isinstance(port, int) and port not in _PLAIN_PORTS:
             text += f":{port}"
-        return text + str(attrs.get("path", "") or "")
-    return str(attrs.get("svce", "") or "")
-
-
-def _text(value):
-    return "" if value is None else str(value)
+        return text + _text(attrs.get("path"))
+    return _text(attrs.get("svce"))
 
 
 def password_row(item):

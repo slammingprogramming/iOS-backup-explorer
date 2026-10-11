@@ -38,6 +38,7 @@ when a locked note is opened.
 """
 
 import hashlib
+import os
 import struct
 import unicodedata
 
@@ -141,6 +142,30 @@ def decrypt(password, salt, iterations, wrapped_key, iv, tag, data):
         except ValueError:
             continue
     raise WrongPassword("the password does not open this note")
+
+
+def decrypt_file(password, details, path):
+    """Replace the locked file at *path* by what it holds, in place.
+
+    The file of an attachment of a locked note is locked like the note: the
+    same kind of key (from the attachment's own salt, round count and wrapped
+    key, and the same password), with its own nonce and tag, over the whole
+    file. *details* is ``{"salt", "rounds", "wrapped", "iv", "tag"}``.
+    ``WrongPassword`` if it does not open (the file is then left as it was).
+    """
+    with open(path, "rb") as handle:
+        data = handle.read()
+    plain = decrypt(password, details.get("salt"), details.get("rounds"),
+                    details.get("wrapped"), details.get("iv"),
+                    details.get("tag"), data)
+    partial = path + ".opening"
+    try:
+        with open(partial, "wb") as handle:
+            handle.write(plain)
+        os.replace(partial, path)
+    finally:
+        if os.path.exists(partial):
+            os.remove(partial)
 
 
 def encrypt(password, salt, iterations, key, iv, data):

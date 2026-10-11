@@ -27,6 +27,7 @@ UTF-16 code units, not characters. There is a tiny decoder for exactly the
 parts needed here, so nothing has to be installed.
 """
 
+import functools
 import os
 import re
 import sqlite3
@@ -343,6 +344,8 @@ class Attachment:
     variants: list = field(default_factory=list)   # the files of a recording
     also: list = field(default_factory=list)       # (for an export)
     mix: bool = False          # (for an export) path is to be mixed down
+    decrypt: object = field(default=None, repr=False)   # the file at *path*
+                               # is locked: ``decrypt(local copy)`` opens it
 
     @property
     def key(self):
@@ -410,6 +413,7 @@ class Note:
     modified: float = None
     locked: bool = False            # protected by a password
     unlocked: bool = False          # ... and opened with one just now
+    password: str = field(default=None, repr=False)   # (in memory only)
     hint: str = ""                  # the password hint the person wrote
     crypto: dict = field(default=None, repr=False)   # see NotesReader
     tried: int = -1                 # how many passwords had been tried
@@ -602,6 +606,7 @@ class NotesReader:
         for note in self._notes:
             if note.unlocked:
                 note.unlocked = False
+                note.password = None
                 note.loaded = False
                 note.paragraphs = []
                 note.attachments = {}
@@ -658,6 +663,7 @@ class NotesReader:
                 note.error = f"The text of this note could not be read ({exc})."
                 note.paragraphs = []
             note.unlocked = True
+            note.password = password
             note.loaded = False          # (load() adds the attachments)
             return True
         return False
@@ -717,20 +723,51 @@ class NotesReader:
             note.title = (first or note.snippet or "Untitled note")[:80]
         note.attachments = self._attachments(note)
         if note.locked and note.unlocked:
-            self._withhold_encrypted_files(note)
+            self._open_locked_files(note)
         return note
 
-    def _withhold_encrypted_files(self, note):
-        """The files attached to a locked note are encrypted too, in a way
-        this program does not read yet: do not offer them as if they could
-        be opened."""
-        held = [a for a in note.attachments.values() if a.path]
-        for attachment in held:
-            attachment.path = ""
-        if held and not note.error:
-            note.error = (f"{len(held)} attached file"
-                          f"{'' if len(held) == 1 else 's'} of this locked "
-                          "note stay encrypted and cannot be shown.")
+    FILE_COLUMNS = ("ZCRYPTOSALT", "ZCRYPTOITERATIONCOUNT",
+                    "ZCRYPTOWRAPPEDKEY", "ZASSETCRYPTOINITIALIZATIONVECTOR",
+                    "ZASSETCRYPTOTAG")
+
+    def _file_lock(self, media_id, note_pk):
+        """What opens the file of the media folder *media_id*, or None:
+        ``{"salt", "rounds", "wrapped", "iv", "tag"}``. It is stored with the
+        media row; the attachment rows of the note are looked at too."""
+        present = [c for c in self.FILE_COLUMNS if c in self.cols]
+        if len(present) != len(self.FILE_COLUMNS):
+            return None
+        sql = (f"SELECT {', '.join(self.FILE_COLUMNS)} "
+               "FROM ZICCLOUDSYNCINGOBJECT WHERE ")
+        for where, params in (("ZIDENTIFIER = ?", (media_id,)),
+                              ("ZNOTE = ?", (note_pk,))):
+            for row in self.conn.execute(sql + where, params):
+                if all(row):
+                    return dict(zip(("salt", "rounds", "wrapped", "iv",
+                                     "tag"), row))
+        return None
+
+    def _open_locked_files(self, note):
+        """The files attached to an open locked note are locked as well. Give
+        each the means to open itself (``Attachment.decrypt``), and take away
+        the ones this backup holds no details for."""
+        lost = 0
+        for attachment in note.attachments.values():
+            if not attachment.path:
+                continue
+            media_id = _media_id_of(attachment.path)
+            lock = self._file_lock(media_id, note.pk) if media_id else None
+            if lock is None:
+                attachment.path = ""
+                lost += 1
+                continue
+            attachment.decrypt = functools.partial(
+                notes_crypto.decrypt_file, note.password, lock)
+        if lost and not note.error:
+            note.error = (f"{lost} attached file{'' if lost == 1 else 's'} "
+                          "of this locked note cannot be opened (the backup "
+                          "holds no details to unlock "
+                          f"{'it' if lost == 1 else 'them'}).")
 
     def _attachments(self, note):
         if "ZNOTE" not in self.cols or "ZIDENTIFIER" not in self.cols:
@@ -871,6 +908,15 @@ class NotesReader:
 
 
 # ── Finding attachment files in the backup ───────────────────
+
+def _media_id_of(path):
+    """``ID`` for a path ``.../Media/ID/...``, else ``""``."""
+    parts = path.split("/")
+    for position, part in enumerate(parts[:-1]):
+        if part == "Media" and position + 1 < len(parts) - 1:
+            return parts[position + 1]
+    return ""
+
 
 def media_resolver(index):
     """A function ``(media folder id, file name) -> backup path or ""``.
