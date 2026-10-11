@@ -50,6 +50,26 @@ kept here and in AUTHORS regardless. jakubstetz (pull request #5) and
 heebeejeebees (issue #4) are credited in AUTHORS for the same reason.
 
 ================================================================================
+SOURCES OF IDEAS AND FORMAT KNOWLEDGE  (no code from them is included)
+================================================================================
+
+The Keychain tab and the opening of locked notes were written independently
+from what the following publish about the formats. They are credited here, in
+AUTHORS and in README:
+
+iphone-dataprotection (Jean-Baptiste Bedrune and Jean Sigwald, Sogeti ESEC Lab;
+    BSD 3-Clause): the layout of keychain items in an encrypted backup.
+    https://github.com/dinosec/iphone-dataprotection
+Apple Cloud Notes Parser (threeplanetssoftware, Jon Baumann; MIT License): where
+    locked notes and their attachments keep their lock details, and how they
+    are opened. https://github.com/threeplanetssoftware/apple_cloud_notes_parser
+hashcat (the hashcat developers; MIT License): the Apple Secure Notes module
+    (hash mode 16200). https://hashcat.net/hashcat/
+Apple Platform Security Guide (Apple Inc.): the documented design of locked
+    notes and of keychain data protection.
+RFC 3394 and NIST SP 800-38D: the AES key wrap and AES-GCM standards.
+
+================================================================================
 THIRD-PARTY SOFTWARE AND TEXT  (not part of this project's license grant)
 ================================================================================
 
@@ -58,6 +78,10 @@ iphone_backup_decrypt  (runtime dependency, installed separately; not bundled)
     google_iphone_dataprotection.py within it:
     Copyright (c) 2011-2014, Jean-Baptiste Bedrune & Jean Sigwald — BSD 3-Clause
     https://github.com/jsharkey13/iphone_backup_decrypt
+
+PyCryptodome  (a dependency of iphone_backup_decrypt, installed separately; not
+    bundled; used directly for AES in the Keychain tab and for locked notes)
+    BSD 2-Clause and public-domain parts. https://www.pycryptodome.org
 
 mfusepy  (optional dependency for mounting, installed separately; not bundled)
     ISC License. https://github.com/mxmlnkn/mfusepy

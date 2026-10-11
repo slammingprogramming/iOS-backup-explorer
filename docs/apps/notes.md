@@ -99,7 +99,9 @@ and AES-GCM), and the details used here (a 16-byte salt and the stored
 iteration count, an RFC 3394 unwrap of the note's key, the stored nonce and
 tag, which table each value is read from) agree with two open-source tools
 that are used on real notes: the password-recovery module for Apple Secure
-Notes in hashcat, and the Apple Cloud Notes Parser. The tests lock notes with
+Notes in [hashcat](https://hashcat.net/hashcat/), and the
+[Apple Cloud Notes Parser](https://github.com/threeplanetssoftware/apple_cloud_notes_parser)
+(see the credits in the [README](../../README.md#acknowledgements)). The tests lock notes with
 this program's own test code, so they prove that locking and unlocking agree,
 that the key unwrap matches the RFC 3394 test vector, and that a wrong password
 can never produce wrong text. **They are not a test against a real locked

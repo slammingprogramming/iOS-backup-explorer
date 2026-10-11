@@ -83,7 +83,9 @@ passwords and Wi-Fi passwords usually are not.
 
 The format (each item is an AES-GCM-locked record whose key is wrapped with a
 class key from the key bag, holding a small DER-encoded set of
-name/value pairs) follows the open-source `iphone-dataprotection` tools.
+name/value pairs) follows the open-source [iphone-dataprotection](https://github.com/dinosec/iphone-dataprotection)
+tools by Jean-Baptiste Bedrune and Jean Sigwald (see the credits in the
+[README](../../README.md#acknowledgements)).
 
 - **On a real encrypted backup** (made on a phone with a recent iOS, about 2,100
   items), every item of the three classes a backup can open was opened: each one

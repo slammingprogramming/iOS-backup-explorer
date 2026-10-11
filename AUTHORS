@@ -39,3 +39,29 @@ Upstream components credited
 ----------------------------
 James Sharkey, Jean-Baptiste Bedrune and Jean Sigwald — iphone_backup_decrypt
 and the iphone-dataprotection code it builds on. See NOTICE.
+
+Projects and research whose published work this one learned from
+----------------------------------------------------------------
+No code was copied from these. The Keychain tab and the opening of locked notes
+were written independently, from what these projects and documents publish
+about the formats; they are credited here, and in NOTICE and README, because
+the work would not have been possible without them.
+
+iphone-dataprotection — Jean-Baptiste Bedrune and Jean Sigwald (Sogeti ESEC
+Lab). The layout of the keychain items in an encrypted backup (version 3: a key
+wrapped with the class key, AES-GCM with an empty nonce, DER-encoded
+attributes) and the protection classes.
+    https://github.com/dinosec/iphone-dataprotection
+Apple Cloud Notes Parser — threeplanetssoftware (Jon Baumann). Where a locked
+note and its attachments keep their lock details (salt, rounds, wrapped key,
+nonce, tag) and how they are opened.
+    https://github.com/threeplanetssoftware/apple_cloud_notes_parser
+hashcat — the hashcat developers. Its Apple Secure Notes module (hash mode
+16200) confirms how a locked note's key is derived and unwrapped.
+    https://hashcat.net/hashcat/
+Apple Platform Security Guide — Apple Inc. The documented design of locked
+notes and of keychain data protection.
+    https://support.apple.com/guide/security/
+RFC 3394 (AES key wrap) and NIST SP 800-38D (AES-GCM) — the standards the
+cryptography follows, and the source of the test vectors.
+PyCryptodome — https://www.pycryptodome.org — the AES implementation used.
