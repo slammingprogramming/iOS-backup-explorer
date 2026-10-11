@@ -21,9 +21,9 @@ line to :data:`APPS`; a tab appears for it whenever the backup has its data.
 """
 
 from . import (accounts, books, calendar_events, calls, contacts, health,
-               icloud_drive, installed_apps, maps, messages, network, notes,
-               photos, podcasts, privacy, recents, reminders, safari,
-               screentime, voicemail, voice_memos)
+               icloud_drive, installed_apps, keychain, maps, messages,
+               network, notes, photos, podcasts, privacy, recents, reminders,
+               safari, screentime, voicemail, voice_memos)
 
 
 def _has_file(index, path):
@@ -113,6 +113,11 @@ def _create_books(master, context):
     return BooksPanel(master, context)
 
 
+def _create_keychain(master, context):
+    from .keychain_view import KeychainPanel
+    return KeychainPanel(master, context)
+
+
 def _create_privacy(master, context):
     from .privacy_view import PrivacyPanel
     return PrivacyPanel(master, context)
@@ -178,6 +183,9 @@ APPS = [
     AppEntry("accounts", "Accounts",
              lambda index: bool(accounts.discover(index)),
              _create_accounts),
+    AppEntry("keychain", "Keychain",
+             lambda index: _has_file(index, keychain.PATH),
+             _create_keychain),
     AppEntry("screentime", "Screen Time",
              lambda index: bool(screentime.discover(index)),
              _create_screentime),

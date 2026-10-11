@@ -45,15 +45,34 @@ def looks_like_domain(name):
     return name.split("-", 1)[0].endswith(_SUFFIXES)
 
 
+KEY_BAG_FILE = "Manifest.plist"
+
+
+def read_key_bag(path):
+    """The backup's key bag (the bytes of ``BackupKeyBag``) from the
+    ``Manifest.plist`` in the folder *path*, or None. An extraction made by
+    this program keeps that file so the keychain can still be opened."""
+    try:
+        with open(os.path.join(path, KEY_BAG_FILE), "rb") as handle:
+            manifest = plistlib.load(handle)
+    except (OSError, ValueError, plistlib.InvalidFileException):
+        return None
+    bag = manifest.get("BackupKeyBag") if isinstance(manifest, dict) else None
+    return bytes(bag) if isinstance(bag, (bytes, bytearray)) else None
+
+
 def looks_extracted(path):
     """Whether *path* holds an extracted backup: sub-folders named like
-    backup domains, and no ``Manifest`` files of a real backup."""
+    backup domains, and no ``Manifest`` files of a real backup. (A
+    ``Manifest.plist`` holding only a key bag, which an extraction keeps for
+    the keychain, does not make it a real backup.)"""
     try:
         names = os.listdir(path)
     except OSError:
         return False
-    if any(n in ("Manifest.db", "Manifest.mbdb", "Manifest.plist")
-           for n in names):
+    if any(n in ("Manifest.db", "Manifest.mbdb") for n in names):
+        return False
+    if KEY_BAG_FILE in names and read_key_bag(path) is None:
         return False
     return any(looks_like_domain(n) and os.path.isdir(os.path.join(path, n))
                for n in names)
@@ -181,6 +200,18 @@ class FolderBackend:
         if not os.path.isfile(self._fs(source)):
             raise FileNotFoundError(source)
         return source
+
+    def keychain_source(self):
+        """``("keybag", bytes)`` if the folder kept the backup's key bag (the
+        password is then needed), else ``("none", why)``."""
+        bag = read_key_bag(self._root)
+        if bag is not None:
+            return "keybag", bag
+        return "none", (
+            "This folder was extracted without the backup's key bag "
+            "(Manifest.plist), so the keychain cannot be opened. Extract "
+            "the whole backup again with this program, or open the "
+            "original encrypted backup.")
 
     def close(self):
         self._conn.close()

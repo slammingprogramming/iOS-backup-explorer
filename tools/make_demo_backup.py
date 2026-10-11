@@ -24,7 +24,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))      # the repository's top folder
 sys.path.insert(0, HERE)
 
-from demo import Writer, communication, device, extras, health, media, web  # noqa: E402,E501
+from demo import (Writer, communication, device, extras, health,  # noqa: E402
+                  keychain, media, web)
 
 
 def make(root):
@@ -59,6 +60,7 @@ def make(root):
     device.icloud_drive(writer)
     device.screen_time(writer)
     health.health(writer)
+    keychain.keychain(writer)
     extras.maps(writer)
     extras.podcasts(writer)
     extras.books(writer)

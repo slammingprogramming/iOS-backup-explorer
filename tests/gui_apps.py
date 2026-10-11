@@ -71,14 +71,15 @@ class AppGuiCase(unittest.TestCase):
         self.fail(f"timed out waiting for {what}; status="
                   f"{self.explorer.status_var.get()!r}")
 
-    def open_files(self, files, encrypted=False):
+    def open_files(self, files, encrypted=False, extra_class_keys=None):
         """Make a backup holding *files* (``[(domain, path, bytes)]``) and
         open it in the window."""
         files = list(files) + [("HomeDomain", "Library/Other/readme.txt",
                                 b"hello")]
         parent = tempfile.mkdtemp(dir=self.tmp)
-        backup_dir, self.ids = fb.build_backup(parent, files=files,
-                                               encrypted=encrypted)
+        backup_dir, self.ids = fb.build_backup(
+            parent, files=files, encrypted=encrypted,
+            extra_class_keys=extra_class_keys)
         ex = self.explorer
         previous = ex.panel.index
         ex.path_var.set(backup_dir)

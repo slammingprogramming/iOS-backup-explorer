@@ -58,6 +58,7 @@ import re
 import browser_panel
 import folder_backup
 from ios_apps import registry as app_registry
+from ios_apps import keychain_crypto
 from ios_apps.context import AppContext
 from file_index import (  # noqa: F401
     FileIndex, format_size, read_file_details,
@@ -217,6 +218,8 @@ def detect_backup(backup_dir):
     if not isinstance(manifest, dict):
         raise BackupFormatError("Manifest.plist is not in the expected format.")
     if not os.path.isfile(os.path.join(backup_dir, "Manifest.db")):
+        if folder_backup.looks_extracted(backup_dir):
+            return EXTRACTED           # (with the key bag kept for the keychain)
         if os.path.exists(os.path.join(backup_dir, "Manifest.mbdb")):
             raise BackupFormatError(_LEGACY_FORMAT)
         raise BackupFormatError("This backup has no Manifest.db file.")
@@ -237,6 +240,7 @@ class ExtractionReport:
         self.skipped = []   # (label, reason)
         self.errors = []    # (label, reason)
         self.cancelled = False
+        self.key_bag_kept = False   # the backup's key bag was copied too
 
 
 def _default_backup_factory(**kwargs):
@@ -269,6 +273,7 @@ class EncryptedBackend:
     """An encrypted backup, opened with ``iphone_backup_decrypt``."""
 
     def __init__(self, factory, backup_dir, passphrase):
+        self._dir = os.path.abspath(backup_dir)
         self._lib = factory(backup_directory=backup_dir,
                             passphrase=passphrase)
 
@@ -301,6 +306,29 @@ class EncryptedBackend:
         )
         if count != 1:
             raise RuntimeError("could not select this file unambiguously")
+
+    def keychain_source(self):
+        """``("keys", ClassKeys)``: the class keys the library unlocked when
+        the backup was opened (or ``("keybag", bytes)`` to ask for the
+        password again, if this version of the library does not give them)."""
+        keys = keychain_crypto.keys_from_library(self._lib)
+        if keys is not None:
+            return "keys", keys
+        with open(os.path.join(self._dir, "Manifest.plist"), "rb") as handle:
+            return "keybag", plistlib.load(handle)["BackupKeyBag"]
+
+    def copy_key_bag(self, destination):
+        """Keep the backup's ``Manifest.plist`` (holding only the key bag
+        that the backup password unlocks) in *destination*, so that the
+        keychain can still be opened from the extracted files."""
+        with open(os.path.join(self._dir, "Manifest.plist"), "rb") as handle:
+            bag = plistlib.load(handle)["BackupKeyBag"]
+        os.makedirs(destination, exist_ok=True)
+        with open(os.path.join(destination, "Manifest.plist"), "wb") as out:
+            plistlib.dump({"BackupKeyBag": bag, "IsEncrypted": True,
+                           "Note": "Kept by iOS Backup Explorer so the "
+                                   "keychain of the extracted files can be "
+                                   "opened with the backup password."}, out)
 
     def materialize(self, cur, file_id, domain, rel_path, size, mtime,
                     cache_dir):
@@ -400,6 +428,12 @@ class PlainBackend:
             raise FileNotFoundError(source)
         return source
 
+    def keychain_source(self):
+        return "none", (
+            "This backup is not encrypted, so the phone left its saved "
+            "passwords out (or locked them to the phone). Make a backup "
+            "with a password (an encrypted backup) to see them here.")
+
     def close(self):
         self._conn.close()
 
@@ -477,6 +511,13 @@ class BackupSession:
         """
         return self._executor.submit(self._export_files, list(items),
                                      dest_dir)
+
+    def keychain_source(self):
+        """What the keychain tab needs. Future -> ``("keys", ClassKeys)``,
+        ``("keybag", bytes)`` (the password is needed to unlock it) or
+        ``("none", reason)``."""
+        return self._executor.submit(
+            lambda: self._require_backup().keychain_source())
 
     def list_all(self):
         """Every file in the backup.
@@ -608,7 +649,15 @@ class BackupSession:
             cur.execute("SELECT fileID FROM Files WHERE flags=1 "
                         "ORDER BY domain, relativePath")
             file_ids = [row[0] for row in cur.fetchall()]
-        return self._extract(file_ids, dest, progress)
+        report = self._extract(file_ids, dest, progress)
+        copy_key_bag = getattr(backup, "copy_key_bag", None)
+        if copy_key_bag is not None:
+            try:
+                copy_key_bag(dest)
+                report.key_bag_kept = True
+            except (OSError, KeyError, ValueError) as exc:
+                report.errors.append(("Manifest.plist", str(exc)))
+        return report
 
     def _list_all(self):
         return [
@@ -1345,6 +1394,10 @@ class BackupExplorer:
             msg += " (cancelled)"
         self.status_var.set(msg)
 
+        if report.key_bag_kept:
+            msg += ("\n\nThe backup's key bag was kept in Manifest.plist, "
+                    "so the Keychain tab can open this folder's keychain "
+                    "with the backup password.")
         problems = [f"{label}: {reason}"
                     for label, reason in report.errors + report.skipped]
         if problems:

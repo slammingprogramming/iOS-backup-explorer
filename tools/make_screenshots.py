@@ -235,6 +235,24 @@ class Shooter:
         self.pick(panel.tree, 1)
         self.shoot("17-voice-memos")
 
+    def keychain(self):
+        """The Keychain tab. The demo is a folder that kept its key bag, so
+        the tab asks for the backup password: the demo's own, given here."""
+        from unittest import mock
+        from demo import keychain as demo_keychain
+        from ios_apps import keychain_view
+        with mock.patch.object(keychain_view, "ask_password",
+                               return_value=demo_keychain.PASSWORD):
+            panel = self.show("Keychain")
+            self.loaded(panel, "datasets")
+        panel.choose_dataset("passwords")
+        self.pump(0.6)
+        self.pick(panel.tree, 3)
+        self.shoot("40-keychain")
+        panel.choose_dataset("unreadable")
+        self.pump(0.6)
+        self.shoot("41-keychain-device-only")
+
     def find_dialog(self, widget):
         """The dialog window (it belongs to the tab that asked, not to the
         main window), or None."""
@@ -305,6 +323,7 @@ class Shooter:
                    row=None)
         self.table("Apps", "38-apps", row=None)
         self.table("iCloud Drive", "39-icloud-drive")
+        self.keychain()
         self.export_dialog()
         self.pump(0.5)
         self.root.destroy()

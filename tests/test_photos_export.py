@@ -233,7 +233,8 @@ class GalleryTests(ExportCase):
             self.assertTrue(os.path.isfile(os.path.join(
                 self.out, *target.replace("%20", " ").split("/"))), target)
         thumbs = os.listdir(os.path.join(self.out, "thumbs"))
-        self.assertEqual(len(thumbs), 5)                    # not the video
+        # (not the video; and the HEIC picture needs pillow-heif)
+        self.assertEqual(len(thumbs), 5 if imaging.have_heif() else 4)
         from PIL import Image
         with Image.open(os.path.join(self.out, "thumbs", thumbs[0])) as thumb:
             self.assertLessEqual(max(thumb.size), 240)

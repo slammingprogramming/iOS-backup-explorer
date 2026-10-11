@@ -37,7 +37,10 @@ photos and tapbacks, notes with checklists and a recipe, calls, contacts,
 voice memos, Safari history and bookmarks, a calendar, voicemails with
 transcripts, reminders, Wi-Fi and Bluetooth, accounts, permissions, Screen
 Time for 60 days, Health (90 days of activity, workouts with routes, body
-measurements, sleep, records, Medical ID), Maps, Podcasts and Books. The
+measurements, sleep, records, Medical ID), Maps, Podcasts and Books, and a
+keychain of invented passwords (the Keychain tab asks for the demo's backup
+password, `demo-backup-password`, which the file `tools/demo/keychain.py`
+states). The
 result opens like any backup (it is an *extracted* backup folder), so it is
 also a safe way to try the program.
 
@@ -52,6 +55,7 @@ The code is in `tools/demo/`:
 | `device.py` | Device information, networks, accounts, permissions, apps, iCloud Drive, Screen Time |
 | `health.py` | Health and the Medical ID |
 | `extras.py` | Maps, Podcasts, Books |
+| `keychain.py` | The keychain, and the key bag that opens it |
 | `pictures.py` | The drawn photos (Pillow) |
 
 Dates are relative to a fixed moment (2026-10-09 18:30 UTC), so the demo is

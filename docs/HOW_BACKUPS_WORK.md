@@ -126,6 +126,7 @@ that are not published; see [Health data](HEALTH.md).
 
 ## What is *not* in a backup
 
-Passwords and keys (the keychain is stored encrypted and is not opened here),
+Passwords and keys are in the keychain, which is locked with the key bag's keys
+and opens only from an encrypted backup (see [Keychain](apps/keychain.md)).
 iCloud-only data, the apps themselves, and anything the phone did not keep
 locally. See [Where the data comes from](DATA_SOURCES.md).

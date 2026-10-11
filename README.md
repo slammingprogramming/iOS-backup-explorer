@@ -63,6 +63,7 @@ You made an encrypted iPhone backup with iTunes, Finder, or the Apple Devices ap
 | **Photos**: a thumbnail grid with albums | **Voice Memos** | **Voicemail** with the phone's transcripts |
 | **Safari**: history, bookmarks, reading list, tabs | **Calendar** and **Reminders** | **Health**: activity, workouts and routes, body measurements, sleep, Medical ID |
 | **Screen Time**: days, weeks, apps, websites | **Network**: Wi-Fi, Bluetooth, data used by apps | **Accounts** and device information |
+| **Keychain**: saved and Wi-Fi passwords (encrypted backups) | | |
 | **Maps**, **Podcasts**, **Books** | **Privacy**: app permissions and location access | **Recents**, **Apps**, **iCloud Drive** |
 
 <table>
@@ -129,7 +130,7 @@ Honesty matters when you are reading someone's data:
 - Every tab has automated tests on **invented** data, and the readers were **mutation-checked** (the code is broken on purpose to prove the tests notice).
 - Most tabs were also checked against a **real backup**: their counts and values were compared with the raw databases. **Maps, Podcasts, Books, Photos and Voice Memos** were written from the apps' database layouts, because the backup used had no data for them, so they are tested on generated data only. [Where the data comes from](docs/DATA_SOURCES.md) lists the status of each tab.
 - **Health** is read reliably where it can be proved, and the rest is listed openly as not yet covered: kinds of data the database does not name, values whose unit was not verified, sleep summed per night, medications, ECG and more. **Why, and what is needed to close each gap, is in [Health data](docs/HEALTH.md).**
-- A backup holds only what the phone kept: iCloud-only photos and messages, and passwords (the keychain) are not readable. Locked notes open with their own password, but that part has not been checked against a real locked note ([how](docs/apps/notes.md#locked-notes)). See the [FAQ](docs/FAQ.md).
+- A backup holds only what the phone kept: iCloud-only photos and messages, are not readable; passwords (the keychain) open only from an encrypted backup, and "this device only" items from none. Locked notes open with their own password, but that part has not been checked against a real locked note ([how](docs/apps/notes.md#locked-notes)). See the [FAQ](docs/FAQ.md).
 
 ---
 

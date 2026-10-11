@@ -7,6 +7,7 @@ import getpass
 import importlib.util
 import io
 import os
+import plistlib
 import re
 import shutil
 import sqlite3
@@ -66,7 +67,7 @@ class DemoBackupTests(unittest.TestCase):
         titles = [e.title for e in registry.available_apps(index)]
         self.assertEqual(sorted(titles), sorted(e.title
                                                 for e in registry.APPS))
-        self.assertEqual(len(titles), 21)
+        self.assertEqual(len(titles), 22)
 
     def test_the_phone_numbers_are_invented(self):
         # every number in the address book is in area code 555, which does
@@ -81,6 +82,31 @@ class DemoBackupTests(unittest.TestCase):
         for number in numbers:
             digits = re.sub(r"\D", "", number)[-10:]
             self.assertRegex(digits, r"^555010\d{4}$", number)
+
+    def test_the_keychain_opens_with_the_demo_password_and_is_invented(self):
+        from ios_apps import keychain as kn
+        from ios_apps import keychain_crypto as kc
+        with open(os.path.join(self.root, "Manifest.plist"), "rb") as handle:
+            bag = plistlib.load(handle)["BackupKeyBag"]
+        with self.assertRaises(kc.WrongBackupPassword):
+            kc.unlock_keybag(bag, "not the password")
+        keys = kc.unlock_keybag(bag, self.maker.keychain.PASSWORD)
+        data = kn.read_plist(os.path.join(
+            self.root, "KeychainDomain", "keychain-backup.plist"))
+        items, unreadable = kn.open_items(data, keys)
+        self.assertEqual(len(items), 11)
+        self.assertEqual(sum(unreadable.values()), 3)
+        for item in items:
+            secret = item.attrs.get("v_Data")
+            if kn.secret_text(secret) is not None:
+                self.assertTrue(secret.startswith(b"demo"), secret)
+            for field in ("srvr", "acct"):
+                value = str(item.attrs.get(field, ""))
+                if "@" in value:
+                    self.assertRegex(value, r"@example\.(com|org|net)$")
+            if "srvr" in item.attrs:
+                self.assertRegex(item.attrs["srvr"],
+                                 r"example\.(com|org|net)$")
 
     def test_the_addresses_are_not_real(self):
         path = os.path.join(self.root, "HomeDomain", "Library", "AddressBook",
@@ -97,7 +123,8 @@ class DemoBackupTests(unittest.TestCase):
             login = os.getlogin()
         except (AttributeError, OSError):       # no terminal (CI)
             login = ""
-        names = {os.path.basename(home), getpass.getuser(), login} - {""}
+        names = {os.path.basename(home), getpass.getuser(), login} - {
+            "", "root"}          # ("root" is a word the demo may use)
         for folder, _dirs, files in os.walk(self.root):
             for name in files:
                 data = (Path(folder) / name).read_bytes()

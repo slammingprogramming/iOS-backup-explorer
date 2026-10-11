@@ -53,7 +53,10 @@ other tools or by *Extract Entire Backup*. The program opens it read-only.
 **iCalendar (.ics).** A file format for calendar events and to-dos.
 
 **Key bag.** The set of keys in `Manifest.plist`, locked with a key made from
-your password.
+your password. The [Keychain](apps/keychain.md) tab needs it.
+
+**Keychain.** The phone's store of passwords, Wi-Fi passwords, certificates and
+keys. An encrypted backup holds it; the [Keychain](apps/keychain.md) tab opens it.
 
 **Keyed archive.** A property list in which objects refer to each other by
 number (`NSKeyedArchiver`). Several phone files use it.

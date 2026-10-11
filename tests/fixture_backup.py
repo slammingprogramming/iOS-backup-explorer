@@ -106,12 +106,14 @@ DEFAULT_FILES = [
 
 
 def build_backup(parent_dir, files=None, passphrase=PASSPHRASE,
-                 encrypted=True):
+                 encrypted=True, extra_class_keys=None):
     """Create the backup under *parent_dir*; return ``(backup_dir, ids)``.
 
     ``ids`` maps ``(domain, relative_path)`` to the file ID. With
     ``encrypted=False`` the backup is laid out like an unencrypted iTunes /
     Finder backup: a plain Manifest.db and plain file data.
+    *extra_class_keys* (``{class: key}``) adds classes to the key bag, such as
+    the keychain's.
     """
     files = DEFAULT_FILES if files is None else files
     backup_dir = os.path.join(parent_dir, "00000000-0000000000000000")
@@ -125,6 +127,7 @@ def build_backup(parent_dir, files=None, passphrase=PASSPHRASE,
     round1 = hashlib.pbkdf2_hmac("sha256", passphrase.encode(), dpsl, dpic, 32)
     passphrase_key = hashlib.pbkdf2_hmac("sha1", round1, salt, iterations, 32)
     class_keys = {c: os.urandom(32) for c in (FILE_CLASS, MANIFEST_CLASS)}
+    class_keys.update(extra_class_keys or {})
 
     keybag = (_tlv(b"VERS", _u32(4)) + _tlv(b"TYPE", _u32(1))
               + _tlv(b"UUID", os.urandom(16)) + _tlv(b"WRAP", _u32(1))

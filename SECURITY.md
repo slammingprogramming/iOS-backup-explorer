@@ -44,6 +44,10 @@ The password you enter into iOS Backup Explorer is the **encryption password you
 
 A note locked with a password in the Notes app is opened with that password, which you type into the program when you click the note, use *Unlock notes...* or export. **Passwords are kept in memory only**, in the program that has the backup open: they are never written to a file, a log or the working copies, and they are dropped with *Forget passwords*, when another backup is opened and when the program closes. A wrong password never produces wrong text (the encryption is authenticated), and the program never guesses passwords. Opened notes are shown, searched and exported in readable form: exported files carry no password, so protect or delete them yourself.
 
+## The Keychain Tab
+
+The Keychain tab opens the saved passwords of an **encrypted** backup and shows them **in the clear**. Use it on a computer you trust. The backup password (asked for only when you open a folder this program extracted, which keeps the backup's key bag in `Manifest.plist`) unlocks the keys and is then dropped; **opened passwords exist only in memory**, never in a file, a log or the working copies (the working copy is the locked file as the backup has it). Exporting the Passwords, Certificates or Keys table asks you to confirm first, because the exported files hold your secrets with no protection. Items marked "this device only" cannot be opened by any program from a backup.
+
 ## Unencrypted and Extracted Backups
 
 Unencrypted backups need no password, so none is asked for or used. They are opened read-only (the backup folder is never written to, and no temporary copy of its index is made), and extracted files are copied out as they are.

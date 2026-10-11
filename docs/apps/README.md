@@ -18,6 +18,7 @@ click it.
 | **Reminders** | Reminders and lists from every account | [Voicemail and Reminders](voicemail-reminders.md) |
 | **Network** | Wi-Fi networks, Bluetooth devices, data used by apps | [Network and Accounts](network-accounts.md) |
 | **Accounts** | The device's details, and the accounts set up on it | [Network and Accounts](network-accounts.md) |
+| **Keychain** | Saved passwords, Wi-Fi passwords, certificates and keys (encrypted backups only) | [Keychain](keychain.md) |
 | **Screen Time** | Time per day, week, app and website | [Screen Time](screen-time.md) |
 | **Health** | Activity, workouts and routes, body measurements, sleep, Medical ID | [Health](health.md) |
 | **Maps** | Favorites, guides, search history | [Maps, Podcasts and Books](maps-podcasts-books.md) |

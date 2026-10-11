@@ -15,8 +15,8 @@ adds the router's address, the channel, how many access points the phone
 knows for it, whether CarPlay uses it, and **the last place it was seen at**
 (coordinates; the phone records where it was when it saw the network).
 
-Wi-Fi **passwords are not shown**: they are kept in the keychain, not in this
-file.
+Wi-Fi **passwords are not in this file**: they are kept in the keychain. The
+[Keychain](keychain.md) tab shows them, from an encrypted backup.
 
 ### Bluetooth devices
 
@@ -65,7 +65,7 @@ Center and the services that sign in behind them): *Type*, *Description*,
 which part of the system set it up.
 
 **Passwords and sign-in keys are not in a backup's accounts file;** they are
-in the keychain.
+in the keychain (see the [Keychain](keychain.md) tab).
 
 Source: `HomeDomain/Library/Accounts/Accounts3.sqlite`,
 `SystemPreferencesDomain/SystemConfiguration/preferences.plist`, and
