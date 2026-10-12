@@ -61,14 +61,15 @@ pip install -r requirements-optional.txt
 | **Pillow** | Picture previews in Photos and in notes, and conversion of pictures to JPEG |
 | **pillow-heif** | The same for HEIC pictures, which is what iPhones take by default |
 | **fpdf2** | PDF export of notes |
+| **tzdata** | A time zone database, which the Health tab's *Sleep per night* needs to place each night on a day (Windows has none; Linux and macOS do) |
 | **ffmpeg** (a separate program, not a pip package; [ffmpeg.org](https://ffmpeg.org)) | Mixing the two sides of a call recording into one `.m4a` |
 | **mfusepy** (`pip install -r requirements-mount.txt`) | Mounting a backup as a drive or folder; also needs WinFsp, macFUSE/FUSE-T or FUSE, see [the file browser](FILE_BROWSER.md#mounting-a-backup) |
 
 ## Platform notes
 
 - **Windows.** Works as is. Windows has no time zone database, which only
-  matters for the one thing [Health](HEALTH.md) leaves out (sleep summed per
-  night).
+  matters for the [Health](HEALTH.md) tab's *Sleep per night*: install the
+  optional `tzdata` package (`pip install tzdata`) to get that table.
 - **macOS.** Works as is. If Python was installed from python.org, tkinter is
   included.
 - **Linux.** Install `python3-tk`. Backups have to be copied over from a

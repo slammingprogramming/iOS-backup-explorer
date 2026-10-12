@@ -27,20 +27,27 @@ from .export_util import write_text_file
 from .records import Column, Dataset, fetch_dicts, open_copies, sqlite_rows
 
 FOLDER = "HomeDomain/Library/Reminders/Container_v1/Stores"
+# Newer iOS versions (seen on iOS 26) keep the same folder in the Reminders
+# app group instead of HomeDomain.
+FOLDERS = (FOLDER,
+           "AppDomainGroup-group.com.apple.reminders/Container_v1/Stores")
 PRIORITIES = {1: "High", 5: "Medium", 9: "Low"}
 
 
 def discover(index):
     """The reminder databases in the backup (backup paths), the one most
     likely to hold reminders first."""
-    folder = index.get(FOLDER) if index is not None else None
-    if folder is None or not folder.is_dir:
-        return []
-    names = sorted(n for n, node in folder.children.items()
-                   if not node.is_dir and n.startswith("Data-")
-                   and n.endswith(".sqlite"))
-    names.sort(key=lambda n: -folder.children[n].size)
-    return [f"{FOLDER}/{n}" for n in names]
+    found = []
+    for path in FOLDERS:
+        folder = index.get(path) if index is not None else None
+        if folder is None or not folder.is_dir:
+            continue
+        found.extend((node.size, f"{path}/{name}")
+                     for name, node in folder.children.items()
+                     if not node.is_dir and name.startswith("Data-")
+                     and name.endswith(".sqlite"))
+    found.sort(key=lambda item: (-item[0], item[1]))
+    return [path for _size, path in found]
 
 
 def _entity(conn, name):
@@ -50,10 +57,18 @@ def _entity(conn, name):
     return rows[0][0] if rows else None
 
 
+# The table that holds the rows of several kinds together, told apart by
+# their kind, where a kind has no table of its own: all in ZREMCDOBJECT on
+# older versions; the lists in ZREMCDBASELIST on iOS 26.
+SHARED = {"REMCDList": ("ZREMCDBASELIST", "ZREMCDOBJECT"),
+          "REMCDReminder": ("ZREMCDOBJECT",),
+          "REMCDAccount": ("ZREMCDOBJECT",)}
+
+
 def _rows_of(conn, kind, columns):
     """The rows of one kind (``REMCDList``...) as dicts. They are in a table
     of their own or, in the way these databases are laid out, among the
-    rows of ``ZREMCDOBJECT`` told apart by their kind."""
+    rows of a table shared with other kinds and told apart by their kind."""
     table = "Z" + kind.upper()
     rows = fetch_dicts(conn, table, columns)
     if rows:
@@ -61,8 +76,12 @@ def _rows_of(conn, kind, columns):
     entity = _entity(conn, kind)
     if entity is None:
         return []
-    return fetch_dicts(conn, "ZREMCDOBJECT", columns,
-                       where=f"Z_ENT = {int(entity)}")
+    for shared in SHARED.get(kind, ("ZREMCDOBJECT",)):
+        rows = fetch_dicts(conn, shared, columns,
+                           where=f"Z_ENT = {int(entity)}")
+        if rows:
+            return rows
+    return []
 
 
 def _first(row, keys):

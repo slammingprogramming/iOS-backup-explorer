@@ -88,6 +88,24 @@ class MapsTests(WorkCase):
                          "40.00000, -74.00000")
         self.assertEqual(places[("(no title)", "Somewhere")]["place"], "")
 
+    def test_guides_when_the_join_table_is_numbered_differently(self):
+        """iOS 26 calls it Z_6PLACES (Z_6COLLECTIONS, Z_7PLACES)."""
+        self.conn.executescript("""
+            ALTER TABLE Z_5PLACES RENAME TO Z_6PLACES;
+            ALTER TABLE Z_6PLACES RENAME COLUMN Z_5COLLECTIONS TO
+                Z_6COLLECTIONS;
+            ALTER TABLE Z_6PLACES RENAME COLUMN Z_6PLACES TO Z_7PLACES;""")
+        data = {d.key: d for d in mp.datasets(self.conn)}
+        guides = {r["collection"]: r["places"]
+                  for r in data["collections"].rows}
+        self.assertEqual(guides, {"Trip": 2, "(no title)": 1, "Empty": 0})
+        self.assertEqual(len(data["places"].rows), 3)
+
+    def test_guides_without_any_join_table(self):
+        self.conn.execute("DROP TABLE Z_5PLACES")
+        data = {d.key: d for d in mp.datasets(self.conn)}
+        self.assertEqual({r["places"] for r in data["collections"].rows}, {0})
+
     def test_history_newest_first(self):
         data = self.data["history"]
         rows = data.sorted_rows(data.rows)

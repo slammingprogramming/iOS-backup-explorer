@@ -43,10 +43,12 @@ import os
 import re
 from datetime import datetime
 
-from . import keyed_archive
-from .common import own_path, apple_time, format_datetime, utc_datetime
+from . import (health_events, health_medications, health_more,
+               health_records, health_sleep, keyed_archive)
+from .common import (own_path, apple_time, format_datetime, table_columns,
+                     utc_datetime)
 from .export_util import describe_duration, write_text_file
-from .records import Column, Dataset, open_copies, sqlite_rows
+from .records import Column, Dataset, format_day, open_copies, sqlite_rows
 
 HEALTH = "HealthDomain/Health/healthdb_secure.sqlite"
 SOURCES = "HealthDomain/Health/healthdb.sqlite"
@@ -413,6 +415,17 @@ def _value_text(row):
     return f"{row['value']:,.{row['places']}f}"
 
 
+def _zone_names(conn):
+    """``{provenance: time zone name}``. The name is recorded for each
+    provenance (the device and software that made a record); older iOS
+    versions do not have the column."""
+    if "tz_name" not in table_columns(conn, "data_provenances"):
+        return {}
+    return {rowid: name for rowid, name in sqlite_rows(
+        conn, "SELECT ROWID, tz_name FROM data_provenances")
+        if name}
+
+
 def sleep_rows(conn, sources, names):
     numbers = [n for n, i in names.items()
                if i == "HKCategoryTypeIdentifierSleepAnalysis"]
@@ -421,7 +434,8 @@ def sleep_rows(conn, sources, names):
     provenance = dict(sqlite_rows(
         conn, "SELECT data_id, provenance FROM objects WHERE data_id IN "
               "(SELECT data_id FROM samples WHERE data_type = ?)",
-        (numbers[0],))) if sources else {}
+        (numbers[0],)))
+    zones = _zone_names(conn)
     rows = []
     for data_id, start, end, value in sqlite_rows(
             conn, "SELECT s.data_id, s.start_date, s.end_date, c.value "
@@ -433,8 +447,48 @@ def sleep_rows(conn, sources, names):
             "length": (end - start) if start is not None
             and end is not None else None,
             "stage": SLEEP_STAGES.get(value, f"Value {value}"),
+            "value": value,
+            "zone": zones.get(provenance.get(data_id)),
             "source": sources.get(provenance.get(data_id), "")})
     return rows
+
+
+def sleep_nights_dataset(rows):
+    """The "Sleep per night" table for the sleep records *rows*, and a note
+    about nights that could not be placed (None if all could)."""
+    samples = [{"start": r["when"], "end": r["end"], "stage": r["value"],
+                "zone": r["zone"], "source": r["source"]} for r in rows]
+    nights, problem = health_sleep.per_night(samples)
+    note = ("A night is a run of sleep records with no break of more than "
+            "four hours; it belongs to the day you woke up, in the time zone "
+            "of the phone then. Records of two devices that overlap are "
+            "counted once.")
+    if problem:
+        note += " Not shown: " + problem + "."
+    if not nights:
+        return None, problem
+    return Dataset("sleep_nights", "Sleep per night", [
+        Column("night", "Night of", 100, "day"),
+        Column("bed", "In bed", 70, "text", "e"),
+        Column("woke", "Woke", 70, "text", "e"),
+        Column("asleep", "Asleep", 90, "duration", "e"),
+        Column("core", "Core", 80, "duration", "e"),
+        Column("deep", "Deep", 80, "duration", "e"),
+        Column("rem", "REM", 80, "duration", "e"),
+        Column("other", "Other asleep", 90, "duration", "e"),
+        Column("awake", "Awake", 80, "duration", "e"),
+        Column("in_bed", "In bed (time)", 90, "duration", "e"),
+        Column("source", "Recorded by", 200)],
+        nights, sort=("night", True), note=note,
+        details=lambda row: (
+            f"Night of {format_day(row['night'])}: in bed {row['bed']}"
+            + (f", asleep from {row['asleep_at']}" if row["asleep_at"] else "")
+            + f", woke {row['woke']} (the time of day where the phone was; "
+            f"time zone {row['zone'] or 'unknown'}).\n"
+            f"{row['records']:,} sleep records made it up."
+            if row["zone"] else
+            f"Night of {format_day(row['night'])}: {row['records']:,} sleep "
+            "records.")), problem
 
 
 def record_rows(conn):
@@ -569,13 +623,19 @@ def datasets(conn, sources_conn, folder):
                  "breathing rate."))
     sleep = sleep_rows(conn, sources, names)
     if sleep:
+        nights, problem = sleep_nights_dataset(sleep)
+        if nights is not None:
+            result.append(nights)
         result.append(Dataset("sleep", "Sleep", [
             Column("when", "From", 140, "date"),
             Column("end", "To", 140, "date"),
             Column("length", "Length", 80, "duration", "e"),
             Column("stage", "Stage", 140),
             Column("source", "Recorded by", 200)],
-            sleep, sort=("when", True)))
+            sleep, sort=("when", True),
+            note=(f"Sleep per night is not shown: {problem}."
+                  if nights is None and problem else "")))
+    result.extend(health_events.datasets(conn, names, sources))
     records = record_rows(conn)
     if records:
         result.append(Dataset("records", "Health records", [
@@ -584,7 +644,11 @@ def datasets(conn, sources_conn, folder):
             Column("name", "Record", 440)],
             records, sort=("when", True),
             note="Records from healthcare providers (labs, medications, "
-                 "immunizations...). Only their names are listed here."))
+                 "immunizations...). Only their names are listed here; "
+                 "what they say is in the tables for each kind."))
+    result.extend(health_medications.datasets(conn))
+    result.extend(health_records.datasets(conn))
+    result.extend(health_more.datasets(conn, WORKOUT_TYPES, names))
     overview = overview_rows(conn, names)
     if overview:
         result.append(Dataset("types", "Data types", [

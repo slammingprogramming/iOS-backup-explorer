@@ -26,7 +26,9 @@ than named by the user) are inside a binary record that is not read: such
 a place is listed with its coordinates.
 """
 
-from .common import apple_time, format_datetime
+import re
+
+from .common import apple_time, format_datetime, table_columns
 from .export_util import write_text_file
 from .records import Column, Dataset, fetch_dicts, sqlite_rows
 
@@ -78,11 +80,32 @@ def favorite_rows(conn):
     return rows
 
 
+def _membership(conn):
+    """``(table, guide column, place column)`` of the table that says which
+    places are in which guide. Core Data names it, and its columns, after the
+    numbers of the two kinds it joins, which differ between iOS versions
+    (``Z_5PLACES`` with ``Z_5COLLECTIONS`` and ``Z_6PLACES`` on iOS 16 and
+    earlier, ``Z_6PLACES`` with ``Z_6COLLECTIONS`` and ``Z_7PLACES`` after)."""
+    for (name,) in sqlite_rows(
+            conn, "SELECT name FROM sqlite_master WHERE type = 'table' AND "
+                  "name GLOB 'Z_[0-9]*PLACES'"):
+        columns = table_columns(conn, name)
+        guide = next((c for c in columns if re.fullmatch(
+            r"Z_\d+COLLECTIONS", c)), None)
+        place = next((c for c in columns if re.fullmatch(
+            r"Z_\d+PLACES", c)), None)
+        if guide and place:
+            return name, guide, place
+    return None
+
+
 def collection_rows(conn):
     """``(collections, places)``: the guides and the places in them."""
     members = {}
-    for collection, place in sqlite_rows(
-            conn, "SELECT Z_5COLLECTIONS, Z_6PLACES FROM Z_5PLACES"):
+    link = _membership(conn)
+    for collection, place in (sqlite_rows(
+            conn, f"SELECT {link[1]}, {link[2]} FROM {link[0]}")
+            if link else ()):
         members.setdefault(collection, []).append(place)
     titles = {r["Z_PK"]: (r["ZTITLE"] or "").strip() for r in fetch_dicts(
         conn, "ZCOLLECTION", ["Z_PK", "ZTITLE"])}

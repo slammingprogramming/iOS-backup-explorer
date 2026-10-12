@@ -59,6 +59,23 @@ class ReaderTests(ReaderCase):
         self.assertEqual(rm.discover(None), [])
         self.assertEqual(rm.discover(make_index([])), [])
 
+    def test_stores_in_the_app_group_of_newer_iOS_versions(self):
+        group = "AppDomainGroup-group.com.apple.reminders"
+        files = fr.backup_files()
+        moved = [(group, path.replace("Library/Reminders/", ""), data)
+                 for _d, path, data in files]
+        index = make_index(moved)
+        found = rm.discover(index)
+        self.assertEqual(len(found), 3)
+        self.assertTrue(all(p.startswith(group + "/Container_v1/Stores/")
+                            for p in found))
+        # both places at once: all the stores, the largest first
+        both = make_index(files + [(group, "Container_v1/Stores/Data-NEW.sqlite",
+                                    b"x" * 99999999)])
+        found = rm.discover(both)
+        self.assertEqual(len(found), 4)
+        self.assertEqual(found[0], f"{group}/Container_v1/Stores/Data-NEW.sqlite")
+
     def test_every_store_is_read(self):
         self.assertEqual(sorted(self.by), sorted([
             "Buy milk", "Call plumber", "Send report", "Check the wording",
@@ -119,6 +136,18 @@ class ReaderTests(ReaderCase):
         ReaderCase.setUp(self, second=False, local=False)
         self.assertNotIn("Water the plants", self.by)
         self.assertEqual(len(self.paths), 1)
+
+    def test_lists_in_the_base_list_table_of_newer_versions(self):
+        conn = sqlite3.connect(":memory:")
+        self.addCleanup(conn.close)
+        fr.build_ios26(conn)
+        reminders, lists, accounts = rm.store_rows(conn, 0)
+        # (only the kind of list that is a list; the smart list is not)
+        self.assertEqual(sorted((x["account"], x["list"]) for x in lists),
+                         [("iCloud", "Chores"), ("iCloud", "Shopping")])
+        self.assertEqual([(r["title"], r["list"], r["account"])
+                          for r in reminders],
+                         [("Buy bread", "Shopping", "iCloud")])
 
     def test_nothing_at_all(self):
         conn = sqlite3.connect(":memory:")

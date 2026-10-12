@@ -1,8 +1,9 @@
 # Health
 
 The **Health** tab shows what the Health app holds: daily activity, workouts
-with their routes, body measurements and vitals, sleep, health records and the
-Medical ID card.
+with their routes, body measurements and vitals, sleep (by stage and per
+night), medications, health records and what they say, hearing tests, events and
+symptoms, awards and the Medical ID card.
 
 > Health data is the most sensitive in a backup. It is **only in encrypted
 > backups** (Apple leaves it out of unencrypted ones). The Health database can
@@ -57,16 +58,45 @@ units were checked; see [Health data](../HEALTH.md).
 
 ## Sleep
 
-Every sleep stage the phone recorded: *From*, *To*, *Length*, the *Stage* (In
-bed, Asleep, Awake, and Core, Deep and REM where the phone distinguishes them)
-and who recorded it. Stages are listed, not summed per night; the reason is in
-[Health data](../HEALTH.md#what-is-not-covered-yet).
+**Sleep per night** adds the stages up for each night: when you went to bed,
+when you woke, the time asleep, the time in each stage (core, deep, REM, awake)
+and who recorded it. A night belongs to the day you woke up, by the clock where
+the phone was. On **Windows** this table needs the optional `tzdata` package
+(`pip install tzdata`); without it the table is left out and says why. The rules
+are in [Health data](../HEALTH.md#sleep-per-night).
+
+**Sleep** lists every stage the phone recorded: *From*, *To*, *Length*, the
+*Stage* (In bed, Asleep, Awake, and Core, Deep and REM where the phone
+distinguishes them) and who recorded it.
+
+## Medications
+
+The medications you track (name, form, ingredients), and **Medication log**:
+every dose that was due or logged, with the amount and whether it was *Taken* or
+*Not answered*. A status the data does not explain is shown as "Status N".
 
 ## Health records
 
-The names of what healthcare providers sent to the Health app (lab results,
-immunizations, medications, conditions): the date, the kind and the name. The
-contents of the records are not read.
+The names of what healthcare providers sent to the Health app, and then what
+they say, in a table for each kind:
+
+- **Lab results**: the test, the result with its unit, the reference range and
+  the date.
+- **Immunizations**, **Conditions, allergies and procedures**, **Prescriptions
+  from providers**.
+- **Clinical documents**: reports and documents; those that carry a file can be
+  exported (*Export...*, *The documents' files*).
+
+## Hearing, events and the rest
+
+- **Audiograms**: each frequency of a hearing test with the left and right ear.
+- **Events and symptoms**: stand hours, hand washing, loud audio, the symptoms
+  you logged and cycle tracking, with HealthKit's own words for the values.
+- **Awards** and **Sleep schedules**.
+- **Friends' activity** and **Friends' workouts**: what people in Activity
+  sharing sent to this phone. The backup holds no names, so they are numbered.
+
+Tables appear only when the backup has rows for them.
 
 ## Data types
 

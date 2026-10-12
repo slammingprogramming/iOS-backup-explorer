@@ -113,19 +113,97 @@ wrong unit would be worse than showing nothing.
 
 ### Sleep per night
 
-Sleep is listed by stage. Adding it up per night needs to know which *day* a
-night belongs to **where the phone was**, and the database records only the
-*name* of the time zone of each sample. Turning a name into an offset needs a
-time zone database, which Python provides only when the operating system has
-one (Windows does not; the `tzdata` package would fill the gap, and is a
-candidate dependency).
+Sleep is listed by stage (the **Sleep** table), and added up per night in
+**Sleep per night**. Adding it up needs to know which *day* a night belongs to
+**where the phone was**, and the database records only the *name* of the time
+zone of each sample (`data_provenances.tz_name`). Turning a name into an offset
+needs a time zone database, which Python provides only when the operating
+system has one. macOS and Linux have one; **Windows does not**, so for this
+table Windows needs the optional `tzdata` package:
+
+```
+pip install tzdata
+```
+
+(it is in `requirements-optional.txt`, and nothing else needs it). Without a
+time zone database the stages are still listed and the table says why it is
+missing, rather than guessing an offset.
+
+The rules, which the tests check:
+
+- A **night** is a run of sleep records in which no record starts more than
+  **four hours** after the latest end of the ones before it. A nap is a short
+  night.
+- A night belongs to the **day you woke up**: the local date of its last
+  period of sleep, in the time zone that record was made in (so a night in
+  another country is placed by the clock there, and a change of daylight
+  saving time is handled by the time zone database).
+- Records of two devices that overlap (a phone's "in bed", a watch's stages)
+  are counted **once**: each total is the *union* of its records, never their
+  sum. "Asleep" is the union of the asleep stages (unspecified, core, deep,
+  REM).
+- A night whose records name no time zone, or one the computer does not know,
+  is left out and the table's note says so.
+
+Run on the sleep records of a real backup, the nights came out as plausible
+nights (hours in bed, asleep, stages inside the time asleep) and the totals of
+each night agreed with its own stage records.
 
 ### Other data in the database
 
-Not read yet: medications and their doses, ECG and audiogram waveforms, cycle
-tracking and symptoms, the *contents* of health records (labs, immunizations;
-only their names are listed), clinical documents, Fitness+ and awards, and the
-data of other people shared with you.
+These are read now. How each rests on the data, and how far it was checked:
+
+- **Medications** and their log. The medications you track in the Health app
+  (name, form, ingredients, the product), and the log of doses: for each due
+  dose, the medication, when it was due, the amount and its status. The names
+  are in the medication's localized strings; which string holds the name, the
+  ingredients, the form and the full product name was settled by looking at
+  what a real backup holds (the columns agree with each other: the name sits
+  beside its ingredients, form and product); the owner of that backup has not
+  yet checked them one by one. The
+  status of a dose is shown in words only for the two values the data
+  explains: **1 = the dose never got an answer**, **4 = it was taken** (every
+  dose with 4 has an amount logged). Any other value is shown as "Status N"
+  rather than guessed.
+- **Contents of health records.** Labs, immunizations, conditions, allergies
+  and procedures, prescriptions and clinical documents are stored as FHIR (a
+  standard format for health records) inside the database; they are read as
+  the provider sent them: the test, the result with its unit and reference
+  range, the date, the provider. Clinical documents that carry a file are
+  exported on request (**Export...**, *The documents' files*).
+- **Awards** (Fitness): the database holds the *internal* name of each award
+  and when it was earned. The names the Fitness app shows are not in the
+  backup, so the internal name is made readable and shown with the original.
+- **Sleep schedules**: the schedules you set, with their times, as the clock
+  times of the schedule, and the changes made for a single day.
+- **Audiograms** (hearing tests): each frequency tested with the level of the
+  left and right ear. The values and their units (Hz, dB HL) are written in
+  the archive that stores them, so nothing is assumed.
+- **Events, symptoms and cycle tracking**: stand hours, hand washing, loud
+  audio events and mindful sessions, the symptoms you logged (with their
+  severity) and cycle tracking (flow, ovulation tests, pregnancy tests, cervical
+  mucus, contraceptives, sexual activity). Values are shown with the words that
+  HealthKit's public documentation gives for them; a value outside that list is
+  shown as "Value N".
+- **Data of other people shared with you** (Activity sharing): the activity
+  summaries and workouts that friends sent to this phone. The database holds
+  **no names** for them, so the friends are numbered (Friend 1, Friend 2...).
+
+### Still not covered
+
+- **ECG waveforms.** No backup used so far held one, so how they are stored
+  could not be checked. They are not read.
+- **Files inside clinical records.** A record may carry a file (a scan, a PDF)
+  in Apple's encrypted archive format with a key of its own; those files are
+  not opened. The text of the record is read.
+- **Immunizations, cycle tracking and the workouts of friends** were written
+  from the database's layout and public documentation; the backups used had no
+  such rows, so these tables were tested on generated data only.
+- **Dose statuses other than 1 and 4**, and where a dose was logged *from*
+  (origin), are shown as numbers until a backup shows what they mean.
+- **The Health database of an iOS 26 backup** was not examined (see
+  [iOS versions](IOS_VERSIONS.md)); everything above was checked on a real iOS
+  16.7 backup.
 
 ### Raw files
 
@@ -137,4 +215,9 @@ can query anything not covered here with any SQLite tool.
 
 The tests in `tests/test_health.py` build a small Health database with the same
 tables and check each rule above (naming only a single-name number, the
-conversions, the routes, the sleep stages, the Medical ID). See [Testing](TESTING.md).
+conversions, the routes, the sleep stages, the Medical ID). The newer parts have
+a file each: `tests/test_health_sleep.py` (nights, time zones, daylight saving
+time, overlaps), `test_health_records.py` (the FHIR records),
+`test_health_medications.py`, `test_health_events.py` and
+`test_health_more.py` (awards, schedules, audiograms, friends). See
+[Testing](TESTING.md).

@@ -7,6 +7,19 @@ Eyyup (Eric) Gunes. Entries below the fork point record the original project's h
 
 ## [Unreleased]
 
+### Added
+- **Sleep per night** in the Health tab: the sleep stages added up for each night, placed on the day you woke up by the clock where the phone was, overlapping records of two devices counted once. It needs a time zone database; macOS and Linux have one, **Windows needs the optional `tzdata` package** (`pip install tzdata`, now in `requirements-optional.txt`), and without it the table says why it is missing. See [Health data](docs/HEALTH.md#sleep-per-night)
+- **More of the Health database**: medications and their dose log; the contents of health records (lab results, immunizations, conditions and allergies, prescriptions, clinical documents, whose files can be exported); awards; sleep schedules; hearing tests (audiograms); events, symptoms and cycle tracking; and the activity and workouts that friends in Activity sharing sent. What is still not covered (ECG waveforms, the files inside clinical records, a few unverified values) is listed in [Health data](docs/HEALTH.md#still-not-covered)
+- **`tools/compat_report.py`**: opens a backup, visits every tab and prints only counts and the program's own messages, so a report of what a backup shows can be shared without any of its content
+- **[iOS versions](docs/IOS_VERSIONS.md)**: the aim of covering every iOS version, which were checked on real backups (iOS 16.7 and 26.6 this time), what differs between them, and how to help
+
+### Fixed
+- **iOS 26 backups**: Reminders (now in an app group, with the lists in another table) were not found; the data-usage table failed without Wi-Fi counters; the places in Maps guides were not found under their renamed join table
+- Opening an encrypted backup is much faster for large backups: the lookup of files by path used a full scan of the manifest for every file; it is indexed now
+
+### Changed
+- The "Checked" column of [Where the data comes from](docs/DATA_SOURCES.md) now says which tabs were verified on real backups and on which iOS version. Photos, Voice Memos, Maps (favorites, guides, history), Books (collections) and Reminders were run against a real iOS 26 backup; Podcasts still has no real library to test against
+
 ## [2.1.0] - 2026-10-11
 
 Two things that a backup holds but that were closed until now: the **keychain**

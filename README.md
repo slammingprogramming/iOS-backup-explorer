@@ -89,7 +89,7 @@ You need **Python 3.9 or newer** (tkinter comes with it on Windows and macOS; on
 git clone https://github.com/slammingprogramming/iOS-backup-explorer.git
 cd iOS-backup-explorer
 pip install -r requirements.txt          # one small required package
-# Optional: picture previews, HEIC photos, PDF export
+# Optional: picture previews, HEIC photos, PDF export, sleep per night on Windows
 # pip install -r requirements-optional.txt
 python ios_backup_explorer.py
 ```
@@ -129,7 +129,7 @@ Honesty matters when you are reading someone's data:
 
 - Every tab has automated tests on **invented** data, and the readers were **mutation-checked** (the code is broken on purpose to prove the tests notice).
 - Most tabs were also checked against a **real backup**: their counts and values were compared with the raw databases. **Maps, Podcasts, Books, Photos and Voice Memos** were written from the apps' database layouts, because the backup used had no data for them, so they are tested on generated data only. [Where the data comes from](docs/DATA_SOURCES.md) lists the status of each tab.
-- **Health** is read reliably where it can be proved, and the rest is listed openly as not yet covered: kinds of data the database does not name, values whose unit was not verified, sleep summed per night, medications, ECG and more. **Why, and what is needed to close each gap, is in [Health data](docs/HEALTH.md).**
+- **Health** is read reliably where it can be proved, and the rest is listed openly as not yet covered: kinds of data the database does not name, values whose unit was not verified, ECG waveforms and the files inside clinical records. Sleep per night, medications, the contents of health records, hearing tests, symptoms and cycle tracking, awards and friends' activity are read now. **Why, and what is needed to close each gap, is in [Health data](docs/HEALTH.md).**
 - A backup holds only what the phone kept: iCloud-only photos and messages, are not readable; passwords (the keychain) open only from an encrypted backup, and "this device only" items from none. Locked notes open with their own password, but that part has not been checked against a real locked note ([how](docs/apps/notes.md#locked-notes)). See the [FAQ](docs/FAQ.md).
 
 ---
@@ -204,7 +204,7 @@ A backup holds what was on the phone when it was made: iCloud-only data and unen
 <details>
 <summary><strong>What iOS versions are supported?</strong></summary>
 
-Encrypted backups from **iOS 13 and newer** (including iOS 17 and 18); unencrypted backups with the `Manifest.db` layout (iOS 10 and newer). Details in [Where the data comes from](docs/DATA_SOURCES.md#ios-versions).
+Encrypted backups from **iOS 13 and newer** (including iOS 17 and 18); unencrypted backups with the `Manifest.db` layout (iOS 10 and newer). The aim is every iOS version; what was checked on which one is in [iOS versions](docs/IOS_VERSIONS.md). Details in [Where the data comes from](docs/DATA_SOURCES.md#ios-versions).
 </details>
 
 ---

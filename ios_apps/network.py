@@ -28,7 +28,8 @@ here look them up by name in that one folder.
 import os
 import plistlib
 
-from .common import own_path, apple_time, format_datetime, unix_time
+from .common import (own_path, apple_time, format_datetime, table_columns,
+                     unix_time)
 from .records import Column, Dataset, open_copies, sqlite_rows
 
 WIFI_KNOWN = "SystemPreferencesDomain/com.apple.wifi.known-networks.plist"
@@ -209,12 +210,17 @@ def bluetooth_rows(folder, conns):
 # ── Data usage ───────────────────────────────────────────────
 
 def usage_rows(conn):
-    """How much each app and process sent and received (bytes)."""
+    """How much each app and process sent and received (bytes). Newer iOS
+    versions (seen on iOS 26) count only the mobile network: the Wi-Fi
+    columns are then missing, and those numbers are ``None``."""
+    columns = table_columns(conn, "ZLIVEUSAGE")
+    wifi = "ZWIFIIN" in columns and "ZWIFIOUT" in columns
     rows = []
     for (proc, bundle, first, last, wifi_in, wifi_out, cell_in,
-         cell_out) in sqlite_rows(conn, """
+         cell_out) in sqlite_rows(conn, f"""
             SELECT p.ZPROCNAME, p.ZBUNDLENAME, p.ZFIRSTTIMESTAMP,
-                   p.ZTIMESTAMP, SUM(l.ZWIFIIN), SUM(l.ZWIFIOUT),
+                   p.ZTIMESTAMP, {"SUM(l.ZWIFIIN)" if wifi else "NULL"},
+                   {"SUM(l.ZWIFIOUT)" if wifi else "NULL"},
                    SUM(l.ZWWANIN), SUM(l.ZWWANOUT)
             FROM ZPROCESS p LEFT JOIN ZLIVEUSAGE l ON l.ZHASPROCESS = p.Z_PK
             GROUP BY p.Z_PK"""):
@@ -223,7 +229,8 @@ def usage_rows(conn):
         rows.append({
             "app": (bundle or proc or "(unknown)").strip(),
             "process": (proc or "").strip(),
-            "wifi_in": numbers[0], "wifi_out": numbers[1],
+            "wifi_in": numbers[0] if wifi else None,
+            "wifi_out": numbers[1] if wifi else None,
             "cell_in": numbers[2], "cell_out": numbers[3],
             "total": sum(numbers),
             "first": apple_time(first) if first else None,
@@ -233,8 +240,12 @@ def usage_rows(conn):
 
 def _usage_note(rows):
     from .export_util import describe_size
-    wifi = sum(r["wifi_in"] + r["wifi_out"] for r in rows)
     cell = sum(r["cell_in"] + r["cell_out"] for r in rows)
+    if all(r["wifi_in"] is None for r in rows):
+        return (f"All together: {describe_size(cell)} over the mobile "
+                "network, as counted by the phone since it last cleared its "
+                "statistics. This iOS version does not count Wi-Fi data.")
+    wifi = sum((r["wifi_in"] or 0) + (r["wifi_out"] or 0) for r in rows)
     return (f"All together: {describe_size(wifi)} over Wi-Fi and "
             f"{describe_size(cell)} over the mobile network, as counted by "
             "the phone since it last cleared its statistics.")
@@ -271,14 +282,16 @@ def datasets(conn, index):
                 Column("seen", "Last seen", 130, "date")],
             devices, sort=("name", False)))
     if usage:
+        has_wifi = any(r["wifi_in"] is not None for r in usage)
         result.append(Dataset(
             "usage", "Data used by apps", [
-                Column("app", "App", 300),
-                Column("wifi_in", "Wi-Fi received", 110, "size", "e"),
-                Column("wifi_out", "Wi-Fi sent", 100, "size", "e"),
-                Column("cell_in", "Mobile received", 110, "size", "e"),
-                Column("cell_out", "Mobile sent", 100, "size", "e"),
-                Column("last", "Last used", 130, "date")],
+                Column("app", "App", 300)]
+            + ([Column("wifi_in", "Wi-Fi received", 110, "size", "e"),
+                Column("wifi_out", "Wi-Fi sent", 100, "size", "e")]
+               if has_wifi else [])
+            + [Column("cell_in", "Mobile received", 110, "size", "e"),
+               Column("cell_out", "Mobile sent", 100, "size", "e"),
+               Column("last", "Last used", 130, "date")],
             usage, sort=("total", True), note=_usage_note(usage),
             details=lambda r: (f"{r['app']}\nProcess: {r['process']}"
                                if r["process"] and r["process"] != r["app"]

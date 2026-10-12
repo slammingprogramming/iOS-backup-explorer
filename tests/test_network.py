@@ -163,6 +163,26 @@ class UsageTests(ReaderCase):
         order = [r["app"] for r in data.sorted_rows(data.rows)]
         self.assertEqual(order[:2], ["com.example.video", "mediaserverd"])
 
+    def test_an_ios_version_that_counts_only_the_mobile_network(self):
+        conn = sqlite3.connect(":memory:")
+        self.addCleanup(conn.close)
+        conn.executescript("""
+            CREATE TABLE ZPROCESS (Z_PK INTEGER PRIMARY KEY, ZFIRSTTIMESTAMP
+                REAL, ZTIMESTAMP REAL, ZBUNDLENAME TEXT, ZPROCNAME TEXT);
+            CREATE TABLE ZLIVEUSAGE (Z_PK INTEGER PRIMARY KEY,
+                ZHASPROCESS INTEGER, ZWWANIN REAL, ZWWANOUT REAL);
+            INSERT INTO ZPROCESS VALUES (1, 1, 2, 'com.example.app', 'app');
+            INSERT INTO ZLIVEUSAGE (ZHASPROCESS, ZWWANIN, ZWWANOUT)
+                VALUES (1, 1000, 500), (1, 24, 0);
+        """)
+        rows = nw.usage_rows(conn)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual((rows[0]["cell_in"], rows[0]["cell_out"],
+                          rows[0]["total"]), (1024, 500, 1524))
+        self.assertIsNone(rows[0]["wifi_in"])
+        self.assertIsNone(rows[0]["wifi_out"])
+        self.assertIn("does not count Wi-Fi data", nw._usage_note(rows))
+
     def test_no_usage_database(self):
         ReaderCase.setUp(self, usage=False)
         self.assertNotIn("usage", self.data)

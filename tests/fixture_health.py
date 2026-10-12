@@ -195,6 +195,48 @@ def build_health(conn):
     conn.commit()
 
 
+APPLE_EPOCH_SHIFT = 978_307_200
+
+
+def utc(*args):
+    """Cocoa seconds for a UTC moment (as the database stores them)."""
+    from datetime import timezone
+    return datetime(*args, tzinfo=timezone.utc).timestamp() \
+        - APPLE_EPOCH_SHIFT
+
+
+# the provenances the sleep fixture adds, and the time zone each records
+NEW_YORK, TOKYO, LISBON, NO_ZONE, UNKNOWN_ZONE = 11, 12, 13, 14, 15
+
+
+def build_health_with_sleep(conn, nights):
+    """The usual Health database, with a ``tz_name`` for each provenance,
+    and the sleep records *nights* (a list of ``(provenance, [(start, end,
+    stage), ...])`` in Cocoa seconds)."""
+    build_health(conn)
+    conn.execute("ALTER TABLE data_provenances ADD COLUMN tz_name TEXT")
+    conn.execute("UPDATE data_provenances SET source_id = 10 WHERE ROWID = 1")
+    conn.executemany(
+        "INSERT INTO data_provenances (ROWID, source_id, tz_name) "
+        "VALUES (?, ?, ?)", [
+            (NEW_YORK, 10, "America/New_York"), (TOKYO, 10, "Asia/Tokyo"),
+            (LISBON, 20, "Europe/Lisbon"), (NO_ZONE, 10, None),
+            (UNKNOWN_ZONE, 10, "Nowhere/Atlantis")])
+    conn.execute("DELETE FROM category_samples")      # (the usual 7 records)
+    conn.execute("DELETE FROM samples WHERE data_type = ?", (SLEEP,))
+    data_id = 5000
+    for provenance, records in nights:
+        for start, end, stage in records:
+            data_id += 1
+            conn.execute("INSERT INTO samples VALUES (?, ?, ?, ?)",
+                         (data_id, start, end, SLEEP))
+            conn.execute("INSERT OR REPLACE INTO objects VALUES "
+                         "(?, NULL, ?, 1, ?)", (data_id, provenance, start))
+            conn.execute("INSERT INTO category_samples VALUES (?, ?)",
+                         (data_id, stage))
+    conn.commit()
+
+
 def build_sources(conn):
     conn.execute("CREATE TABLE sources (ROWID INTEGER PRIMARY KEY, uuid BLOB,"
                  " name TEXT)")

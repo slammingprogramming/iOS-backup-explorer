@@ -8,8 +8,13 @@ trust each tab.
 
 | Level | Meaning |
 |---|---|
-| **Real** | Written against, and checked on, a real backup, and tested on generated data |
+| **Real** | Written against, and checked on, a real backup (the iOS versions are named where they matter), and tested on generated data |
 | **Layout only** | Written from the layout of the app's database (from a real backup's empty tables or from documentation), tested only on generated data; may miss what a real backup has |
+
+Every tab is also run against each real backup that is at hand, with
+`tools/compat_report.py`, and the counts the tab reports are compared with the
+raw tables of the app's own database; [iOS versions](IOS_VERSIONS.md) says which
+versions that was done for.
 
 All tabs are covered by automated tests on generated data and by *mutation
 checks* (the code is broken on purpose to confirm the tests notice); see
@@ -26,20 +31,20 @@ Paths are `Domain/path inside the domain`. See
 | **Notes** | `AppDomainGroup-group.com.apple.notes/NoteStore.sqlite` (+ journals) and `Accounts/<id>/Media/...` | Real (call recordings against iOS 18 data; the backup used had no notes, so formatting is covered by generated notes) |
 | **Calls** | `HomeDomain/Library/CallHistoryDB/CallHistory.storedata` | Real |
 | **Contacts** | `HomeDomain/Library/AddressBook/AddressBook.sqlitedb` | Real |
-| **Photos** | `CameraRollDomain/Media/DCIM/*`, `CameraRollDomain/Media/PhotoData/Photos.sqlite` | Layout (the real backup used had a library with no photos) |
-| **Voice Memos** | `AppDomainGroup-group.com.apple.VoiceMemos.shared/Recordings/` (`CloudRecordings.db`, `*.m4a`); older: `MediaDomain/Media/Recordings` | Layout |
+| **Photos** | `CameraRollDomain/Media/DCIM/*`, `CameraRollDomain/Media/PhotoData/Photos.sqlite` | Real on iOS 26 (all 40 of the files sampled matched a row of the library; albums were not compared one by one); the backup checked before had a library with no photos |
+| **Voice Memos** | `AppDomainGroup-group.com.apple.VoiceMemos.shared/Recordings/` (`CloudRecordings.db`, `*.m4a`); older: `MediaDomain/Media/Recordings` | Real on iOS 26 (3 recordings, each matching its row in the library); the older location is layout only |
 | **Safari** | `HomeDomain/Library/Safari/History.db`, `Bookmarks.db`, `SafariTabs.db` | Real |
 | **Calendar** | `HomeDomain/Library/Calendar/Calendar.sqlitedb` | Real |
 | **Voicemail** | `HomeDomain/Library/Voicemail/voicemail.db`, `<n>.amr`, `<n>.transcript` | Real |
-| **Reminders** | `HomeDomain/Library/Reminders/Container_v1/Stores/Data-*.sqlite` | Real (both table layouts are tested) |
-| **Network** | `SystemPreferencesDomain/com.apple.wifi.known-networks.plist` (older: `.../SystemConfiguration/com.apple.wifi.plist`); `SysSharedContainerDomain-systemgroup.com.apple.bluetooth/Library/Database/*.db` and `.../Preferences/com.apple.MobileBluetooth.devices.plist`; `WirelessDomain/Library/Databases/DataUsage.sqlite` | Real |
+| **Reminders** | `HomeDomain/Library/Reminders/Container_v1/Stores/Data-*.sqlite`; on iOS 26 `AppDomainGroup-group.com.apple.reminders/Container_v1/Stores/Data-*.sqlite` | Real on iOS 16.7 and 26.6 (the lists of iOS 26 are kept in a different table, which is read too) |
+| **Network** | `SystemPreferencesDomain/com.apple.wifi.known-networks.plist` (older: `.../SystemConfiguration/com.apple.wifi.plist`); `SysSharedContainerDomain-systemgroup.com.apple.bluetooth/Library/Database/*.db` and `.../Preferences/com.apple.MobileBluetooth.devices.plist`; `WirelessDomain/Library/Databases/DataUsage.sqlite` | Real (iOS 26 counts only the mobile network: the Wi-Fi columns are missing there and the table shows none) |
 | **Accounts** | `HomeDomain/Library/Accounts/Accounts3.sqlite`; `SystemPreferencesDomain/SystemConfiguration/preferences.plist`; `Info.plist`, `Manifest.plist`, `Status.plist` in the backup folder (when it has them) | Real (the device-information files were checked on generated ones) |
 | **Keychain** | `KeychainDomain/keychain-backup.plist`, opened with the class keys of the backup's key bag (`Manifest.plist`) | Real (a real encrypted backup opened every item a backup can open; also tested on generated keychains) |
 | **Screen Time** | `SysSharedContainerDomain-systemgroup.com.apple.DeviceActivity/Library/com.apple.DeviceActivity/Cloud/.../{Daily,Weekly,Hourly}/ActivitySegments/*.plist` | Real |
-| **Health** | `HealthDomain/Health/healthdb_secure.sqlite`, `healthdb.sqlite`, `HealthDomain/MedicalID/MedicalIDData.archive` | Real for the parts [listed](HEALTH.md) |
-| **Maps** | `AppDomainGroup-group.com.apple.Maps/Maps/MapsSync_0.0.1` | Layout |
-| **Podcasts** | Podcasts app group `Documents/MTLibrary.sqlite` (older: `AppDomain-com.apple.podcasts/...`) | Layout |
-| **Books** | `AppDomainGroup-group.com.apple.iBooks/Documents/BKLibrary/*.sqlite`, `AEAnnotation/*.sqlite`, `BKJaliscoServerSource/*.sqlite`, `BCCloudData-BookDataStoreService/BCCloudCollections/BCCloudCollections` | Layout |
+| **Health** | `HealthDomain/Health/healthdb_secure.sqlite`, `healthdb.sqlite`, `HealthDomain/MedicalID/MedicalIDData.archive` | Real for the parts [listed](HEALTH.md), on iOS 16.7 (the Health database of the iOS 26 backup has not been examined yet) |
+| **Maps** | `AppDomainGroup-group.com.apple.Maps/Maps/MapsSync_0.0.1` | Real on iOS 26 for favorites, guides and history (the counts equal the database's own); the places inside guides are layout only, because the join table was empty in every backup |
+| **Podcasts** | Podcasts app group `Documents/MTLibrary.sqlite` (older: `AppDomain-com.apple.podcasts/...`) | Layout (no backup so far has a Podcasts library) |
+| **Books** | `AppDomainGroup-group.com.apple.iBooks/Documents/BKLibrary/*.sqlite`, `AEAnnotation/*.sqlite`, `BKJaliscoServerSource/*.sqlite`, `BCCloudData-BookDataStoreService/BCCloudCollections/BCCloudCollections` | Real on iOS 26 for collections (8 of 8); the book library, notes and purchases are layout only (the backups checked gave none) |
 | **Recents** | `HomeDomain/Library/Recents/Recents` | Real |
 | **Privacy** | `HomeDomain/Library/TCC/TCC.db`; `RootDomain/Library/Caches/locationd/clients.plist` | Real |
 | **Apps** | `HomeDomain/Library/FrontBoard/applicationState.db` | Real |
@@ -50,12 +55,26 @@ database of a real backup; none of that data is in this repository.
 
 ## iOS versions
 
-The program reads backups of **iOS 13 and newer** (encrypted backups made by
-iTunes, Finder or the Apple Devices app); the app layouts it reads were seen on
-recent versions (iOS 17 and 18). The databases change between iOS versions; each
-reader looks for the columns it needs and copes when one is missing, so a tab
-may show less on an older or newer version rather than fail. If something that
-is in your backup does not show, please report it.
+The goal is to read backups of **every iOS version**, over time. Today the
+program is built for **iOS 13 and newer** (encrypted backups made by iTunes,
+Finder or the Apple Devices app; unencrypted ones with the `Manifest.db` layout
+of iOS 10 and newer). The app layouts it reads were first seen on iOS 17 and
+18, then on **iOS 16.7 and 26.6**, which every tab was run against for this
+page; some of the backups used in earlier checks were made on **iOS 12**, which
+is older than the program claims to support, and more backups of each major
+iOS version are being collected to test and build against.
+
+The databases change between iOS versions. Each reader looks for the columns
+and tables it needs and copes when one is missing, so a tab may show less on an
+older or newer version rather than fail. Differences found so far (iOS 26
+against iOS 16): the Reminders databases moved to an app group and the lists to
+another table, the data-usage database no longer counts Wi-Fi, and the table
+that says which places are in a Maps guide is numbered differently. Each is
+read now, and tested.
+
+[iOS versions](IOS_VERSIONS.md) lists what was checked on which version, and how
+to produce a report that shows, without any of your data, which tabs a backup
+fills. If something that is in your backup does not show, please report it.
 
 ## What backups leave out
 

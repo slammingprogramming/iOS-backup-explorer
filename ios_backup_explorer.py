@@ -276,9 +276,25 @@ class EncryptedBackend:
         self._dir = os.path.abspath(backup_dir)
         self._lib = factory(backup_directory=backup_dir,
                             passphrase=passphrase)
+        self._indexed = False
 
+    @contextlib.contextmanager
     def manifest_db_cursor(self):
-        return self._lib.manifest_db_cursor()
+        with self._lib.manifest_db_cursor() as cur:
+            if not self._indexed:
+                self._indexed = True
+                # The library finds a file with "WHERE relativePath = ?"
+                # (and so does extract() below), which without an index
+                # reads the whole manifest each time: about a second a file
+                # for a backup of 100,000 files. The index is made in the
+                # temporary decrypted copy, never in the backup.
+                try:
+                    cur.execute("CREATE INDEX IF NOT EXISTS ibe_relative_path"
+                                " ON Files (relativePath)")
+                    cur.connection.commit()
+                except sqlite3.Error:
+                    pass
+            yield cur
 
     def extract(self, cur, file_id, domain, rel_path, mtime, out_path):
         # extract_file() looks the file up by relative path and a LIKE

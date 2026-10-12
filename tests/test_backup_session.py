@@ -122,6 +122,43 @@ class OpenAndQueryTests(SessionTestCase):
                               RuntimeError)
 
 
+class ManifestIndexTests(SessionTestCase):
+    """A file is found by its relative path; without an index that reads the
+    whole manifest each time (a second a file at 100,000 files)."""
+
+    def plan(self):
+        backup = self.session._backup
+        with backup.manifest_db_cursor() as cur:
+            cur.execute("EXPLAIN QUERY PLAN SELECT fileID FROM Files WHERE "
+                        "relativePath = ? AND domain LIKE ? AND flags=1",
+                        ("x", "y"))
+            return " ".join(str(row[-1]) for row in cur.fetchall())
+
+    def test_the_decrypted_manifest_has_an_index_on_the_path(self):
+        self.open()
+        self.session.scan().result(60)
+        plan = self.session._executor.submit(self.plan).result(30)
+        self.assertIn("ibe_relative_path", plan)
+
+    def test_extraction_still_works_with_it(self):
+        self.open()
+        report = self.session.extract_all(self.out).result(60)
+        # (the fixture lists one file whose data is missing on purpose)
+        self.assertEqual([label for label, _why in report.errors],
+                         ["HomeDomain/Library/missing.bin"])
+        self.assertGreater(report.extracted, 0)
+
+    def test_the_backup_itself_is_never_changed(self):
+        before = {name: os.path.getmtime(os.path.join(self.backup_dir, name))
+                  for name in os.listdir(self.backup_dir)
+                  if os.path.isfile(os.path.join(self.backup_dir, name))}
+        self.open()
+        self.session.scan().result(60)
+        after = {name: os.path.getmtime(os.path.join(self.backup_dir, name))
+                 for name in before}
+        self.assertEqual(before, after)
+
+
 class ExtractionTests(SessionTestCase):
     def setUp(self):
         super().setUp()

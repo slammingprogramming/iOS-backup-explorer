@@ -89,6 +89,31 @@ def build_b(conn):
     conn.commit()
 
 
+def build_ios26(conn):
+    """iOS 26: the lists in a table of their own for the kinds of list
+    (ZREMCDBASELIST, told apart by their kind), the account in
+    ZREMCDOBJECT, the reminders in a table of their own."""
+    _kinds(conn)
+    conn.executescript(f"""
+        CREATE TABLE ZREMCDOBJECT (Z_PK INTEGER PRIMARY KEY, Z_ENT INTEGER,
+            ZNAME TEXT, ZMARKEDFORDELETION INTEGER DEFAULT 0);
+        CREATE TABLE ZREMCDBASELIST (Z_PK INTEGER PRIMARY KEY, Z_ENT INTEGER,
+            ZNAME1 TEXT, ZACCOUNT INTEGER, ZPARENTACCOUNT INTEGER,
+            ZMARKEDFORDELETION INTEGER DEFAULT 0);
+        CREATE TABLE ZREMCDREMINDER ({REMINDER_COLUMNS});
+    """)
+    conn.execute("INSERT INTO ZREMCDOBJECT (Z_PK, Z_ENT, ZNAME) VALUES "
+                 "(1, 6, 'iCloud')")
+    conn.executemany(
+        "INSERT INTO ZREMCDBASELIST (Z_PK, Z_ENT, ZNAME1, ZACCOUNT) "
+        "VALUES (?,?,?,?)", [(2, 25, "Shopping", 1), (3, 25, "Chores", 1),
+                             (4, 26, "A smart list", 1)])
+    conn.execute("INSERT INTO ZREMCDREMINDER (Z_PK, Z_ENT, ZTITLE, ZLIST, "
+                 "ZCOMPLETED, ZCREATIONDATE, ZLASTMODIFIEDDATE) VALUES "
+                 "(1, 32, 'Buy bread', 2, 0, ?, ?)", (T0, T0 + 1))
+    conn.commit()
+
+
 def build_empty(conn):
     conn.execute("CREATE TABLE Z_METADATA (Z_VERSION INTEGER)")
     conn.commit()
