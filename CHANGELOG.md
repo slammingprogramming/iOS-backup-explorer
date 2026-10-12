@@ -7,6 +7,10 @@ Eyyup (Eric) Gunes. Entries below the fork point record the original project's h
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-10-11
+
+Much more of **Health** is read (sleep per night, medications, the contents of health records and the files of clinical documents, hearing tests, symptoms and cycle tracking, awards, friends' activity), the program is checked against real backups of **iOS 16.7 and 26.6** (every tab, with the Health database of iOS 26 read in full), and four things that broke or showed nothing on iOS 26 are fixed. Medication names, forms and ingredients were confirmed by the owner of the backup; dose statuses other than "Not answered" and "Taken" are still shown as numbers.
+
 ### Added
 - **Sleep per night** in the Health tab: the sleep stages added up for each night, placed on the day you woke up by the clock where the phone was, overlapping records of two devices counted once. It needs a time zone database; macOS and Linux have one, **Windows needs the optional `tzdata` package** (`pip install tzdata`, now in `requirements-optional.txt`), and without it the table says why it is missing. See [Health data](docs/HEALTH.md#sleep-per-night)
 - **More of the Health database**: medications and their dose log; the contents of health records (lab results, immunizations, conditions and allergies, prescriptions, clinical documents, whose files can be exported); awards; sleep schedules; hearing tests (audiograms); events, symptoms and cycle tracking; and the activity and workouts that friends in Activity sharing sent. What is still not covered (ECG waveforms, the files inside clinical records, a few unverified values) is listed in [Health data](docs/HEALTH.md#still-not-covered)
