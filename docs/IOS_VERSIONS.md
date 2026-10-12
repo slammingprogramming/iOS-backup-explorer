@@ -11,7 +11,7 @@ versions have been, and what was found.
 
 | iOS | Device | Checked | Notes |
 |---|---|---|---|
-| 26.6 | iPhone14,7 | Every tab run on it; the counts of Photos, Voice Memos, Maps, Books, Reminders compared with the raw tables | The Health database (729 MB) has not been examined yet, only the Medical ID card |
+| 26.6 | iPhone14,7 | Every tab run on it; the counts of Photos, Voice Memos, Maps, Books, Reminders compared with the raw tables; Health in full (every table, the routes, the files of clinical documents) | |
 | 16.7 | iPhone10,6 | Every tab run on it, Health in full | No Maps, Books, Photos or Voice Memos data in the backup |
 | 17, 18 | | The first checks of Messages, Notes, Calls, Contacts, Safari, Calendar... | Before this page; not repeated |
 | 12 | | Some of the author's older backups | Not re-examined for this page; the 12.4 backup at hand cannot be opened (its password is lost) |
@@ -34,6 +34,13 @@ layout):
 - **Maps guides**: the table that joins guides to the places in them is named
   after the numbers of the two kinds it joins, which changed (`Z_5PLACES` to
   `Z_6PLACES`); it is found by its columns.
+- **Health, workout routes**: iOS 26 names the columns of the table that links
+  a workout to its route by direction (`destination_object_id` for the
+  workout, `source_object_id` for the route, and a `deleted` flag) where iOS 16
+  has `parent_id` and `child_id`. Before this was handled, no route was found
+  on iOS 26 (16 of 179 workouts have one in the backups used).
+- **Health, medications**: iOS 26 records the unit of a dose (`unit_string`,
+  for example "tablet") and has a dose status that iOS 16 did not show.
 - **Screen Time** and **Podcasts**: the iOS 26 backup had no Screen Time
   activity files and no Podcasts library, so those tabs show nothing there.
   Whether that is the version or the phone is not known yet.

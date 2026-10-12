@@ -274,11 +274,28 @@ def route_points(conn):
     return points
 
 
+def association_pairs(conn):
+    """``(owner id, owned id)`` of the associations between samples (a
+    workout and its route). Up to iOS 16 the columns are ``parent_id`` and
+    ``child_id``; iOS 26 names them by direction instead, and the owner (the
+    workout) is the ``destination_object_id``, the owned sample (the route)
+    the ``source_object_id``; it also marks removed associations."""
+    columns = table_columns(conn, "associations")
+    if "parent_id" in columns and "child_id" in columns:
+        return sqlite_rows(conn,
+                           "SELECT parent_id, child_id FROM associations")
+    if "destination_object_id" in columns and "source_object_id" in columns:
+        where = " WHERE deleted = 0" if "deleted" in columns else ""
+        return sqlite_rows(
+            conn, "SELECT destination_object_id, source_object_id FROM "
+                  "associations" + where)
+    return []
+
+
 def workout_rows(conn, names, sources):
     routes = route_points(conn)
     route_of = {}
-    for parent, child in sqlite_rows(
-            conn, "SELECT parent_id, child_id FROM associations"):
+    for parent, child in association_pairs(conn):
         if child in routes:
             route_of[parent] = child
     stats = {}

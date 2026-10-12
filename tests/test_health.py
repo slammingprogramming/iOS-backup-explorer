@@ -168,6 +168,32 @@ class WorkoutTests(ReaderCase):
         self.assertIsNone(points[2]["altitude"])
         self.assertEqual(points, sorted(points, key=lambda p: p["time"]))
 
+    def test_the_route_in_the_layout_of_ios_26(self):
+        """iOS 26 names the association columns by direction and marks the
+        removed ones: the workout is the destination, the route the source."""
+        self.conn.executescript("""
+            ALTER TABLE associations RENAME COLUMN parent_id TO
+                destination_object_id;
+            ALTER TABLE associations RENAME COLUMN child_id TO
+                source_object_id;
+            ALTER TABLE associations ADD COLUMN deleted INTEGER DEFAULT 0;""")
+        names = hl.kind_names(self.conn)
+        rows = hl.workout_rows(self.conn, names, {})
+        running = next(r for r in rows if r["type"] == "Running")
+        self.assertEqual(len(running["points"]), 3)
+        self.assertEqual(running["route"], "yes")
+        # a removed association no longer links the route
+        self.conn.execute("UPDATE associations SET deleted = 1")
+        rows = hl.workout_rows(self.conn, names, {})
+        self.assertEqual(next(r for r in rows
+                              if r["type"] == "Running")["points"], [])
+
+    def test_no_associations_at_all(self):
+        self.conn.execute("DROP TABLE associations")
+        self.assertEqual(hl.association_pairs(self.conn), [])
+        rows = hl.workout_rows(self.conn, hl.kind_names(self.conn), {})
+        self.assertTrue(all(r["points"] == [] for r in rows))
+
     def test_the_details(self):
         text = self.data["workouts"].details(self.by["Running"])
         for expected in ("Running", "Distance: 5.00 km",

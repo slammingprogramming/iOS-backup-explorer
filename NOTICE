@@ -68,6 +68,14 @@ hashcat (the hashcat developers; MIT License): the Apple Secure Notes module
 Apple Platform Security Guide (Apple Inc.): the documented design of locked
     notes and of keychain data protection.
 RFC 3394 and NIST SP 800-38D: the AES key wrap and AES-GCM standards.
+kinnay/AEA, python-aea (Yannik Marchand; MIT License): an implementation of the
+    Apple Encrypted Archive format that the reader for the files in Health's
+    clinical records was checked against. https://github.com/kinnay/AEA
+ipsw (blacktop; MIT License): its AEA decoder describes the key derivation
+    steps of the format. https://github.com/blacktop/ipsw
+The Apple Wiki: its page on the Apple Encrypted Archive format.
+HL7 FHIR (https://hl7.org/fhir) and Apple's HealthKit documentation: the names
+    and values used to read Health records, symptoms and cycle tracking.
 
 ================================================================================
 THIRD-PARTY SOFTWARE AND TEXT  (not part of this project's license grant)
@@ -82,6 +90,10 @@ iphone_backup_decrypt  (runtime dependency, installed separately; not bundled)
 PyCryptodome  (a dependency of iphone_backup_decrypt, installed separately; not
     bundled; used directly for AES in the Keychain tab and for locked notes)
     BSD 2-Clause and public-domain parts. https://www.pycryptodome.org
+
+tzdata  (optional dependency for Health's "Sleep per night" on Windows,
+    installed separately; not bundled). Apache License 2.0.
+    https://github.com/python/tzdata
 
 mfusepy  (optional dependency for mounting, installed separately; not bundled)
     ISC License. https://github.com/mxmlnkn/mfusepy

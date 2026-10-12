@@ -158,19 +158,37 @@ These are read now. How each rests on the data, and how far it was checked:
   dose, the medication, when it was due, the amount and its status. The names
   are in the medication's localized strings; which string holds the name, the
   ingredients, the form and the full product name was settled by looking at
-  what a real backup holds (the columns agree with each other: the name sits
-  beside its ingredients, form and product); the owner of that backup has not
-  yet checked them one by one. The
-  status of a dose is shown in words only for the two values the data
-  explains: **1 = the dose never got an answer**, **4 = it was taken** (every
-  dose with 4 has an amount logged). Any other value is shown as "Status N"
-  rather than guessed.
+  what a real backup holds, and **the owner of that backup confirmed the four
+  columns** against what the Health app shows. The status of a dose is shown
+  in words only for the two values the data explains: **1 = the dose never got
+  an answer**, **4 = it was taken** (every dose with 4 has an amount logged);
+  these two come from the data and have not been confirmed by the owner. Any
+  other value is shown as "Status N" rather than guessed (iOS 26 has one dose
+  with status 5). iOS 26 also records the unit of a dose ("tablet"), shown
+  after the amount.
 - **Contents of health records.** Labs, immunizations, conditions, allergies
   and procedures, prescriptions and clinical documents are stored as FHIR (a
   standard format for health records) inside the database; they are read as
   the provider sent them: the test, the result with its unit and reference
-  range, the date, the provider. Clinical documents that carry a file are
-  exported on request (**Export...**, *The documents' files*).
+  range, the date, the provider.
+- **Files of clinical documents.** For some documents the phone also
+  downloaded the file itself (a PDF report, a note as HTML or RTF). Health
+  keeps each in `HealthDomain/Health/Files/<identifier>` in Apple's encrypted
+  archive format (the file starts with `AEA1`), **with the key in the Health
+  database itself** (`attachments.encryption_key`, an archived object holding a
+  32-byte `sym_key`), and `medical_downloadable_attachments` says which clinical
+  record each file belongs to. With the key the file opens; every part of it is
+  checked (a keyed check value for each part, and a SHA-256 for each segment),
+  so a wrong key or a damaged file is refused and never gives wrong bytes. The
+  documents table shows how many files a document has, and **Export...**,
+  *The documents' files* saves them opened, with the right extension. The
+  format is described, not documented by Apple; the reader was written from
+  what others published and checked byte for byte against another
+  implementation (kinnay/AEA) on the 13 files of a real backup, and a test
+  holds an archive made by that implementation. Only the profile Health uses
+  (a symmetric key) is supported; files compressed with LZFSE or LZ4 need the
+  optional `pyliblzfse` or `lz4` package (the Health files are not
+  compressed).
 - **Awards** (Fitness): the database holds the *internal* name of each award
   and when it was earned. The names the Fitness app shows are not in the
   backup, so the internal name is made readable and shown with the original.
@@ -193,17 +211,28 @@ These are read now. How each rests on the data, and how far it was checked:
 
 - **ECG waveforms.** No backup used so far held one, so how they are stored
   could not be checked. They are not read.
-- **Files inside clinical records.** A record may carry a file (a scan, a PDF)
-  in Apple's encrypted archive format with a key of its own; those files are
-  not opened. The text of the record is read.
+- **Documents whose file was never downloaded.** For most clinical documents
+  in the backups used, the phone has only the record, not the clinic's file
+  (the database says so: the download was never made). Nothing can be shown
+  for those.
+- **Fitness Intelligence (iOS 26).** iOS 26 keeps derived summaries of the
+  rings, workouts and Fitness+ (streaks, best workouts, counts) in tables
+  named `FitnessIntelligencePlugin_...`, as binary records whose layout is not
+  known. They are not read; the daily activity, workouts and awards they
+  summarise are.
 - **Immunizations, cycle tracking and the workouts of friends** were written
   from the database's layout and public documentation; the backups used had no
   such rows, so these tables were tested on generated data only.
 - **Dose statuses other than 1 and 4**, and where a dose was logged *from*
   (origin), are shown as numbers until a backup shows what they mean.
-- **The Health database of an iOS 26 backup** was not examined (see
-  [iOS versions](IOS_VERSIONS.md)); everything above was checked on a real iOS
-  16.7 backup.
+
+Everything above was checked on real backups of **iOS 16.7 and iOS 26.6** (see
+[iOS versions](IOS_VERSIONS.md)); the two came out alike, which is expected
+because their Health data is the same account. What iOS 26 changed in the
+database, and how it is handled: the table that links a workout to its route
+names its columns by direction (the route links were found only on iOS 16
+before), medication doses carry their unit ("tablet"), and a new dose status
+appears.
 
 ### Raw files
 

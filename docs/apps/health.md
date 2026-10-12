@@ -84,8 +84,12 @@ they say, in a table for each kind:
   the date.
 - **Immunizations**, **Conditions, allergies and procedures**, **Prescriptions
   from providers**.
-- **Clinical documents**: reports and documents; those that carry a file can be
-  exported (*Export...*, *The documents' files*).
+- **Clinical documents**: reports and documents, with a *Files* column that
+  counts the files the phone downloaded for them (PDF reports, notes as HTML or
+  RTF). *Export...*, *The documents' files* saves them, opened: the backup
+  keeps them in an encrypted form, and the program opens them with the key that
+  is in the Health database. A document the clinic sent without its file, or
+  whose file the phone never downloaded, shows no file.
 
 ## Hearing, events and the rest
 

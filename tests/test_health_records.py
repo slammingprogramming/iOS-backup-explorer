@@ -11,9 +11,17 @@ import sqlite3
 import tempfile
 import unittest
 
+from ios_apps import aea
 from ios_apps import health as hl
 from ios_apps import health_records as hr
+from unittest import mock
+
+from ios_apps import records_view as rv
+from tests import aea_builder as ab
 from tests import fixture_health as fh
+from tests.fixture_apps import database_bytes
+from tests.gui_apps import AppGuiCase
+from tests.keyed_builder import archive
 
 PDF = b"%PDF-1.4 an invented document"
 
@@ -309,6 +317,187 @@ class DocumentFileTests(unittest.TestCase):
         self.assertIn("3 attachments hold no data", notes)
 
 
+HTML = b"<div>An invented note.</div>"
+OTHER_KEY = bytes(range(100, 132))
+
+
+def key_blob(key):
+    return archive({"$class": "HKSymmetricKey", "sym_key": key})
+
+
+class DownloadedFileTests(unittest.TestCase):
+    """The files the phone downloaded for clinical documents, kept
+    encrypted in the backup, with their keys in the database."""
+
+    def ident(self, number):
+        return bytes([number]) * 16
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="ibe-records-")
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.conn = sqlite3.connect(":memory:")
+        self.addCleanup(self.conn.close)
+        build(self.conn)
+        documents = [number for number, (kind, _raw) in
+                     enumerate(RESOURCES, 1) if kind == "DocumentReference"]
+        self.report = next(number for number, (kind, _raw) in
+                           enumerate(RESOURCES, 1)
+                           if kind == "DiagnosticReport")
+        self.first, self.second = documents[:2]
+        self.conn.executescript("""
+            CREATE TABLE objects (data_id INTEGER PRIMARY KEY, uuid BLOB);
+            CREATE TABLE clinical_record_samples (data_id INTEGER PRIMARY KEY,
+                original_fhir_resource_rowid INTEGER);
+            CREATE TABLE attachments (identifier BLOB, type TEXT,
+                encryption_key BLOB);
+            CREATE TABLE medical_downloadable_attachments (
+                data_id INTEGER PRIMARY KEY, clinical_record_uuid BLOB,
+                attachment_uuid BLOB, title TEXT);""")
+        for number in (self.first, self.second, self.report):
+            self.conn.execute("INSERT INTO objects VALUES (?, ?)",
+                              (number, self.ident(number)))
+            self.conn.execute(
+                "INSERT INTO clinical_record_samples VALUES (?, ?)",
+                (number, number))
+        # file 1 and 2: the first document; 3: the second, under another
+        # key than the one recorded; 4: the report, whose file is not in the
+        # backup; 5: a file that is not encrypted at all
+        self.stored = {}
+        self.files = [
+            (1, self.first, "com.adobe.pdf", ab.KEY, PDF, "Summary"),
+            (2, self.first, "public.html", ab.KEY, HTML, "Note"),
+            (3, self.second, "public.rtf", OTHER_KEY, b"{\\rtf1 x}", "Letter"),
+            (4, self.report, "com.adobe.pdf", ab.KEY, None, "Scan"),
+            (5, self.second, "weird.type", None, b"%PDF-1.7 plain", "Plain")]
+        for number, record, uti, key, content, title in self.files:
+            ident = self.ident(40 + number)
+            self.conn.execute("INSERT INTO attachments VALUES (?, ?, ?)",
+                              (ident, uti, key_blob(key) if key else None))
+            self.conn.execute(
+                "INSERT INTO medical_downloadable_attachments VALUES "
+                "(?, ?, ?, ?)", (number, self.ident(record), ident, title))
+            name = f"{hr.FILES}/" + str(
+                __import__("uuid").UUID(bytes=ident)).upper()
+            if content is not None:
+                self.stored[name] = (
+                    ab.build(content) if key == ab.KEY
+                    else ab.build(content, key=ab.KEY) if key else content)
+        self.conn.commit()
+        self.table = {d.key: d for d in hr.datasets(self.conn)}[
+            "clinical_documents"]
+        self.rows = {r["type"] or r["title"]: r for r in self.table.rows}
+
+    def downloads_only(self, *names):
+        """The rows called *names* without the files inside the record."""
+        return [dict(self.rows[name], files=[]) for name in names]
+
+    def copy_file(self, path, directory, name):
+        if path not in self.stored:
+            return False
+        with open(os.path.join(directory, name), "wb") as handle:
+            handle.write(self.stored[path])
+        return True
+
+    def test_files_are_found_for_their_records(self):
+        by = {r["type"] or r["title"]: len(r["attached"])
+              for r in self.table.rows}
+        self.assertEqual(by["Discharge summary"], 2)
+        self.assertEqual(by["Progress note"], 2)      # (3 and 5)
+        self.assertEqual(by["Chest X-ray"], 1)
+        shown = {r["type"]: self.table.columns[-1].show(r.get("saved"), r)
+                 for r in self.table.rows}
+        self.assertEqual(shown["Discharge summary"], "2")
+
+    def test_the_details_name_the_kinds_of_file(self):
+        text = self.table.details(self.rows["Discharge summary"])
+        self.assertIn("Files in the backup: pdf, html", text)
+
+    def test_the_keys_are_read_from_the_database(self):
+        keys = [i["key"] for r in self.table.rows for i in r["attached"]]
+        self.assertEqual(keys.count(ab.KEY), 3)
+        self.assertEqual(keys.count(None), 1)           # (the unencrypted one)
+
+    def test_opened_files_are_saved(self):
+        out = os.path.join(self.tmp, "out")
+        paths, notes = hr.write_documents(
+            out, self.downloads_only("Discharge summary"), self.copy_file)
+        self.assertEqual(notes, "")
+        names = sorted(os.path.basename(p) for p in paths)
+        self.assertEqual(len(names), 2)
+        contents = {}
+        for path in paths:
+            with open(path, "rb") as handle:
+                contents[os.path.splitext(path)[1]] = handle.read()
+        self.assertEqual(contents, {".pdf": PDF, ".html": HTML})
+        self.assertEqual(os.listdir(out).__len__(), 2)
+
+    def test_what_cannot_be_opened_or_is_not_there_is_counted(self):
+        out = os.path.join(self.tmp, "out")
+        paths, notes = hr.write_documents(
+            out, self.downloads_only("Progress note", "Chest X-ray"),
+            self.copy_file)
+        # the unencrypted file is kept as it is; the one under a key that
+        # does not fit is reported; the report's file is not in the backup
+        self.assertEqual(len(paths), 1)
+        with open(paths[0], "rb") as handle:
+            self.assertEqual(handle.read(), b"%PDF-1.7 plain")
+        self.assertTrue(paths[0].endswith(".pdf"))        # (by its content)
+        self.assertIn("1 downloaded file could not be opened", notes)
+        self.assertIn("1 attachment hold no data", notes)
+
+    def test_an_encrypted_file_without_its_key_is_not_written(self):
+        item = {"path": f"{hr.FILES}/X", "key": None, "type": ""}
+        self.stored[item["path"]] = ab.build(b"secret")
+        scratch = os.path.join(self.tmp, "scratch")
+        os.makedirs(scratch)
+        self.assertEqual(hr._open_attached(item, self.copy_file, scratch),
+                         (None, "locked"))
+        self.assertEqual(hr._open_attached(
+            {"path": "HealthDomain/none", "key": ab.KEY}, self.copy_file,
+            scratch), (None, "absent"))
+        self.assertEqual(os.listdir(scratch), [])
+
+    def test_a_record_with_both_kinds_of_attachment_counts_each_once(self):
+        """The 'Progress note' names its file only by a web address; the
+        phone downloaded it, so it is not a missing file."""
+        paths, notes = hr.write_documents(
+            os.path.join(self.tmp, "out"), [self.rows["Progress note"]],
+            self.copy_file)
+        self.assertNotIn("hold no data", notes)
+        self.assertIn("1 downloaded file could not be opened", notes)
+
+    def test_without_a_way_to_copy_files(self):
+        paths, notes = hr.write_documents(
+            os.path.join(self.tmp, "out"),
+            self.downloads_only("Discharge summary"), None)
+        self.assertEqual(paths, [])
+        self.assertIn("2 attachments hold no data", notes)
+
+    def test_two_files_with_one_name_do_not_overwrite_each_other(self):
+        row = dict(self.rows["Discharge summary"], files=[])
+        row["attached"] = [row["attached"][0], row["attached"][0]]
+        paths, _ = hr.write_documents(os.path.join(self.tmp, "out"), [row],
+                                      self.copy_file)
+        self.assertEqual(len({p.lower() for p in paths}), 2)
+
+    def test_the_scratch_folder_is_removed(self):
+        before = set(os.listdir(tempfile.gettempdir()))
+        hr.write_documents(os.path.join(self.tmp, "out"),
+                           [self.rows["Discharge summary"]], self.copy_file)
+        left = [n for n in set(os.listdir(tempfile.gettempdir())) - before
+                if n.startswith("ibe-health-files-")]
+        self.assertEqual(left, [])
+
+    def test_databases_without_the_tables_still_read(self):
+        conn = sqlite3.connect(":memory:")
+        self.addCleanup(conn.close)
+        build(conn)
+        table = {d.key: d for d in hr.datasets(conn)}["clinical_documents"]
+        self.assertTrue(all(r["attached"] == [] for r in table.rows))
+        self.assertEqual(hr.downloaded_files(conn), {})
+        self.assertEqual(hr._record_ids(conn), {})
+
+
 class ReaderTests(unittest.TestCase):
     def test_the_tables_come_with_the_health_reader(self):
         tmp = tempfile.mkdtemp(prefix="ibe-records-")
@@ -331,6 +520,66 @@ class ReaderTests(unittest.TestCase):
         self.assertEqual(hr.datasets(conn), [])
         conn.execute("CREATE TABLE original_fhir_resources (ROWID INTEGER)")
         self.assertEqual(hr.datasets(conn), [])
+
+
+FILE_ID = "ABCDEF01-2345-4678-9ABC-DEF012345678"
+
+
+class DocumentWindowTests(AppGuiCase):
+    """Saving the files of clinical documents from the Health tab of a
+    backup, through the program's own way of copying files out of it."""
+
+    def database(self, conn):
+        fh.build_health(conn)
+        build(conn)
+        first = next(number for number, (kind, _raw) in
+                     enumerate(RESOURCES, 1) if kind == "DocumentReference")
+        ident = __import__("uuid").UUID(FILE_ID).bytes
+        conn.executescript("""
+            ALTER TABLE clinical_record_samples ADD COLUMN
+                original_fhir_resource_rowid INTEGER;
+            CREATE TABLE attachments (identifier BLOB, type TEXT,
+                encryption_key BLOB);
+            CREATE TABLE medical_downloadable_attachments (
+                data_id INTEGER PRIMARY KEY, clinical_record_uuid BLOB,
+                attachment_uuid BLOB, title TEXT);""")
+        conn.execute("INSERT INTO objects (data_id, uuid) VALUES (7777, ?)",
+                     (bytes([7]) * 16,))
+        conn.execute("INSERT INTO clinical_record_samples (data_id, "
+                     "original_fhir_resource_rowid) VALUES (7777, ?)",
+                     (first,))
+        conn.execute("INSERT INTO attachments VALUES (?, 'com.adobe.pdf', ?)",
+                     (ident, key_blob(ab.KEY)))
+        conn.execute("INSERT INTO medical_downloadable_attachments VALUES "
+                     "(1, ?, ?, 'Scan')", (bytes([7]) * 16, ident))
+        conn.commit()
+
+    def test_the_files_are_saved_opened(self):
+        files = fh.backup_files(health=False) + [
+            ("HealthDomain", fh.HEALTH, database_bytes(self.database)),
+            ("HealthDomain", f"Health/Files/{FILE_ID}", ab.build(PDF))]
+        self.open_files(files)
+        tab = self.show_tab("Health")
+        self.wait_for(lambda: tab.datasets, "the health tables")
+        tab.dataset_var.set("Clinical documents")
+        tab.choose_dataset()
+        shown = [tab.tree.item(i, "values") for i in tab.tree.get_children()]
+        files_column = [c.key for c in tab.dataset.columns].index("saved")
+        self.assertEqual(sorted(v[files_column] for v in shown),
+                         ["", "", "1"])
+        out = os.path.join(self.tmp, "export")
+        with mock.patch.object(rv, "ask_export",
+                               return_value=("files", "all", out)):
+            tab.export()
+            self.wait_for(lambda: self.dialogs, "the export")
+        self.assertEqual(self.dialogs[-1][0], "showinfo", self.dialogs[-1])
+        contents = {}
+        for name in os.listdir(out):
+            with open(os.path.join(out, name), "rb") as handle:
+                contents[os.path.splitext(name)[1]] = handle.read()
+        # the file in the backup (opened) and the one the record carries
+        self.assertEqual(contents[".pdf"][:5], b"%PDF-")
+        self.assertIn(PDF, list(contents.values()))
 
 
 if __name__ == "__main__":

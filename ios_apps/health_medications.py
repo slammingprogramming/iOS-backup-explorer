@@ -118,13 +118,17 @@ def medication_rows(conn):
 
 
 def dose_rows(conn, names):
-    if "status" not in table_columns(conn, "medication_dose_event_samples"):
+    columns = table_columns(conn, "medication_dose_event_samples")
+    if "status" not in columns:
         return []
+    # iOS 26 records the unit of the amounts ("tablet"); earlier ones do not
+    unit = "d.unit_string" if "unit_string" in columns else "NULL"
     rows = []
-    for (uuid, planned, taken, scheduled, status, origin, start) in sqlite_rows(
+    for (uuid, planned, taken, scheduled, status, origin, start,
+         unit) in sqlite_rows(
             conn, "SELECT d.medication_uuid, d.scheduled_dose_quantity, "
                   "d.dose_quantity, d.scheduled_date, d.status, "
-                  "d.log_origin, s.start_date FROM "
+                  f"d.log_origin, s.start_date, {unit} FROM "
                   "medication_dose_event_samples d LEFT JOIN samples s ON "
                   "s.data_id = d.data_id ORDER BY d.scheduled_date, "
                   "s.start_date"):
@@ -133,16 +137,17 @@ def dose_rows(conn, names):
             "medication": names.get(bytes(uuid) if uuid else b"",
                                     "(a medication that is gone)"),
             "planned": planned, "taken": taken,
+            "unit": str(unit).strip() if unit else "",
             "status": STATUSES.get(status, f"Status {status}"),
             "origin": ORIGINS.get(origin, f"Origin {origin}"
                                   if origin is not None else "")})
     return rows
 
 
-def _amount(value):
+def _amount(value, unit=""):
     if value is None:
         return ""
-    return f"{value:g}"
+    return f"{value:g} {unit}" if unit else f"{value:g}"
 
 
 def datasets(conn):
@@ -175,9 +180,9 @@ def datasets(conn):
                 Column("medication", "Medication", 240),
                 Column("status", "Status", 120),
                 Column("planned", "Planned dose", 90, "text", "e",
-                       format=lambda r: _amount(r["planned"])),
+                       format=lambda r: _amount(r["planned"], r["unit"])),
                 Column("taken", "Dose taken", 90, "text", "e",
-                       format=lambda r: _amount(r["taken"])),
+                       format=lambda r: _amount(r["taken"], r["unit"])),
                 Column("logged", "Logged at", 140, "date")],
             doses, sort=("scheduled", True),
             note="Each row is a dose that was due or that you logged. A "

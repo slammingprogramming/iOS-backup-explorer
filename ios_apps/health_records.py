@@ -19,7 +19,11 @@ Tables made (each only if there is something to show):
 * **Prescriptions from providers** (``MedicationRequest`` and the other
   ``Medication...`` resources)
 * **Clinical documents** (``DocumentReference``, ``DiagnosticReport``),
-  with the files they carry when the record holds them
+  with the files they carry when the record holds them, and the files the
+  phone downloaded for them (a PDF report, a note as HTML or RTF). Those are
+  kept encrypted in ``HealthDomain/Health/Files`` (see ``aea.py``); the key of
+  each is in the database (``attachments.encryption_key``), and the link from a
+  file to its record is ``medical_downloadable_attachments``
 
 A resource that cannot be read is skipped and counted, never guessed at.
 No GUI.
@@ -30,13 +34,22 @@ import binascii
 import json
 import os
 import re
+import shutil
+import tempfile
+import uuid
 from datetime import datetime, timezone
 
+from . import aea
 from .common import format_datetime, table_columns
 from .export_util import safe_filename
 from .records import Column, Dataset, format_day, sqlite_rows
 
 TABLE = "original_fhir_resources"
+FILES = "HealthDomain/Health/Files"     # where the downloaded files are kept
+UTI_EXTENSIONS = {
+    "com.adobe.pdf": ".pdf", "public.html": ".html", "public.rtf": ".rtf",
+    "public.plain-text": ".txt", "public.text": ".txt", "public.xml": ".xml",
+    "public.jpeg": ".jpg", "public.png": ".png", "public.json": ".json"}
 _NAME_CHARS = re.compile(r"[^\w\-. ]+")
 
 
@@ -334,14 +347,56 @@ ROWS = {
 }
 
 
+def downloaded_files(conn):
+    """``{clinical record uuid (bytes): [file, ...]}``: the files the phone
+    downloaded for clinical records. A file is ``{"path": the backup path,
+    "key": its 32-byte key or None, "title", "type": its UTI}``."""
+    needs = {"medical_downloadable_attachments": (
+        "clinical_record_uuid", "attachment_uuid", "title"),
+        "attachments": ("identifier", "type", "encryption_key")}
+    for table, columns in needs.items():
+        have = table_columns(conn, table)
+        if not all(column in have for column in columns):
+            return {}
+    found = {}
+    for record, ident, title, kind, key in sqlite_rows(
+            conn, "SELECT m.clinical_record_uuid, a.identifier, m.title, "
+                  "a.type, a.encryption_key FROM "
+                  "medical_downloadable_attachments m JOIN attachments a ON "
+                  "a.identifier = m.attachment_uuid ORDER BY m.data_id"):
+        try:
+            name = str(uuid.UUID(bytes=bytes(ident))).upper()
+        except (ValueError, TypeError):
+            continue
+        found.setdefault(bytes(record), []).append({
+            "path": f"{FILES}/{name}",
+            "key": aea.symmetric_key(key) if key else None,
+            "title": str(title or ""), "type": str(kind or "")})
+    return found
+
+
+def _record_ids(conn):
+    """``{ROWID of the stored resource: uuid of its clinical record}``."""
+    if "original_fhir_resource_rowid" not in table_columns(
+            conn, "clinical_record_samples") \
+            or "uuid" not in table_columns(conn, "objects"):
+        return {}
+    return {rowid: bytes(record) for rowid, record in sqlite_rows(
+        conn, "SELECT c.original_fhir_resource_rowid, o.uuid FROM "
+              "clinical_record_samples c JOIN objects o ON o.data_id = "
+              "c.data_id WHERE o.uuid IS NOT NULL")}
+
+
 def read_resources(conn):
     """``({table key: [rows]}, skipped)`` from the stored FHIR resources.
     *skipped* counts those that could not be read as JSON."""
     if "raw_content" not in table_columns(conn, TABLE):
         return {}, 0
     tables, skipped = {}, 0
-    for kind, raw in sqlite_rows(
-            conn, f"SELECT type, raw_content FROM {TABLE} ORDER BY ROWID"):
+    files, records = downloaded_files(conn), _record_ids(conn)
+    for rowid, kind, raw in sqlite_rows(
+            conn, f"SELECT ROWID, type, raw_content FROM {TABLE} "
+                  "ORDER BY ROWID"):
         route = ROWS.get(kind)
         if route is None:
             continue
@@ -356,6 +411,8 @@ def read_resources(conn):
             skipped += 1
             continue
         row["resource"] = resource
+        if route[0] == "documents":
+            row["attached"] = files.get(records.get(rowid), [])
         tables.setdefault(route[0], []).append(row)
     return tables, skipped
 
@@ -410,26 +467,125 @@ def _file_name(row, attachment, index):
     return safe_filename(f"{index:03d} {stem}{ext}")
 
 
-def write_documents(folder, rows, _copy_file):
-    """Save the files the selected documents carry (the ones whose data is in
-    the record). Returns ``(paths, notes)``."""
+def _extension(uti, data):
+    known = UTI_EXTENSIONS.get(uti)
+    if known:
+        return known
+    if data[:4] == b"%PDF":
+        return ".pdf"
+    if data[:5] == b"{\\rtf":
+        return ".rtf"
+    return ".bin"
+
+
+def _open_attached(item, copy_file, scratch):
+    """``(bytes, None)`` of a downloaded file, decrypted, or ``(None, why)``
+    with *why* ``"absent"`` (the backup does not hold it) or ``"locked"``
+    (it is there, but cannot be opened)."""
+    if copy_file is None:
+        return None, "absent"
+    name = "attached.bin"
+    if not copy_file(item["path"], scratch, name):
+        return None, "absent"
+    target = os.path.join(scratch, name)
+    try:
+        with open(target, "rb") as handle:
+            data = handle.read()
+    finally:
+        try:
+            os.remove(target)
+        except OSError:
+            pass
+    if not aea.is_archive(data):
+        return data, None               # (not encrypted: keep it as it is)
+    if item.get("key") is None:
+        return None, "locked"
+    try:
+        return aea.decrypt(data, item["key"]), None
+    except (aea.ArchiveError, aea.notes_crypto.Unavailable):
+        return None, "locked"
+
+
+def _unique(folder, name, used):
+    stem, ext = os.path.splitext(name)
+    candidate, number = name, 1
+    while candidate.casefold() in used or os.path.exists(
+            os.path.join(folder, candidate)):
+        number += 1
+        candidate = f"{stem} ({number}){ext}"
+    used.add(candidate.casefold())
+    return candidate
+
+
+def write_documents(folder, rows, copy_file):
+    """Save the files the selected documents carry: those whose data is in
+    the record, and the files the phone downloaded for them (decrypted).
+    Returns ``(paths, notes)``."""
     os.makedirs(folder, exist_ok=True)
-    paths, missing = [], 0
-    for number, row in enumerate(rows, 1):
-        for attachment in row.get("files") or ():
-            data = _decoded(attachment)
-            if not data:
-                missing += 1
-                continue
-            path = os.path.join(folder, _file_name(row, attachment, number))
-            with open(path, "wb") as handle:
-                handle.write(data)
-            paths.append(path)
-    notes = (f"{missing:,} attachment{'s' if missing != 1 else ''} hold no "
-             "data in the record itself (the clinic's file was never "
-             "downloaded to the phone, or is not in the backup)."
-             if missing else "")
-    return paths, notes
+    paths, missing, locked, used = [], 0, 0, set()
+    scratch = tempfile.mkdtemp(prefix="ibe-health-files-")
+    try:
+        for number, row in enumerate(rows, 1):
+            attached = row.get("attached") or ()
+            for attachment in row.get("files") or ():
+                data = _decoded(attachment)
+                if not data:
+                    if not attached:     # (the downloaded file may be it)
+                        missing += 1
+                    continue
+                name = _unique(folder, _file_name(row, attachment, number),
+                               used)
+                path = os.path.join(folder, name)
+                with open(path, "wb") as handle:
+                    handle.write(data)
+                paths.append(path)
+            for item in attached:
+                data, why = _open_attached(item, copy_file, scratch)
+                if data is None:
+                    if why == "locked":
+                        locked += 1
+                    else:
+                        missing += 1
+                    continue
+                stem = _file_name(row, {"title": item.get("title")},
+                                  number)
+                stem = os.path.splitext(stem)[0]
+                name = _unique(folder, safe_filename(
+                    stem + _extension(item.get("type"), data)), used)
+                path = os.path.join(folder, name)
+                with open(path, "wb") as handle:
+                    handle.write(data)
+                paths.append(path)
+    finally:
+        shutil.rmtree(scratch, ignore_errors=True)
+    notes = []
+    if missing:
+        notes.append(
+            f"{missing:,} attachment{'s' if missing != 1 else ''} hold no "
+            "data in the record itself (the clinic's file was never "
+            "downloaded to the phone, or is not in the backup).")
+    if locked:
+        notes.append(
+            f"{locked:,} downloaded file{'s' if locked != 1 else ''} could "
+            "not be opened (its key is missing or does not fit).")
+    return paths, " ".join(notes)
+
+
+def _saved_text(row):
+    count = len(row.get("attached") or ())
+    return str(count) if count else ""
+
+
+def _document_details(row):
+    text = "Document\n" + _lines(row, (
+        ("Kind", "kind"), ("Type", "type"), ("Title", "title"),
+        ("Status", "status"), ("From", "by")))
+    kinds = [UTI_EXTENSIONS.get(item.get("type"), "file").lstrip(".")
+             for item in row.get("attached") or ()]
+    if kinds:
+        text += ("\nFiles in the backup: " + ", ".join(kinds)
+                 + " (export \"The documents' files\" to save them)")
+    return text
 
 
 def datasets(conn):
@@ -503,15 +659,14 @@ def datasets(conn):
                 Column("kind", "Kind", 80),
                 Column("type", "Type", 220),
                 Column("title", "Title", 240),
-                Column("by", "From", 200)],
+                Column("by", "From", 200),
+                Column("saved", "Files", 60, "text", "e", format=_saved_text)],
             tables["documents"], sort=("when", True),
             file_formats={"files": (
-                "The documents' files (those that are in the record)",
-                write_documents)},
-            note="Reports and documents that clinics sent. Some carry the "
-                 "file itself (a PDF, for example); export \"The documents' "
-                 "files\" to save them." + note,
-            details=_details("Document", (
-                ("Kind", "kind"), ("Type", "type"), ("Title", "title"),
-                ("Status", "status"), ("From", "by")))))
+                "The documents' files (PDFs, notes...)", write_documents)},
+            note="Reports and documents that clinics sent. For some the "
+                 "phone also downloaded the file itself (a PDF, a note); "
+                 "export \"The documents' files\" to save them, opened "
+                 "(the backup keeps them encrypted)." + note,
+            details=_document_details))
     return result

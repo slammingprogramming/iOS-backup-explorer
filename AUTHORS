@@ -42,8 +42,9 @@ and the iphone-dataprotection code it builds on. See NOTICE.
 
 Projects and research whose published work this one learned from
 ----------------------------------------------------------------
-No code was copied from these. The Keychain tab and the opening of locked notes
-were written independently, from what these projects and documents publish
+No code was copied from these. The Keychain tab, the opening of locked notes
+and of the files in clinical records, and the reading of Health records were
+written independently, from what these projects and documents publish
 about the formats; they are credited here, and in NOTICE and README, because
 the work would not have been possible without them.
 
@@ -65,3 +66,18 @@ notes and of keychain data protection.
 RFC 3394 (AES key wrap) and NIST SP 800-38D (AES-GCM) — the standards the
 cryptography follows, and the source of the test vectors.
 PyCryptodome — https://www.pycryptodome.org — the AES implementation used.
+kinnay/AEA (python-aea) — Yannik Marchand (MIT License). A Python implementation
+of the Apple Encrypted Archive format, against which the reader for the files in
+Health's clinical records was checked (byte for byte on real files) and from
+which one test archive was made.
+    https://github.com/kinnay/AEA
+ipsw — blacktop (MIT License). Its AEA decoder, written down in prose, describes
+the key derivation steps of the format.
+    https://github.com/blacktop/ipsw
+The Apple Wiki — its page on the Apple Encrypted Archive format (profiles, header
+and layout). https://theapplewiki.com/wiki/Apple_Encrypted_Archive
+HL7 FHIR — the open standard (https://hl7.org/fhir) in which Health stores the
+records it receives from clinics; reading them relies on its published names.
+Apple HealthKit documentation — Apple Inc. The public names and values of
+sleep stages, category samples (symptoms, cycle tracking, events) and clinical
+record types.

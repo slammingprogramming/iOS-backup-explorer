@@ -133,6 +133,23 @@ class MedicationTests(unittest.TestCase):
         pending = next(r for r in table.rows if r["status"] == "Not answered")
         self.assertEqual(table.columns[4].show(None, pending), "")
 
+    def test_the_unit_that_ios_26_records(self):
+        conn = sqlite3.connect(":memory:")
+        self.addCleanup(conn.close)
+        build(conn)
+        conn.execute("ALTER TABLE medication_dose_event_samples ADD COLUMN "
+                     "unit_string TEXT")
+        conn.execute("UPDATE medication_dose_event_samples SET unit_string = "
+                     "'tablet' WHERE dose_quantity = 2.0")
+        table = {d.key: d for d in hm.datasets(conn)}["medication_doses"]
+        taken = next(r for r in table.rows if r["taken"] == 2.0)
+        shown = {c.key: c.show(taken.get(c.key), taken) for c in table.columns}
+        self.assertEqual(shown["taken"], "2 tablet")
+        self.assertEqual(shown["planned"], "1 tablet")
+        plain = next(r for r in table.rows if not r["unit"])
+        self.assertNotIn("tablet", table.columns[4].show(plain["taken"],
+                                                        plain))
+
     def test_the_log_is_newest_first(self):
         table = self.sets["medication_doses"]
         ordered = table.sorted_rows(table.rows)

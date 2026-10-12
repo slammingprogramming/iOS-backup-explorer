@@ -129,7 +129,7 @@ Honesty matters when you are reading someone's data:
 
 - Every tab has automated tests on **invented** data, and the readers were **mutation-checked** (the code is broken on purpose to prove the tests notice).
 - Most tabs were also checked against a **real backup**: their counts and values were compared with the raw databases. **Maps, Podcasts, Books, Photos and Voice Memos** were written from the apps' database layouts, because the backup used had no data for them, so they are tested on generated data only. [Where the data comes from](docs/DATA_SOURCES.md) lists the status of each tab.
-- **Health** is read reliably where it can be proved, and the rest is listed openly as not yet covered: kinds of data the database does not name, values whose unit was not verified, ECG waveforms and the files inside clinical records. Sleep per night, medications, the contents of health records, hearing tests, symptoms and cycle tracking, awards and friends' activity are read now. **Why, and what is needed to close each gap, is in [Health data](docs/HEALTH.md).**
+- **Health** is read reliably where it can be proved, and the rest is listed openly as not yet covered: kinds of data the database does not name, values whose unit was not verified, ECG waveforms (no backup used held one). Sleep per night, medications, the contents of health records and the files of clinical documents, hearing tests, symptoms and cycle tracking, awards and friends' activity are read now. **Why, and what is needed to close each gap, is in [Health data](docs/HEALTH.md).**
 - A backup holds only what the phone kept: iCloud-only photos and messages, are not readable; passwords (the keychain) open only from an encrypted backup, and "this device only" items from none. Locked notes open with their own password, but that part has not been checked against a real locked note ([how](docs/apps/notes.md#locked-notes)). See the [FAQ](docs/FAQ.md).
 
 ---
@@ -248,11 +248,13 @@ Several features here were inspired by open pull requests and issues on the orig
 
 iOS Backup Explorer is built on top of the excellent [iphone_backup_decrypt](https://github.com/jsharkey13/iphone_backup_decrypt) library by James Sharkey. Thank you for making encrypted backup decryption accessible to everyone.
 
-The Keychain tab and the opening of locked notes were written independently, but only because others published how those formats work. No code was copied, and thanks go to:
+The Keychain tab, the opening of locked notes and of the files in clinical records, and the reading of Health records were written independently, but only because others published how those formats work. No code was copied, and thanks go to:
 
 - [iphone-dataprotection](https://github.com/dinosec/iphone-dataprotection) by Jean-Baptiste Bedrune and Jean Sigwald (Sogeti ESEC Lab), for the layout of keychain items in an encrypted backup (and, through `iphone_backup_decrypt`, the key bag code)
 - the [Apple Cloud Notes Parser](https://github.com/threeplanetssoftware/apple_cloud_notes_parser) by Jon Baumann of Ciofeca Forensics (threeplanetssoftware), for where locked notes and their attachments keep their lock details and how they are opened
 - [hashcat](https://hashcat.net/hashcat/), whose Apple Secure Notes module confirms how a locked note's key is made
+- [kinnay/AEA](https://github.com/kinnay/AEA) (python-aea) by Yannik Marchand, which the reader for the Apple Encrypted Archive files in Health's clinical records was checked against, [ipsw](https://github.com/blacktop/ipsw) by blacktop, and [The Apple Wiki](https://theapplewiki.com/wiki/Apple_Encrypted_Archive), for how that format is built
+- [HL7 FHIR](https://hl7.org/fhir) and Apple's HealthKit documentation, for the names and values used to read Health records, symptoms and cycle tracking
 - Apple's [Platform Security Guide](https://support.apple.com/guide/security/), RFC 3394 and NIST SP 800-38D, and [PyCryptodome](https://www.pycryptodome.org)
 
 ---
