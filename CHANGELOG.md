@@ -7,6 +7,10 @@ Eyyup (Eric) Gunes. Entries below the fork point record the original project's h
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-10-14
+
+**iOS 12 backups are now read and checked** against a real iOS 12.4.8 backup (every tab; the counts match the raw tables), with the Reminders, Permissions, Safari, Health and Maps differences of that version handled, and the Keychain of that backup accounted for item by item. **Anyone can now help without sharing anything private**: issue forms, a guide and three tools that print the shape of a backup and none of its contents. Maps on iOS 12 is less sure than the rest, and the documentation says why.
+
 ### Added
 - **Ways to help without sharing anything private.** Issue forms for a bug, a feature, a *compatibility report*, *a tab that is empty or wrong* (with a layout report), *naming a Health data type*, *volunteering to test another iOS version* and a documentation problem; every form opens with the rule that nobody should post a backup, its password or anything in it, and asks for counts and layouts. They come with three tools that print the shape of a backup and none of its contents: `tools/schema_report.py` (tables, columns and row counts of the databases the program reads, with `--sql` the `CREATE` statements, `--find` to locate an app's database), `tools/health_kinds_report.py` (the Health data types that cannot be named) and the existing `tools/compat_report.py`. A new page, [How to help](docs/HELPING.md), explains them, how to read the output before posting it and what to do if something private was posted by mistake
 - **Repository files**: labels the forms attach (`.github/labels.yml`, created by the *Labels* workflow or `tools/sync_labels.py`, which only creates or updates), Dependabot for the actions and the Python packages, `CODEOWNERS` that watch the credit and licence files, `SUPPORT.md`, a pull request checklist that asks what a change was verified on, and an issue chooser that sends security problems to private reporting. Tests (`tests/test_github_templates.py`) keep the forms consistent with the tools, the labels and the tab list
