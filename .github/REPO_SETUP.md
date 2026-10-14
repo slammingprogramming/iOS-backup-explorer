@@ -53,5 +53,14 @@ Create a release with:
 Enable Discussions (Settings > Features > Discussions)
 This increases engagement and helps with GitHub's algorithm
 
-## 8. Issue Templates
-Already created in .github/ISSUE_TEMPLATE/
+## 8. Issue forms and labels
+The issue forms are in .github/ISSUE_TEMPLATE/ and the labels they attach are
+listed in .github/labels.yml. Create the labels once: Actions, "Labels",
+"Run workflow" (it also runs when labels.yml changes), or run
+`python tools/sync_labels.py` with the GitHub CLI signed in. Labels that
+already exist are updated, nothing is deleted.
+
+Also turn on (Settings > Code security):
+- Private vulnerability reporting (the issue chooser links to it, and so does
+  docs/HELPING.md for data posted by mistake)
+- Dependabot alerts (.github/dependabot.yml opens the update pull requests)

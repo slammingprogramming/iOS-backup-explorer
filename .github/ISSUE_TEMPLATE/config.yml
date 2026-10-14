@@ -1,0 +1,13 @@
+# Issues are made with the forms in this folder, each of which asks only for
+# counts, layouts and versions, never for the contents of a backup.
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security problem (private)
+    url: https://github.com/slammingprogramming/iOS-backup-explorer/security/advisories/new
+    about: A vulnerability, or data posted in a public issue by mistake. Never open a public issue for these.
+  - name: How to help safely
+    url: https://github.com/slammingprogramming/iOS-backup-explorer/blob/main/docs/HELPING.md
+    about: What you can share to improve support for your iOS version, and what you must never share.
+  - name: Ask a question or share an idea
+    url: https://github.com/slammingprogramming/iOS-backup-explorer/discussions
+    about: Questions about using the program, and open-ended ideas that are not yet a request.

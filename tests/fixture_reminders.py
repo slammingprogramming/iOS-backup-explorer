@@ -114,6 +114,44 @@ def build_ios26(conn):
     conn.commit()
 
 
+LEGACY_PATH = "Library/Calendar/Calendar.sqlitedb"
+
+
+def build_calendar(conn):
+    """iOS 12 and earlier: reminders are CalendarItems of kind 3 in the
+    Calendar database, beside the events (kind 2)."""
+    conn.executescript("""
+        CREATE TABLE Store (ROWID INTEGER PRIMARY KEY, name TEXT);
+        CREATE TABLE Calendar (ROWID INTEGER PRIMARY KEY, store_id INTEGER,
+            title TEXT, supported_entity_types INTEGER);
+        CREATE TABLE CalendarItem (ROWID INTEGER PRIMARY KEY, summary TEXT,
+            description TEXT, entity_type INTEGER, calendar_id INTEGER,
+            due_date REAL, due_all_day INTEGER, start_date REAL,
+            completion_date REAL, creation_date REAL, last_modified REAL,
+            priority INTEGER);
+        INSERT INTO Store VALUES (1, 'iCloud'), (2, 'On My iPhone');
+        INSERT INTO Calendar VALUES
+            (1, 1, 'Home', 4), (2, 1, 'Groceries', 8),
+            (3, 2, 'Local list', 8), (4, 2, NULL, 8), (5, 1, 'Empty', 8);
+    """)
+    conn.executemany(
+        "INSERT INTO CalendarItem VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", [
+            (1, "An event", None, 2, 1, T0 + 5, 0, T0, None, T0, T0, 0),
+            (2, "Buy milk", "Semi-skimmed", 3, 2, D0 + DAY, 1, None, None,
+             T0, T0 + 9, 1),
+            (3, "Send report", None, 3, 2, T0 + 3600, 0, T0, T0 + 7200, T0,
+             T0 + 7200, 5),
+            (4, "Water plants", None, 3, 3, None, 1, None, None, T0 + 1,
+             T0 + 2, 9),
+            (5, None, None, 3, 4, None, 0, None, None, T0 + 2, T0 + 2, 0),
+            (6, "Stray", None, 3, 99, None, 0, None, None, None, None, 0)])
+    conn.commit()
+
+
+def legacy_files():
+    return [("HomeDomain", LEGACY_PATH, database_bytes(build_calendar))]
+
+
 def build_empty(conn):
     conn.execute("CREATE TABLE Z_METADATA (Z_VERSION INTEGER)")
     conn.commit()

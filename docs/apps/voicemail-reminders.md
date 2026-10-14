@@ -48,4 +48,9 @@ the phone, others), and the lists.
 
 Source: `HomeDomain/Library/Reminders/Container_v1/Stores/Data-*.sqlite`, one
 database for each account; all of them are read. Repeating reminders are not
-expanded (their repeat rule is not decoded).
+expanded (their repeat rule is not decoded). On iOS 12 and earlier the
+reminders are in the Calendar database
+(`HomeDomain/Library/Calendar/Calendar.sqlitedb`), so they are shown by the
+[Calendar tab](safari-calendar.md#calendar), as the tables *Reminders* and
+*Reminder lists* (without flags and subtasks, which that database does not
+hold).

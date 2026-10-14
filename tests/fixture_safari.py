@@ -90,6 +90,46 @@ def build_tabs(conn):
     conn.commit()
 
 
+APP_HISTORY = "AppDomain-com.apple.mobilesafari/Library/Safari/History.db"
+APP_TABS = "AppDomain-com.apple.mobilesafari/Library/Safari/BrowserState.db"
+
+
+def build_browser_state(conn):
+    """iOS 12 and earlier: the open tabs, one row each."""
+    conn.executescript("""
+        CREATE TABLE browser_windows (id INTEGER PRIMARY KEY, uuid TEXT);
+        CREATE TABLE tabs (id INTEGER PRIMARY KEY, uuid TEXT, title TEXT,
+            url TEXT, order_index INTEGER, last_viewed_time REAL,
+            private_browsing INTEGER);
+    """)
+    conn.executemany(
+        "INSERT INTO tabs (id, uuid, title, url, order_index, "
+        "last_viewed_time, private_browsing) VALUES (?,?,?,?,?,?,?)", [
+            (1, "A", "Second tab", "https://tab2.example.com/", 1, T0 + 50,
+             0),
+            (2, "B", "First <tab>", "https://tab1.example.com/", 0, T0 + 20,
+             0),
+            (3, "C", "", "https://private.example.com/", 2, None, 1),
+            (4, "D", "No address", None, 3, T0, 0)])
+    conn.commit()
+
+
+def old_backup_files(history=True, tabs=True):
+    """What an iOS 12 phone holds: the history and the tabs in Safari's own
+    app folder, the bookmarks where they have always been."""
+    files = [("HomeDomain", BOOKMARKS.split("/", 1)[1],
+              database_bytes(build_bookmarks))]
+    if history:
+        files.append(("AppDomain-com.apple.mobilesafari",
+                      APP_HISTORY.split("/", 1)[1],
+                      database_bytes(build_history)))
+    if tabs:
+        files.append(("AppDomain-com.apple.mobilesafari",
+                      APP_TABS.split("/", 1)[1],
+                      database_bytes(build_browser_state)))
+    return files
+
+
 def backup_files(history=True, bookmarks=True, tabs=True):
     files = []
     if history:

@@ -21,14 +21,16 @@ camera, microphone, contacts, the local network, tracking and so on. No
 GUI.
 
 The meaning of the numbers is the one the system documents: an access of 2
-is allowed, 0 refused, 3 limited, 1 not decided.
+is allowed, 0 refused, 3 limited, 1 not decided. Up to iOS 13 the table has no
+such values and no reasons: a column ``allowed`` holds 1 (allowed) or 0
+(refused), and that is all it says.
 """
 
 import os
 import plistlib
 import re
 
-from .common import own_path, apple_time, format_datetime
+from .common import own_path, apple_time, format_datetime, table_columns
 from .records import Column, Dataset, sqlite_rows
 
 DATABASE = "HomeDomain/Library/TCC/TCC.db"
@@ -52,6 +54,7 @@ SERVICES = {
     "ContactsLimited": "Limited contacts", "Nearby": "Nearby interactions",
     "SensorKitMotion": "Sensor data"}
 ACCESS = {0: "Refused", 1: "Not decided", 2: "Allowed", 3: "Limited"}
+OLD_ACCESS = {0: "Refused", 1: "Allowed"}      # (the column ``allowed``)
 REASONS = {
     1: "error", 2: "answered the prompt", 3: "set in Settings",
     4: "set by the system", 5: "by the service's policy",
@@ -82,13 +85,21 @@ def service_label(service):
 
 def rows(conn):
     result = []
+    columns = table_columns(conn, "access")
+    if "auth_value" in columns:
+        query, words = ("SELECT service, client, client_type, auth_value, "
+                        "auth_reason, last_modified FROM access"), ACCESS
+    elif "allowed" in columns:
+        query, words = ("SELECT service, client, client_type, allowed, NULL, "
+                        "last_modified FROM access"), OLD_ACCESS
+    else:
+        return result
     for (service, client, kind, value, reason, changed) in sqlite_rows(
-            conn, "SELECT service, client, client_type, auth_value, "
-                  "auth_reason, last_modified FROM access"):
+            conn, query):
         result.append({
             "permission": service_label(service), "service": service or "",
             "app": client or "", "path": kind == 1,
-            "access": ACCESS.get(value, f"Value {value}"),
+            "access": words.get(value, f"Value {value}"),
             "how": REASONS.get(reason, ""),
             "changed": float(changed) if isinstance(changed, (int, float))
             and changed > 0 else None})

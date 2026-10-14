@@ -18,9 +18,11 @@
 
 """Reads Safari's databases: the pages visited (``History.db``), the
 bookmarks and the reading list (``Bookmarks.db``) and the tabs that were
-open (``SafariTabs.db``). No GUI."""
+open (``SafariTabs.db``). iOS 12 keeps the history and the open tabs
+(``BrowserState.db``) in Safari's own app folder instead. No GUI."""
 
 import html
+import os
 from urllib.parse import urlsplit
 
 from .common import apple_time
@@ -30,7 +32,10 @@ from .records import Column, Dataset, open_copies, sqlite_rows
 HISTORY = "HomeDomain/Library/Safari/History.db"
 BOOKMARKS = "HomeDomain/Library/Safari/Bookmarks.db"
 TABS = "HomeDomain/Library/Safari/SafariTabs.db"
-DATABASES = (HISTORY, BOOKMARKS, TABS)
+# iOS 12 and earlier: the same history table, and the tabs in another file
+APP_HISTORY = "AppDomain-com.apple.mobilesafari/Library/Safari/History.db"
+APP_TABS = "AppDomain-com.apple.mobilesafari/Library/Safari/BrowserState.db"
+DATABASES = (HISTORY, BOOKMARKS, TABS, APP_HISTORY, APP_TABS)
 
 _FOLDER_NAMES = {"BookmarksBar": "Favorites",
                  "com.apple.ReadingList": "Reading List",
@@ -201,6 +206,24 @@ def tab_datasets(conn):
         details=lambda r: f"{r['title'] or '(no title)'}\n{r['url']}")]
 
 
+def browser_state_tab_datasets(conn):
+    """The open tabs of iOS 12 and earlier (``BrowserState.db``)."""
+    rows = []
+    for title, url, viewed, private in sqlite_rows(
+            conn, "SELECT title, url, last_viewed_time, private_browsing "
+                  "FROM tabs WHERE url IS NOT NULL ORDER BY order_index, id"):
+        rows.append({"title": (title or "").strip(), "url": url,
+                     "group": "Private tabs" if private else "Open tabs",
+                     "site": host_of(url), "viewed": _stamp(viewed)})
+    if not rows:
+        return []
+    return [Dataset("tabs", "Open tabs", [
+        Column("title", "Title", 300), Column("url", "Address", 420),
+        Column("group", "Group", 160),
+        Column("viewed", "Last viewed", 140, "date")], rows,
+        details=lambda r: f"{r['title'] or '(no title)'}\n{r['url']}")]
+
+
 class SafariReader:
     """Reads the Safari databases that are there."""
 
@@ -208,11 +231,18 @@ class SafariReader:
         self.conn = conn
 
     def datasets(self):
-        found = []
+        found, done = [], set()
         with open_copies(self.conn, DATABASES) as copies:
             for path, make in ((HISTORY, history_datasets),
+                               (APP_HISTORY, history_datasets),
                                (BOOKMARKS, bookmark_datasets),
-                               (TABS, tab_datasets)):
-                if copies.get(path) is not None:
-                    found += make(copies[path])
+                               (TABS, tab_datasets),
+                               (APP_TABS, browser_state_tab_datasets)):
+                other = copies.get(path)
+                # (working copies are found by file name, so the history of
+                # iOS 12 and that of later versions are the same file)
+                name = os.path.basename(path)
+                if other is not None and name not in done:
+                    done.add(name)
+                    found += make(other)
         return found

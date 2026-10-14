@@ -4,9 +4,13 @@
 a display)."""
 
 import os
+import shutil
+import sqlite3
+import tempfile
 import unittest
 from unittest import mock
 
+from ios_apps import safari as sf
 from ios_apps import safari_view as sv
 from tests import fixture_safari as fs
 from tests.gui_apps import AppGuiCase
@@ -81,6 +85,45 @@ class TabTests(SafariGuiCase):
         tab = self.show_tab("Safari")
         self.wait_for(lambda: "Could not" in tab.state_var.get()
                       or "Nothing" in tab.state_var.get(), "the message")
+
+
+class OldLayoutTests(SafariGuiCase):
+    """iOS 12 and earlier: history and open tabs are in Safari's app folder."""
+
+    def test_history_and_tabs_of_ios_12(self):
+        self.open_files(fs.old_backup_files())
+        tab = self.show()
+        self.assertEqual(sorted(tab.datasets),
+                         ["bookmarks", "history", "reading", "sites", "tabs"])
+        self.choose("Open tabs")
+        # in the order of the tabs; one without an address is left out
+        self.assertEqual(self.column("title"),
+                         ["First <tab>", "Second tab", ""])
+        self.assertEqual(self.column("group"),
+                         ["Open tabs", "Open tabs", "Private tabs"])
+        self.choose("History")
+        self.assertEqual(len(self.column("url")), 7)
+
+    def test_each_table_is_made_once(self):
+        """The working copies are found by file name, so the history of
+        iOS 12 (in the app folder) must not be read twice."""
+        tmp = tempfile.mkdtemp(prefix="ibe-safari-")
+        self.addCleanup(shutil.rmtree, tmp, True)
+        for _domain, path, data in fs.old_backup_files():
+            with open(os.path.join(tmp, os.path.basename(path)), "wb") as out:
+                out.write(data)
+        conn = sqlite3.connect(os.path.join(tmp, "Bookmarks.db"))
+        self.addCleanup(conn.close)
+        keys = [d.key for d in sf.SafariReader(conn).datasets()]
+        self.assertEqual(len(keys), len(set(keys)), keys)
+        self.assertEqual(sorted(keys), ["bookmarks", "history", "reading",
+                                        "sites", "tabs"])
+
+    def test_the_tab_is_there_for_the_app_folder_alone(self):
+        self.open_files(fs.old_backup_files()[1:2])      # only the history
+        self.assertIn("Safari", self.tab_titles())
+        self.open_files(fs.old_backup_files()[2:3])      # only the tabs
+        self.assertIn("Safari", self.tab_titles())
 
 
 class TableTests(SafariGuiCase):

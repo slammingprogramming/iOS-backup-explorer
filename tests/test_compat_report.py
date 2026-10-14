@@ -106,6 +106,42 @@ class MarkdownTests(unittest.TestCase):
 
 
 @unittest.skipUnless(display_available(), "needs a display")
+@unittest.skipUnless(display_available(), "no display available")
+class PasswordWindowTests(unittest.TestCase):
+    def setUp(self):
+        self.tool = load_tool()
+        self.root = tk.Tk()
+        self.root.withdraw()
+        self.addCleanup(self.root.destroy)
+
+    def ask(self, act):
+        dialog = self.tool.PasswordDialog(self.root, "Enter it.")
+        self.root.after(50, lambda: act(dialog))
+        return dialog.ask()
+
+    def test_the_typed_password_is_returned(self):
+        def type_it(dialog):
+            dialog.var.set("open sesame")
+            dialog.ok()
+        self.assertEqual(self.ask(type_it), "open sesame")
+
+    def test_an_empty_password_is_not_accepted_but_cancel_ends_it(self):
+        def act(dialog):
+            dialog.ok()                 # (nothing typed: stays open)
+            self.assertTrue(dialog.window.winfo_exists())
+            dialog.cancel()
+        self.assertIsNone(self.ask(act))
+
+    def test_the_text_can_be_shown_to_check_it(self):
+        seen = []
+
+        def act(dialog):
+            seen.append(dialog.entry.cget("show"))
+            dialog.cancel()
+        self.ask(act)
+        self.assertEqual(seen, ["\u2022"])
+
+
 class RunTests(unittest.TestCase):
     def setUp(self):
         self.tool = load_tool()
@@ -131,6 +167,18 @@ class RunTests(unittest.TestCase):
         for secret in ("SECRET", "Shopping list", "Pancakes", "Sam's iPhone",
                        "Alex Example", self.tmp):
             self.assertNotIn(secret, text)
+
+    def test_an_extracted_folder_with_a_key_bag_asks_for_the_password(self):
+        """Its keychain tab would wait for a password nobody can type into
+        a hidden window: say so at once instead."""
+        root = extracted_folder(self.tmp)
+        with open(os.path.join(root, "Manifest.plist"), "wb") as handle:
+            plistlib.dump({"IsEncrypted": True, "BackupKeyBag": b"a key bag",
+                           "Lockdown": {"ProductVersion": "12.4"}}, handle)
+        report = self.tool.run(root, patience=20, say=lambda *a: None)
+        self.assertFalse(report["opened"])
+        self.assertIn("password", report["reason"])
+        self.assertIn("--password-window", report["reason"])
 
     def test_the_version_can_be_given(self):
         root = extracted_folder(self.tmp, with_info=False)

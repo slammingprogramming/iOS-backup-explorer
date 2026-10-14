@@ -14,6 +14,7 @@ was taken from the program running on an *invented* demo backup (see
 | [The app tabs](apps/README.md) | One page for each group of tabs: what is shown, how to use it, what it cannot show |
 | [Exporting](EXPORTING.md) | Every export format, which tab offers it, and what the files contain |
 | [Where the data comes from](DATA_SOURCES.md) | The file each tab reads, which iOS versions, and how well each was checked |
+| [How to help](HELPING.md) | Sharing what helps (which tabs fill, how your databases are built) without sharing anything private, and the issue forms |
 | [iOS versions](IOS_VERSIONS.md) | Which iOS versions were checked against real backups, what differs between them, and how to report what a backup shows |
 | [Health data](HEALTH.md) | How Health is read, and what is not covered yet and why |
 | [FAQ](FAQ.md) | Short answers |

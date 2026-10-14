@@ -22,7 +22,7 @@ iCalendar (.ics) file. No GUI."""
 
 import re
 
-from . import ics
+from . import ics, reminders
 from .common import apple_time
 from .records import Column, Dataset, fetch_dicts
 
@@ -174,6 +174,12 @@ def write_ics(base, rows):
 
 
 def datasets(conn):
+    """The events and calendars, and (iOS 12 and earlier keep them in this
+    database) the reminders and their lists, each only if there are any."""
+    return _event_datasets(conn) + reminders.legacy_datasets(conn)
+
+
+def _event_datasets(conn):
     rows = event_rows(conn)
     calendars = {}
     for row in rows:

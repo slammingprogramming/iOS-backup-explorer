@@ -7,6 +7,17 @@ Eyyup (Eric) Gunes. Entries below the fork point record the original project's h
 
 ## [Unreleased]
 
+### Added
+- **Ways to help without sharing anything private.** Issue forms for a bug, a feature, a *compatibility report*, *a tab that is empty or wrong* (with a layout report), *naming a Health data type*, *volunteering to test another iOS version* and a documentation problem; every form opens with the rule that nobody should post a backup, its password or anything in it, and asks for counts and layouts. They come with three tools that print the shape of a backup and none of its contents: `tools/schema_report.py` (tables, columns and row counts of the databases the program reads, with `--sql` the `CREATE` statements, `--find` to locate an app's database), `tools/health_kinds_report.py` (the Health data types that cannot be named) and the existing `tools/compat_report.py`. A new page, [How to help](docs/HELPING.md), explains them, how to read the output before posting it and what to do if something private was posted by mistake
+- **Repository files**: labels the forms attach (`.github/labels.yml`, created by the *Labels* workflow or `tools/sync_labels.py`, which only creates or updates), Dependabot for the actions and the Python packages, `CODEOWNERS` that watch the credit and licence files, `SUPPORT.md`, a pull request checklist that asks what a change was verified on, and an issue chooser that sends security problems to private reporting. Tests (`tests/test_github_templates.py`) keep the forms consistent with the tools, the labels and the tab list
+- **iOS 12 backups are checked** against a real iOS 12.4.8 backup (every tab; the counts of Messages, Calls, Contacts, Voicemail, Calendar, Reminders, Safari bookmarks, Voice Memos, Wi-Fi, Bluetooth, data usage, Accounts, Privacy, Apps and Keychain match the raw tables), and what was found is handled:
+  - **Reminders of iOS 12 and earlier**, which live in the Calendar database, now show in the Calendar tab as the tables *Reminders* and *Reminder lists* (67 of 67)
+  - **Privacy**: the older permissions table (`allowed`) is read (17 permissions that did not show)
+  - **Safari**: the history and open tabs of iOS 12, which live in Safari's own app folder, are read (layout only: the backup had none)
+  - **Health**: a database that does not name its kinds (iOS 12 and earlier) is named from a table of the 172 kind numbers that the iOS 16.7 and 26.6 databases both name identically. The sleep, body measurements and nights of the iOS 12 backup now show
+  - Not read yet: the favorites and history of Maps on iOS 12 (see [iOS versions](docs/IOS_VERSIONS.md))
+- `tools/compat_report.py --password-window` asks for the password in a small window (for when there is no terminal to type in), and an extracted folder that holds the backup's key bag now says at once that it needs the password instead of waiting for it
+
 ## [2.2.0] - 2026-10-11
 
 Much more of **Health** is read (sleep per night, medications, the contents of health records and the files of clinical documents, hearing tests, symptoms and cycle tracking, awards, friends' activity), the program is checked against real backups of **iOS 16.7 and 26.6** (every tab, with the Health database of iOS 26 read in full), and four things that broke or showed nothing on iOS 26 are fixed. Medication names, forms and ingredients were confirmed by the owner of the backup; dose statuses other than "Not answered" and "Taken" are still shown as numbers.

@@ -14,6 +14,7 @@ from unittest import mock
 
 from file_index import FileIndex
 from ios_apps import health as hl
+from ios_apps import health_kinds
 from ios_apps import records_export as rx
 from ios_apps import records_view as rv
 from ios_apps.common import APPLE_EPOCH
@@ -49,6 +50,81 @@ class ReaderCase(unittest.TestCase):
 
     def rows(self, key):
         return self.data[key].rows
+
+
+class OldDatabaseNameTests(unittest.TestCase):
+    """A database of iOS 12 or earlier does not name its kinds."""
+
+    def database(self, kinds):
+        conn = sqlite3.connect(":memory:")
+        self.addCleanup(conn.close)
+        conn.execute("CREATE TABLE samples (data_id INTEGER PRIMARY KEY, "
+                     "start_date REAL, end_date REAL, data_type INTEGER)")
+        for number, kind in enumerate(kinds, 1):
+            conn.execute("INSERT INTO samples VALUES (?, 1, 2, ?)",
+                         (number, kind))
+        conn.commit()
+        return conn
+
+    def test_the_table_names_the_kinds_the_database_holds(self):
+        conn = self.database([2, 3, 7, 7, 8, 63, 999])
+        names = hl.kind_names(conn)
+        self.assertEqual(names, {
+            2: "HKQuantityTypeIdentifierHeight",
+            3: "HKQuantityTypeIdentifierBodyMass",
+            7: "HKQuantityTypeIdentifierStepCount",
+            8: "HKQuantityTypeIdentifierDistanceWalkingRunning",
+            63: "HKCategoryTypeIdentifierSleepAnalysis"})
+        self.assertNotIn(999, names)                 # (not in the table)
+        self.assertEqual(hl.kind_label(999, names), "Type 999")
+        self.assertFalse(hl.database_names_kinds(conn))
+
+    def test_a_kind_the_database_does_not_hold_is_not_listed(self):
+        self.assertEqual(hl.kind_names(self.database([7])),
+                         {7: "HKQuantityTypeIdentifierStepCount"})
+
+    def test_a_database_that_names_its_kinds_is_never_overruled(self):
+        conn = sqlite3.connect(":memory:")
+        self.addCleanup(conn.close)
+        fh.build_health(conn)
+        self.assertTrue(hl.database_names_kinds(conn))
+        own = hl.kind_names(conn)
+        spare = next(n for n in health_kinds.KNOWN_KINDS if n not in own)
+        conn.execute("INSERT INTO samples VALUES (?, ?, ?, ?)",
+                     (99999, fh.T0, fh.T0, spare))
+        # a kind it holds but does not name stays unnamed
+        self.assertNotIn(spare, hl.kind_names(conn))
+        self.assertEqual(hl.kind_names(conn), own)
+
+    def test_the_table_agrees_with_the_numbers_the_tests_use(self):
+        """The fixtures use the real numbers; the table was made from real
+        databases: where both name a kind, they must say the same."""
+        conn = sqlite3.connect(":memory:")
+        self.addCleanup(conn.close)
+        fh.build_health(conn)
+        for number, identifier in hl.kind_names(conn).items():
+            known = health_kinds.KNOWN_KINDS.get(number)
+            if known is not None:
+                self.assertEqual(known, identifier, number)
+
+    def test_the_table_is_well_formed(self):
+        kinds = health_kinds.KNOWN_KINDS
+        self.assertGreaterEqual(len(kinds), 170)
+        self.assertEqual(len(set(kinds.values())), len(kinds))   # one each
+        for number, identifier in kinds.items():
+            self.assertIsInstance(number, int)
+            self.assertRegex(identifier, r"^HK[A-Za-z]+Identifier\w+$"
+                             r"|^HK\w+$")
+        self.assertIn(5, kinds)
+
+    def test_the_data_types_table_says_where_the_names_came_from(self):
+        conn = self.database([7, 8])
+        rows = hl.overview_rows(conn, hl.kind_names(conn))
+        self.assertEqual({r["type"] for r in rows},
+                         {"Step count", "Distance walking running"})
+        (table,) = [d for d in hl.datasets(conn, None, "") if
+                    d.key == "types"]
+        self.assertIn("does not name its kinds", table.note)
 
 
 class NameTests(ReaderCase):

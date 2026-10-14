@@ -32,6 +32,10 @@ FOLDER = "HomeDomain/Library/Reminders/Container_v1/Stores"
 FOLDERS = (FOLDER,
            "AppDomainGroup-group.com.apple.reminders/Container_v1/Stores")
 PRIORITIES = {1: "High", 5: "Medium", 9: "Low"}
+# iOS 12 and earlier kept the reminders in the Calendar database, beside the
+# events; the Calendar tab shows them (see ``legacy_datasets``)
+REMINDER_KIND = 3           # ``CalendarItem.entity_type`` (events are 2)
+REMINDER_LIST = 8           # a bit of ``Calendar.supported_entity_types``
 
 
 def discover(index):
@@ -149,6 +153,53 @@ def store_rows(conn, store):
     return reminders, list(lists.values()), list(accounts.values())
 
 
+def _unix_or_none(value):
+    return apple_time(value) if isinstance(value, (int, float)) and value \
+        else None
+
+
+def legacy_rows(conn, store):
+    """``(reminders, lists)`` from the Calendar database of iOS 12 and
+    earlier, in the same form as ``store_rows``. A reminder is a
+    ``CalendarItem`` of kind 3 (an event is 2); its list is the ``Calendar``
+    it belongs to, and the account is that calendar's ``Store``. The lists
+    are the calendars that can hold reminders (bit 8 of
+    ``supported_entity_types``), so the calendars of events are not listed."""
+    accounts = {pk: (name or "").strip() for pk, name in sqlite_rows(
+        conn, "SELECT ROWID, name FROM Store")}
+    lists = {}
+    for pk, title, owner, kinds in sqlite_rows(
+            conn, "SELECT ROWID, title, store_id, supported_entity_types "
+                  "FROM Calendar"):
+        if isinstance(kinds, int) and kinds & REMINDER_LIST:
+            lists[pk] = {"list": (title or "").strip() or "(no name)",
+                         "account": accounts.get(owner, ""), "store": store}
+    reminders = []
+    for (pk, title, notes, done, created, changed, due, all_day, start,
+         priority, calendar) in sqlite_rows(
+            conn, "SELECT ROWID, summary, description, completion_date, "
+                  "creation_date, last_modified, due_date, due_all_day, "
+                  "start_date, priority, calendar_id FROM CalendarItem "
+                  f"WHERE entity_type = {REMINDER_KIND} ORDER BY ROWID"):
+        where = lists.get(calendar)
+        if where is None:               # (a list we have not seen)
+            where = lists[calendar] = {"list": "(no name)", "account": "",
+                                       "store": store}
+        reminders.append({
+            "key": f"{store}:{pk}", "title": (title or "").strip(),
+            "notes": (notes or "").strip(), "list": where["list"],
+            "account": where["account"], "done": bool(done),
+            "flagged": False, "priority": PRIORITIES.get(priority, ""),
+            "deleted": False, "all_day": bool(all_day) and bool(due),
+            "due": _unix_or_none(due), "start": _unix_or_none(start),
+            "created": _unix_or_none(created),
+            "completed": _unix_or_none(done),
+            "changed": _unix_or_none(changed), "parent": "",
+            "is_subtask": False})
+        reminders[-1]["status"] = _status(reminders[-1])
+    return reminders, list(lists.values())
+
+
 def all_rows(conn, index):
     """Reminders and lists from every database of the backup (*conn* is the
     first of them)."""
@@ -237,6 +288,19 @@ def write_ics(base, rows):
 
 def datasets(conn, index):
     reminders, lists = all_rows(conn, index)
+    return _datasets_of(reminders, lists)
+
+
+def legacy_datasets(conn):
+    """The tables of the reminders in a Calendar database of iOS 12 and
+    earlier (empty if it holds none): "Reminders" and "Reminder lists"."""
+    reminders, lists = legacy_rows(conn, 0)
+    if not reminders:
+        return []
+    return _datasets_of(reminders, lists, lists_title="Reminder lists")
+
+
+def _datasets_of(reminders, lists, lists_title="Lists"):
     if not reminders and not lists:
         return []
     counts = {}
@@ -262,7 +326,7 @@ def datasets(conn, index):
             Column("created", "Created", 130, "date")],
             reminders, sort=("due", False), details=_details,
             formats={"ics": ("To-do file (.ics, importable)", write_ics)}),
-        Dataset("lists", "Lists", [
+        Dataset("lists", lists_title, [
             Column("list", "List", 260),
             Column("account", "Account", 160),
             Column("total", "Reminders", 80, "number", "e"),

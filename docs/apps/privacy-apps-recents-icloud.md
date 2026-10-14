@@ -12,7 +12,8 @@ fitness, iCloud...), *Access* (**Allowed**, **Refused**, **Limited**, *Not
 decided*), *How* it was set (you answered a prompt, you set it in Settings, the
 system set it, a management profile, the app's entitlement...) and *Changed*
 (when). A permission whose service has no friendly name is shown with its
-identifier made readable.
+identifier made readable. On iOS 12 and earlier the phone records only
+allowed or refused, so *Access* is one of those two and *How* is empty.
 
 ![Which apps may use the location](../images/37-privacy-location.png)
 

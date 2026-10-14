@@ -1,0 +1,57 @@
+name: Feature request
+description: Suggest something the program should do
+title: "[Feature] "
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Do not post your backup, its password, or anything it contains** (no messages, names, numbers, places, photos, health values, or file paths that name you).
+
+        Thank you. Tell us what you want to **do** ("see which apps used mobile data last month") before how. This project reads backups without a network connection and without guessing at data, so a good request also says where the data is, if you know. [How to help safely](https://github.com/slammingprogramming/iOS-backup-explorer/blob/main/docs/HELPING.md).
+  - type: textarea
+    id: goal
+    attributes:
+      label: What do you want to do?
+      description: The problem or the task, not yet the solution.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: How could it work?
+      description: Optional. A sketch of what you would expect to see or click.
+    validations:
+      required: false
+  - type: textarea
+    id: where
+    attributes:
+      label: Where is the data in a backup, if you know?
+      description: "The file (for example `HomeDomain/Library/SMS/sms.db`), never what is in it. `python tools/schema_report.py \"<backup>\" --find <word>` lists the database files whose path contains a word."
+    validations:
+      required: false
+  - type: input
+    id: ios
+    attributes:
+      label: iOS version(s) this matters for
+      placeholder: "12 and 13"
+    validations:
+      required: false
+  - type: dropdown
+    id: help
+    attributes:
+      label: Could you help test it?
+      description: Testing means running a report on your own backup and describing the result, never sending the backup.
+      options:
+        - "Yes, I can test with my backup"
+        - "Maybe, ask me"
+        - "No, I only wish it existed"
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy check
+      options:
+        - label: I have not included my backup, its password, or any of its contents.
+          required: true

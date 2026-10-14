@@ -1,0 +1,58 @@
+name: Help name a Health data type
+description: The Health tab shows "Type N" for something you can recognise
+title: "[Health type] "
+labels: ["health-kinds", "compatibility", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Do not post your backup, its password, or anything it contains** (no messages, names, numbers, places, photos, health values, or file paths that name you).
+
+        Health stores every sample with a **number** for its kind. A database of iOS 13 or later names most of them itself; the rest show as "Type N". This program **does not guess** what a number is (a wrong guess would show a heart rate as a distance): a kind is named when the database names it, or when it has been checked against an independent fact. See [Health data](https://github.com/slammingprogramming/iOS-backup-explorer/blob/main/docs/HEALTH.md).
+
+        You can help in two ways: by sharing the table below, and by telling us **how you know** what a number is ("it is the only kind that appears when I use the Breathe app", "its values are always between 12 and 20 and I have a smart ring that records breaths per minute").
+
+        **How:**
+
+        ```
+        python tools/health_kinds_report.py "<your backup folder>" --password-window
+        ```
+
+        The table has the number, how many samples, which years, whether it is a measurement or an event, the smallest and largest value and the distinct values of an event. It has no date, no source and no individual sample. **It is still your health data**: delete any row you would rather not share.
+
+        [How to help safely](https://github.com/slammingprogramming/iOS-backup-explorer/blob/main/docs/HELPING.md).
+  - type: input
+    id: ios
+    attributes:
+      label: iOS version
+      placeholder: "16.7"
+    validations:
+      required: true
+  - type: textarea
+    id: table
+    attributes:
+      label: The rows you are willing to share
+      description: Paste the table (or just the rows you want to ask about).
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: How do you know what it is?
+      description: "An independent fact, in general terms: a device or app you used, a setting you turned on, a value you know. Not dates or places."
+    validations:
+      required: true
+  - type: input
+    id: guess
+    attributes:
+      label: What you think it is
+      description: "The HealthKit name if you know it, for example `HKQuantityTypeIdentifierWalkingSpeed`, or plain words."
+    validations:
+      required: false
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy check
+      options:
+        - label: I looked at the table and removed anything I would rather not share. I did not add my backup or any individual sample.
+          required: true

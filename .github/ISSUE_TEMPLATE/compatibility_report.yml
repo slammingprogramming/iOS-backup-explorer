@@ -1,0 +1,79 @@
+name: Compatibility report
+description: Which tabs your backup fills, from one command that prints only counts
+title: "[Compatibility] iOS "
+labels: ["compatibility", "ios-version", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Do not post your backup, its password, or anything it contains** (no messages, names, numbers, places, photos, health values, or file paths that name you).
+
+        This is the most useful thing you can send. One command opens your backup, visits every tab and prints **only counts and the program's own messages**: the iOS version and kind of device, whether each tab loaded, and how many rows each table has. Nothing from your backup (names, texts, places, dates) is printed. It works for a version already listed in [iOS versions](https://github.com/slammingprogramming/iOS-backup-explorer/blob/main/docs/IOS_VERSIONS.md) and, even more, for one that is **not checked yet**.
+
+        **How:**
+
+        ```
+        python tools/compat_report.py "<your backup folder>" --password-window --markdown
+        ```
+
+        (`--password-window` opens a small window for the password of an encrypted backup; `--password-prompt` asks on the terminal. It is used to open the backup and is not stored. For a folder of extracted files add `--ios 15.8`.)
+
+        Read the output before you post it. [How to help safely](https://github.com/slammingprogramming/iOS-backup-explorer/blob/main/docs/HELPING.md).
+  - type: input
+    id: ios
+    attributes:
+      label: iOS version
+      description: As the report prints it (for example `iOS 12.4.8 (iPhone6,1)`).
+      placeholder: "12.4.8"
+    validations:
+      required: true
+  - type: dropdown
+    id: listed
+    attributes:
+      label: Is this version in the table in "iOS versions"?
+      options:
+        - "It is not listed (a version nobody has checked)"
+        - "It is listed as checked"
+        - "I don't know"
+    validations:
+      required: true
+  - type: textarea
+    id: report
+    attributes:
+      label: The report
+      description: Paste the whole output of the command.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Anything you expected to see that is missing or looks wrong
+      description: "The shape only: \"Notes shows nothing but I have notes\", \"Reminders lists 12 but I have about 40\"."
+    validations:
+      required: false
+  - type: input
+    id: program
+    attributes:
+      label: Program version
+      placeholder: "2.2.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows 11
+        - Windows 10
+        - macOS
+        - Linux
+        - Other
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy check
+      options:
+        - label: I read the output and it holds only counts, versions and messages of the program. I did not add my backup or any of its contents.
+          required: true

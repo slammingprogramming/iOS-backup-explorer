@@ -1,0 +1,64 @@
+# The labels this repository uses. The issue forms (.github/ISSUE_TEMPLATE)
+# and Dependabot attach some of them, so they have to exist. Create or update
+# them all with the "Labels" workflow (Actions, Run workflow) or by running
+# `python tools/sync_labels.py` with the GitHub CLI signed in.
+- name: bug
+  color: d73a4a
+  description: Something does not work
+- name: enhancement
+  color: a2eeef
+  description: A new feature or an improvement
+- name: needs-triage
+  color: ededed
+  description: Not looked at yet
+- name: needs-info
+  color: fbca04
+  description: Waiting for more information from the reporter
+- name: compatibility
+  color: 0e8a16
+  description: A tab or table that is empty or wrong for some iOS version
+- name: ios-version
+  color: 1d76db
+  description: About a particular iOS version
+- name: layout-report
+  color: 5319e7
+  description: Comes with a layout report (table and column names and counts)
+- name: health-kinds
+  color: c5def5
+  description: Naming Health data types
+- name: help wanted
+  color: 008672
+  description: Someone's help is welcome, for example testing on a backup
+- name: good first issue
+  color: 7057ff
+  description: A good place to start
+- name: needs-backup-test
+  color: bfdadc
+  description: A fix exists and needs trying on a real backup of that version
+- name: verified
+  color: 0e8a16
+  description: Checked on a real backup of the iOS version concerned
+- name: documentation
+  color: 0075ca
+  description: Improvements or additions to the documentation
+- name: question
+  color: d876e3
+  description: A question about using the program
+- name: privacy
+  color: b60205
+  description: About the handling of personal data (never put any in the issue)
+- name: duplicate
+  color: cfd3d7
+  description: Already reported
+- name: wontfix
+  color: ffffff
+  description: Will not be worked on
+- name: dependencies
+  color: 0366d6
+  description: Updates to a dependency
+- name: github-actions
+  color: 000000
+  description: Updates to the workflows
+- name: python
+  color: 2b67c6
+  description: Python code or packages

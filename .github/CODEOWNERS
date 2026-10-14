@@ -1,0 +1,9 @@
+# Who is asked to review a change. The files that carry the original author's
+# credit and the licences are watched on purpose: they must never be changed
+# by accident (CI also checks them).
+*                       @slammingprogramming
+/LICENSE*               @slammingprogramming
+/NOTICE                 @slammingprogramming
+/AUTHORS                @slammingprogramming
+/SECURITY.md            @slammingprogramming
+/.github/               @slammingprogramming

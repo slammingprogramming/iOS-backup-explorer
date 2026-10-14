@@ -76,6 +76,44 @@ class PrivacyTests(unittest.TestCase):
         self.assertEqual(privacy.datasets(empty_connection(self)), [])
 
 
+class OldPrivacyTests(unittest.TestCase):
+    """Up to iOS 13 the permissions table has an ``allowed`` column (0 or 1)
+    and neither a value of 2, 3 nor a reason."""
+
+    def build(self, conn):
+        conn.execute("""CREATE TABLE access (service TEXT, client TEXT,
+            client_type INTEGER, allowed INTEGER, prompt_count INTEGER,
+            csreq BLOB, policy_id INTEGER, flags INTEGER,
+            last_modified INTEGER)""")
+        conn.executemany(
+            "INSERT INTO access (service, client, client_type, allowed, "
+            "prompt_count, last_modified) VALUES (?,?,?,?,?,?)", [
+                ("kTCCServiceUbiquity", "com.example.app", 0, 1, 0, fx.UNIX0),
+                ("kTCCServiceMotion", "com.example.fit", 0, 0, 1, fx.UNIX0 + 5),
+                ("kTCCServiceLiverpool", "com.example.net", 0, 1, 0, None),
+                ("kTCCServiceCamera", "com.example.odd", 0, 7, 0, 0)])
+        conn.commit()
+
+    def test_the_older_table_is_read(self):
+        rows = privacy.rows(connect(self, self.build))
+        by = {r["app"]: r for r in rows}
+        self.assertEqual(len(rows), 4)
+        self.assertEqual(by["com.example.app"]["access"], "Allowed")
+        self.assertEqual(by["com.example.fit"]["access"], "Refused")
+        self.assertEqual(by["com.example.fit"]["permission"],
+                         "Motion and fitness")
+        self.assertEqual(by["com.example.net"]["changed"], None)
+        self.assertEqual(by["com.example.odd"]["access"], "Value 7")
+        self.assertTrue(all(r["how"] == "" for r in rows))
+
+    def test_a_table_with_neither_layout_gives_nothing(self):
+        def build(conn):
+            conn.execute("CREATE TABLE access (service TEXT, client TEXT)")
+            conn.execute("INSERT INTO access VALUES ('kTCCServiceX', 'a')")
+            conn.commit()
+        self.assertEqual(privacy.rows(connect(self, build)), [])
+
+
 class LocationTests(unittest.TestCase):
     def setUp(self):
         import os

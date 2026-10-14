@@ -27,7 +27,10 @@ The **Safari** tab has five tables; choose one with **Show:**.
 - **Extract original files...** copies `History.db`, `Bookmarks.db` and
   `SafariTabs.db` with their recent-changes files.
 
-Source: `HomeDomain/Library/Safari/`.
+Source: `HomeDomain/Library/Safari/`. On iOS 12 and earlier the history and the
+open tabs are in Safari's own app folder
+(`AppDomain-com.apple.mobilesafari/Library/Safari/`: `History.db`,
+`BrowserState.db`) and are read from there.
 
 ## Calendar
 
@@ -58,5 +61,11 @@ others. Timed events are written in UTC, all-day events as dates, and repeats
 (daily, weekly, monthly, yearly, with intervals, counts and end dates) are
 kept as repeat rules. Text is escaped and lines are folded as the standard
 requires.
+
+- **Reminders** and **Reminder lists** (iOS 12 and earlier only): those phones
+  kept the reminders in this same database, so they are shown here, with their
+  list, priority, due date and whether they are done. They can be exported as a
+  to-do file (.ics). Newer phones keep them in the
+  [Reminders tab](voicemail-reminders.md#reminders).
 
 Source: `HomeDomain/Library/Calendar/Calendar.sqlitedb`.

@@ -1,0 +1,101 @@
+name: Bug report
+description: The program crashed, showed an error, or showed something wrong
+title: "[Bug] "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Do not post your backup, its password, or anything it contains** (no messages, names, numbers, places, photos, health values, or file paths that name you).
+
+        This project handles very private data, so describe the *shape* of the problem ("the Notes tab lists 12 notes but the phone had 40"), not the content. [How to help safely](https://github.com/slammingprogramming/iOS-backup-explorer/blob/main/docs/HELPING.md).
+
+        If a tab is **empty or wrong for your iOS version**, the [layout report](https://github.com/slammingprogramming/iOS-backup-explorer/issues/new?template=tab_layout.yml) form is usually more useful than this one.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead.
+      placeholder: "I opened the Calls tab and ..."
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: If you can reproduce it with the [demo backup](https://github.com/slammingprogramming/iOS-backup-explorer/blob/main/docs/SCREENSHOTS.md), say so; that is the best case.
+      placeholder: |
+        1. Open the program
+        2. Choose ...
+        3. See ...
+    validations:
+      required: false
+  - type: textarea
+    id: error
+    attributes:
+      label: The exact message, if there is one
+      description: Copy the text of the error. Remove any file path that names you.
+      render: text
+    validations:
+      required: false
+  - type: input
+    id: version
+    attributes:
+      label: Program version
+      description: "Run `python ios_backup_explorer.py --version`."
+      placeholder: "2.2.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows 11
+        - Windows 10
+        - macOS
+        - Linux
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: python
+    attributes:
+      label: Python version
+      placeholder: "3.13.1"
+    validations:
+      required: true
+  - type: input
+    id: ios
+    attributes:
+      label: iOS version of the backup
+      description: Including the second number if you know it.
+      placeholder: "16.7"
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind of backup
+      options:
+        - Encrypted (made by iTunes, Finder or the Apple Devices app)
+        - Not encrypted
+        - A folder of extracted files
+    validations:
+      required: true
+  - type: input
+    id: tab
+    attributes:
+      label: Which tab or table?
+      placeholder: "Calendar > Events"
+    validations:
+      required: false
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy check
+      options:
+        - label: I have not included my backup, its password, or any of its contents (text, names, numbers, places, health values, screenshots of my data).
+          required: true
+        - label: I searched the existing issues first.
+          required: true

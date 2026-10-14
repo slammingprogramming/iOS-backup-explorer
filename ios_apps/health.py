@@ -43,8 +43,8 @@ import os
 import re
 from datetime import datetime
 
-from . import (health_events, health_medications, health_more,
-               health_records, health_sleep, keyed_archive)
+from . import (health_events, health_kinds, health_medications,
+               health_more, health_records, health_sleep, keyed_archive)
 from .common import (own_path, apple_time, format_datetime, table_columns,
                      utc_datetime)
 from .export_util import describe_duration, write_text_file
@@ -150,9 +150,27 @@ def words(identifier):
     return " ".join(pieces)
 
 
+def database_names_kinds(conn):
+    """Whether the database has the table that names its kinds (iOS 13 and
+    later). Older ones do not."""
+    return bool(table_columns(conn, "shared_summaries"))
+
+
 def kind_names(conn):
     """``{number: identifier}`` for the kinds the database names: those
-    that exactly one name is tied to."""
+    that exactly one name is tied to. A database that names none of its kinds
+    (iOS 12 and before) gets the names of ``health_kinds.KNOWN_KINDS`` for
+    the kinds it holds; a number that is not there stays unnamed."""
+    names = _database_kind_names(conn)
+    if not database_names_kinds(conn):
+        for (number,) in sqlite_rows(
+                conn, "SELECT DISTINCT data_type FROM samples"):
+            if number in health_kinds.KNOWN_KINDS:
+                names.setdefault(number, health_kinds.KNOWN_KINDS[number])
+    return names
+
+
+def _database_kind_names(conn):
     found = {}
     for name, number in sqlite_rows(
             conn, "SELECT s.name, o.object_type FROM shared_summaries s "
@@ -676,7 +694,12 @@ def datasets(conn, sources_conn, folder):
             Column("last", "Last", 140, "date")],
             overview, sort=("count", True),
             note="Everything the database holds, counted. A kind shown as "
-                 "'Type N' is one this backup does not name."))
+                 "'Type N' is one this backup does not name."
+                 + ("" if database_names_kinds(conn) else
+                    " This database does not name its kinds (it is from iOS "
+                    "12 or earlier): the names come from a table of the "
+                    "numbers that the databases of iOS 16.7 and 26.6 name "
+                    "identically.")))
     return result
 
 

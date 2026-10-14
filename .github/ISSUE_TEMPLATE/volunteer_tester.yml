@@ -1,0 +1,71 @@
+name: I can test another iOS version
+description: You have a backup of an iOS version that has not been checked, and can run two reports on it
+title: "[Tester] iOS "
+labels: ["help wanted", "ios-version", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Do not post your backup, its password, or anything it contains** (no messages, names, numbers, places, photos, health values, or file paths that name you).
+
+        The aim is to read backups of **every iOS version**, and that can only be done with a real backup of each. See which versions are checked in [iOS versions](https://github.com/slammingprogramming/iOS-backup-explorer/blob/main/docs/IOS_VERSIONS.md). **Nobody needs your backup.** What helps is that you run the two reports below on it and share their output; later, when a fix for your version exists, that you run the new version and say what changed.
+
+        1. `python tools/compat_report.py "<backup>" --password-window --markdown` (counts only)
+        2. `python tools/schema_report.py "<backup>" --password-window` (table and column names and counts only)
+
+        You can post the output here, or open the [compatibility report](https://github.com/slammingprogramming/iOS-backup-explorer/issues/new?template=compatibility_report.yml) form straight away. [How to help safely](https://github.com/slammingprogramming/iOS-backup-explorer/blob/main/docs/HELPING.md).
+  - type: input
+    id: versions
+    attributes:
+      label: iOS versions you have backups of
+      description: As many as you like, with the second number if you know it.
+      placeholder: "11.4.1, 14.8, 15.7"
+    validations:
+      required: true
+  - type: input
+    id: devices
+    attributes:
+      label: Kinds of device, if you know
+      description: "For example `iPhone8,1` or iPad. Not a serial number or a name."
+    validations:
+      required: false
+  - type: dropdown
+    id: python
+    attributes:
+      label: Can you run Python programs?
+      options:
+        - "Yes, I have Python 3.9 or newer"
+        - "I can if someone tells me how"
+        - "No"
+    validations:
+      required: true
+  - type: dropdown
+    id: kinds
+    attributes:
+      label: What the backups are like
+      multiple: true
+      options:
+        - Encrypted
+        - Not encrypted
+        - Made on a Mac with Finder
+        - Made on Windows with iTunes
+        - Made on Windows with the Apple Devices app
+        - An old backup I still have on disk
+        - The phone has an Apple Watch paired
+        - The phone has Health data
+    validations:
+      required: false
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else
+      description: "For example what the phone was used for (many photos, no notes, a lot of Health data). No names or contents."
+    validations:
+      required: false
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy check
+      options:
+        - label: I understand that nobody needs my backup or its password, and I will not post them or anything they contain.
+          required: true

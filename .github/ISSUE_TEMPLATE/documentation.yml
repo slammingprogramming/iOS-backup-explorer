@@ -1,0 +1,38 @@
+name: Documentation problem
+description: Something in the documentation is wrong, unclear or missing
+title: "[Docs] "
+labels: ["documentation", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Do not post your backup, its password, or anything it contains** (no messages, names, numbers, places, photos, health values, or file paths that name you).
+
+        Documentation is held to the same standard as the code: it says what has been verified, and on which iOS versions. If a page overstates or understates what the program does, that is a bug. Please do not include any content from your backup.
+  - type: input
+    id: page
+    attributes:
+      label: Which page or section?
+      placeholder: "docs/DATA_SOURCES.md, the Reminders row"
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is wrong, unclear or missing?
+    validations:
+      required: true
+  - type: textarea
+    id: better
+    attributes:
+      label: How should it read?
+      description: Optional. A suggested wording is welcome, and so is a pull request.
+    validations:
+      required: false
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy check
+      options:
+        - label: I have not included my backup, its password, or any of its contents.
+          required: true

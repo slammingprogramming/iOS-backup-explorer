@@ -29,9 +29,19 @@ By taking part you agree to follow the [Code of Conduct](CODE_OF_CONDUCT.md).
    documented layout rather than a real backup must say so in its documentation.
    Do not show a value whose meaning or unit you could not verify.
 
+## Helping with data
+
+You can improve support for an iOS version without sharing anything private:
+the tools in `tools/` print the *shape* of your backup (which tabs fill, the
+tables and columns of its databases, how many rows they have) and none of its
+contents. [How to help](docs/HELPING.md) explains them, and the issue forms
+(*Compatibility report*, *A tab is empty or wrong*, *Help name a Health data
+type*, *I can test another iOS version*) ask for exactly that output. A layout
+report taken with `--sql` is the best start for a fix.
+
 ## Reporting a problem
 
-Open an issue using the bug template, and include:
+Open an issue using the bug form, and include:
 
 - your operating system, Python version, and the program's version
   (`python ios_backup_explorer.py --version`);
@@ -51,7 +61,7 @@ Never open a public issue for one.
 
 ## Suggesting a feature
 
-Open an issue with the feature template. Tell us what you want to *do* ("see
+Open an issue with the feature form. Tell us what you want to *do* ("see
 which apps used mobile data last month") before how. If you know where the data
 lives in a backup, say which file (not its contents).
 

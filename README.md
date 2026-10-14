@@ -204,10 +204,14 @@ A backup holds what was on the phone when it was made: iCloud-only data and unen
 <details>
 <summary><strong>What iOS versions are supported?</strong></summary>
 
-Encrypted backups from **iOS 13 and newer** (including iOS 17 and 18); unencrypted backups with the `Manifest.db` layout (iOS 10 and newer). The aim is every iOS version; what was checked on which one is in [iOS versions](docs/IOS_VERSIONS.md). Details in [Where the data comes from](docs/DATA_SOURCES.md#ios-versions).
+Encrypted backups from **iOS 13 and newer** (including iOS 17 and 18); **iOS 12** is read as far as a real iOS 12.4.8 backup has been checked; unencrypted backups with the `Manifest.db` layout (iOS 10 and newer). The aim is every iOS version; what was checked on which one is in [iOS versions](docs/IOS_VERSIONS.md). Details in [Where the data comes from](docs/DATA_SOURCES.md#ios-versions).
 </details>
 
 ---
+
+## Helping without sharing anything private
+
+Support for an iOS version needs someone to have looked at a real backup of it, and you do not have to send anything private for that: small tools print the **shape** of your backup (which tabs fill, how its databases are built, how many rows they have) and nothing from inside it, and you paste that into an issue. See [How to help](docs/HELPING.md) and the [issue forms](https://github.com/slammingprogramming/iOS-backup-explorer/issues/new/choose). A backup of an iOS version that is [not checked yet](docs/IOS_VERSIONS.md) is the most useful thing anyone can bring.
 
 ## Contributing
 

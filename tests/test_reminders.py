@@ -155,6 +155,95 @@ class ReaderTests(ReaderCase):
         self.assertEqual(rm.datasets(conn, make_index([])), [])
 
 
+class LegacyTests(unittest.TestCase):
+    """iOS 12 and earlier keep the reminders in the Calendar database; the
+    Calendar tab shows them."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="ibe-rem-")
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        files = fr.legacy_files()
+        self.index = make_index(files)
+        for _d, path, data in files:
+            with open(os.path.join(self.tmp, os.path.basename(path)),
+                      "wb") as handle:
+                handle.write(data)
+        self.conn = sqlite3.connect(os.path.join(
+            self.tmp, os.path.basename(fr.LEGACY_PATH)))
+        self.addCleanup(self.conn.close)
+        self.data = {d.key: d for d in rm.legacy_datasets(self.conn)}
+        self.by = {r["title"] or "(none)": r
+                   for r in self.data["reminders"].rows}
+
+    def test_they_do_not_make_a_reminders_tab_of_their_own(self):
+        # (a Calendar database alone is no sign of reminders; the tab is
+        # the Calendar's, and only when the database holds some)
+        self.assertEqual(rm.discover(self.index), [])
+
+    def test_the_tables_are_named_for_the_calendar_tab(self):
+        self.assertEqual(self.data["reminders"].title, "Reminders")
+        self.assertEqual(self.data["lists"].title, "Reminder lists")
+
+    def test_a_calendar_database_without_reminders_adds_nothing(self):
+        conn = sqlite3.connect(":memory:")
+        self.addCleanup(conn.close)
+        conn.executescript("""
+            CREATE TABLE Store (ROWID INTEGER PRIMARY KEY, name TEXT);
+            CREATE TABLE Calendar (ROWID INTEGER PRIMARY KEY, store_id INTEGER,
+                title TEXT, supported_entity_types INTEGER);
+            CREATE TABLE CalendarItem (ROWID INTEGER PRIMARY KEY,
+                summary TEXT, entity_type INTEGER, calendar_id INTEGER);
+            INSERT INTO Calendar VALUES (1, 1, 'Home', 8);
+            INSERT INTO CalendarItem VALUES (1, 'An event', 2, 1);""")
+        self.assertEqual(rm.legacy_datasets(conn), [])
+        empty = sqlite3.connect(":memory:")
+        self.addCleanup(empty.close)
+        self.assertEqual(rm.legacy_datasets(empty), [])
+
+    def test_only_reminders_not_events(self):
+        self.assertEqual(sorted(self.by), ["(none)", "Buy milk",
+                                           "Send report", "Stray",
+                                           "Water plants"])
+        self.assertNotIn("An event", self.by)
+
+    def test_the_fields(self):
+        milk = self.by["Buy milk"]
+        self.assertEqual((milk["list"], milk["account"], milk["notes"],
+                          milk["priority"], milk["done"]),
+                         ("Groceries", "iCloud", "Semi-skimmed", "High",
+                          False))
+        self.assertEqual(milk["due"], fr.D0 + fr.DAY + APPLE_EPOCH)
+        self.assertTrue(milk["all_day"])
+        done = self.by["Send report"]
+        self.assertEqual((done["done"], done["status"], done["priority"]),
+                         (True, "Done", "Medium"))
+        self.assertEqual(done["completed"], fr.T0 + 7200 + APPLE_EPOCH)
+
+    def test_no_due_date_is_not_an_all_day_one(self):
+        plants = self.by["Water plants"]
+        self.assertIsNone(plants["due"])
+        self.assertFalse(plants["all_day"])
+        self.assertEqual(plants["priority"], "Low")
+
+    def test_lists_and_accounts(self):
+        lists = {(r["account"], r["list"]): r
+                 for r in self.data["lists"].rows}
+        self.assertEqual(lists[("iCloud", "Groceries")]["total"], 2)
+        self.assertEqual(lists[("iCloud", "Groceries")]["open"], 1)
+        self.assertEqual(lists[("On My iPhone", "Local list")]["total"], 1)
+        self.assertEqual(lists[("On My iPhone", "(no name)")]["total"], 1)
+        self.assertEqual(lists[("iCloud", "Empty")]["total"], 0)
+        # the calendar of events is not a list of reminders
+        self.assertNotIn(("iCloud", "Home"), lists)
+
+    def test_a_reminder_in_an_unknown_list_is_kept(self):
+        self.assertEqual(self.by["Stray"]["list"], "(no name)")
+
+    def test_the_to_do_file(self):
+        self.assertEqual(list(rx.formats_for(self.data["reminders"]))[-1],
+                         "ics")
+
+
 def todo_blocks(text):
     text = text.replace("\r\n ", "")
     return re.findall(r"BEGIN:VTODO\r\n(.*?)END:VTODO", text, re.S)
@@ -233,6 +322,22 @@ class WindowTests(RemindersGuiCase):
         self.assertNotIn("Reminders", self.tab_titles())
         self.open_reminders()
         self.assertIn("Reminders", self.tab_titles())
+
+    def test_reminders_kept_in_the_calendar_database_of_ios_12(self):
+        self.open_files(fr.legacy_files())
+        # no tab of their own: they are tables of the Calendar tab
+        self.assertNotIn("Reminders", self.tab_titles())
+        tab = self.show_tab("Calendar")
+        self.wait_for(lambda: tab.datasets, "the calendar tables")
+        self.assertIn("reminders", tab.datasets)
+        tab.dataset_var.set("Reminders")
+        tab.choose_dataset()
+        names = [c.key for c in tab.dataset.columns]
+        lists = [tab.tree.item(i, "values")[names.index("list")]
+                 for i in tab.tree.get_children()]
+        self.assertEqual(sorted(lists),
+                         ["(no name)", "(no name)", "Groceries", "Groceries",
+                          "Local list"])
 
     def test_the_table(self):
         self.open_reminders()

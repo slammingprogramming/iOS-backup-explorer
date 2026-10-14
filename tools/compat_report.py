@@ -4,7 +4,8 @@
 """A compatibility report: which tabs a backup gives, and whether each loads.
 
     python tools/compat_report.py "<backup folder>" [--ios 16.7]
-                                  [--password-prompt] [--markdown]
+                                  [--password-prompt | --password-window]
+                                  [--markdown]
 
 It opens the backup in the real program (in a hidden window), visits every tab
 and writes **only counts and the program's own messages**: no names, texts,
@@ -14,7 +15,11 @@ iOS version is checked; see ``docs/IOS_VERSIONS.md``.
 
 The iOS version is read from the backup's ``Info.plist`` when it has one; for an
 extracted folder, say it with ``--ios``. An encrypted backup asks for its
-password on the terminal (``--password-prompt``), which is not stored.
+password on the terminal (``--password-prompt``) or in a small window
+(``--password-window``, for when there is no terminal to type in); the password
+is used to open the backup and is not stored. An extracted folder that holds the
+backup's key bag (a ``Manifest.plist``) needs the password too, for its
+keychain.
 
 Needs a display (the program is a window).
 """
@@ -35,6 +40,67 @@ _PROBLEM_STARTS = ("Could not", "Search failed", "Error")
 # of backup)
 _ANSWERS = ("This folder was extracted without", "This backup is not "
             "encrypted", "The keychain stays closed")
+
+
+class PasswordDialog:
+    """A small window that asks for a password, with a box to show what is
+    typed. ``ask()`` returns the text, or None if it was cancelled."""
+
+    def __init__(self, root, message):
+        import tkinter as tk
+        from tkinter import ttk
+        self.root = root
+        self.value = None
+        self.window = tk.Toplevel(root)
+        self.window.title("iOS Backup Explorer: compatibility report")
+        self.window.attributes("-topmost", True)
+        self.window.resizable(False, False)
+        frame = ttk.Frame(self.window, padding=14)
+        frame.pack()
+        ttk.Label(frame, text=message, wraplength=420,
+                  justify="left").pack(anchor="w")
+        self.var, shown = tk.StringVar(), tk.BooleanVar(value=False)
+        self.entry = ttk.Entry(frame, textvariable=self.var, show="\u2022",
+                               width=44)
+        self.entry.pack(fill="x", pady=(10, 2))
+        ttk.Checkbutton(
+            frame, text="Show what I type (to check it)", variable=shown,
+            command=lambda: self.entry.configure(
+                show="" if shown.get() else "\u2022")).pack(anchor="w")
+        row = ttk.Frame(frame)
+        row.pack(fill="x", pady=(8, 0))
+        ttk.Button(row, text="OK", command=self.ok).pack(side="right")
+        ttk.Button(row, text="Cancel", command=self.cancel).pack(
+            side="right", padx=6)
+        self.window.bind("<Return>", lambda _event: self.ok())
+        self.window.bind("<Escape>", lambda _event: self.cancel())
+        self.window.update_idletasks()
+        self.window.lift()
+        self.entry.focus_set()
+
+    def ok(self):
+        if self.var.get():
+            self.value = self.var.get()
+            self.window.destroy()
+
+    def cancel(self):
+        self.value = None
+        self.window.destroy()
+
+    def ask(self):
+        self.root.wait_window(self.window)
+        return self.value
+
+
+def ask_password(message):
+    """Ask for a password in a window; None if cancelled."""
+    import tkinter as tk
+    root = tk.Tk()
+    root.withdraw()
+    try:
+        return PasswordDialog(root, message).ask()
+    finally:
+        root.destroy()
 
 
 def backup_facts(folder):
@@ -99,7 +165,16 @@ def run(folder, password=None, ios=None, patience=90, say=print):
         if kind == app.ENCRYPTED and not password:
             root.destroy()
             return {"opened": False, "reason": "the backup is encrypted: "
-                    "use --password-prompt"}
+                    "use --password-prompt or --password-window"}
+        if kind != app.ENCRYPTED and facts["encrypted"] and not password \
+                and os.path.isfile(os.path.join(folder, "Manifest.plist")):
+            # an extracted folder with the key bag: the keychain tab would
+            # wait for the password, in a window nobody can see
+            root.destroy()
+            return {"opened": False, "reason": "this folder holds the "
+                    "backup's key bag (Manifest.plist), which needs the "
+                    "backup password: use --password-prompt or "
+                    "--password-window"}
         explorer.path_var.set(folder)
         if password:
             explorer.pass_var.set(password)
@@ -179,12 +254,23 @@ def main(argv=None):
     parser.add_argument("--ios", help="the iOS version, if the folder has no "
                         "Info.plist (an extracted backup)")
     parser.add_argument("--password-prompt", action="store_true",
-                        help="ask for the password of an encrypted backup")
+                        help="ask for the password of an encrypted backup "
+                        "on the terminal")
+    parser.add_argument("--password-window", action="store_true",
+                        help="ask for it in a small window instead")
     parser.add_argument("--markdown", action="store_true",
                         help="print a Markdown table")
     options = parser.parse_args(argv)
-    password = getpass.getpass("Backup password: ") \
-        if options.password_prompt else None
+    password = None
+    if options.password_prompt:
+        password = getpass.getpass("Backup password: ")
+    elif options.password_window:
+        password = ask_password(
+            "Enter the password of this backup. It is used only to open it, "
+            "then dropped (never saved or printed).")
+        if password is None:
+            sys.stdout.write("The backup did not open: no password given.\n")
+            return 1
     report = run(os.path.abspath(options.folder), password, options.ios)
     sys.stdout.write(markdown(report))
     return 0 if report.get("opened") else 1

@@ -51,6 +51,21 @@ summaries (correlation 1.000 for active energy and exercise minutes, and the
 stand hours matched on every day compared), and the workout statistics used
 the numbers named heart rate, distance and energies.
 
+### Older databases that do not name their kinds
+
+A Health database of iOS 12 or earlier has no shared summaries, so nothing in
+it names the numbers. For such a database the kinds it holds are named from a
+table, `ios_apps/health_kinds.py`: the **172 numbers that the iOS 16.7 and the
+iOS 26.6 databases both name, and name identically** (none of the 172 differed
+between the two, so the numbers have not been renumbered). A number that is not
+in the table stays "Type N", and a database that names its kinds is never
+overruled by the table. The table is not an outside list: it was made from those
+two databases. It was checked on a real iOS 12.4 database: its five kinds (2
+height, 3 body mass, 7 step count, 8 walking distance, 63 sleep) are in the
+table, and the data fits the names (the height was recorded in centimetres, the
+sleep samples are categories, steps and distance are measurements at the same
+moments). The Data types table says when its names come from the table.
+
 ### Units
 
 A kind's `quantity` is stored in an internal unit that is different for each
@@ -98,9 +113,13 @@ In the backup this was written against, 63 of the 92 kinds present were named
 and 29 were not (most with few samples, a few with thousands). They are counted
 in **Data types** as "Type N". Naming one needs an independent check *per kind*:
 a way to tell what it is from data, the way active energy was matched against
-the activity summaries. If you recognise a kind, an issue with the number, what
-it looks like in the database (counts, value ranges, units) and what you
-believe it is would help. **Do not post your data.**
+the activity summaries. If you recognise a kind, `python
+tools/health_kinds_report.py "<backup>" --password-window` lists the unnamed
+ones with what can be said without sharing any sample (how many, which years,
+the range of the values, the units), and the *Help name a Health data type*
+issue form takes that table and, above all, **how you know** what the kind is.
+See [How to help](HELPING.md). **Do not post your data**; delete any row of the
+table you would rather not share.
 
 ### Values of most kinds
 
