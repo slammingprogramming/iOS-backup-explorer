@@ -15,7 +15,7 @@ Eyyup (Eric) Gunes. Entries below the fork point record the original project's h
   - **Privacy**: the older permissions table (`allowed`) is read (17 permissions that did not show)
   - **Safari**: the history and open tabs of iOS 12, which live in Safari's own app folder, are read (layout only: the backup had none)
   - **Health**: a database that does not name its kinds (iOS 12 and earlier) is named from a table of the 172 kind numbers that the iOS 16.7 and 26.6 databases both name identically. The sleep, body measurements and nights of the iOS 12 backup now show
-  - Not read yet: the favorites and history of Maps on iOS 12 (see [iOS versions](docs/IOS_VERSIONS.md))
+  - **Maps of iOS 12 and earlier**: the places and searches in `GeoBookmarks.plist` (Apple's undocumented binary records, read by field numbers identified on a real iOS 12.4 backup and checked with its owner) show as *Saved places* and *Searches*. Less sure than the rest: the file does not say which places are favorites, and entries of kinds not identified yet are counted, not shown; the history file is not read (see [iOS versions](docs/IOS_VERSIONS.md))
 - `tools/compat_report.py --password-window` asks for the password in a small window (for when there is no terminal to type in), and an extracted folder that holds the backup's key bag now says at once that it needs the password instead of waiting for it
 
 ## [2.2.0] - 2026-10-11

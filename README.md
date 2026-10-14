@@ -258,6 +258,7 @@ The Keychain tab, the opening of locked notes and of the files in clinical recor
 - the [Apple Cloud Notes Parser](https://github.com/threeplanetssoftware/apple_cloud_notes_parser) by Jon Baumann of Ciofeca Forensics (threeplanetssoftware), for where locked notes and their attachments keep their lock details and how they are opened
 - [hashcat](https://hashcat.net/hashcat/), whose Apple Secure Notes module confirms how a locked note's key is made
 - [kinnay/AEA](https://github.com/kinnay/AEA) (python-aea) by Yannik Marchand, which the reader for the Apple Encrypted Archive files in Health's clinical records was checked against, [ipsw](https://github.com/blacktop/ipsw) by blacktop, and [The Apple Wiki](https://theapplewiki.com/wiki/Apple_Encrypted_Archive), for how that format is built
+- The [Protocol Buffers encoding guide](https://protobuf.dev/programming-guides/encoding/), for reading the Maps records of iOS 12
 - [HL7 FHIR](https://hl7.org/fhir) and Apple's HealthKit documentation, for the names and values used to read Health records, symptoms and cycle tracking
 - Apple's [Platform Security Guide](https://support.apple.com/guide/security/), RFC 3394 and NIST SP 800-38D, and [PyCryptodome](https://www.pycryptodome.org)
 

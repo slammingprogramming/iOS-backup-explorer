@@ -152,6 +152,133 @@ class MapsTests(WorkCase):
         self.assertEqual(mp.discover(None), [])
 
 
+class LegacyMapsTests(WorkCase):
+    """iOS 12 and earlier: the saved places are protocol buffer records in a
+    property list."""
+
+    def setUp(self):
+        folder = self.work(fx.legacy_maps_files())
+        self.path = os.path.join(folder, "GeoBookmarks.plist")
+        self.rows, self.searches, self.empty, self.unread = \
+            mp.legacy_rows(self.path)
+        self.by = {r["name"] or r["address"] or r["place"]: r
+                   for r in self.rows}
+
+    def test_the_places_with_something_to_show(self):
+        self.assertEqual(sorted(self.by), [
+            "1 Main St, Springfield", "2 Side Rd, Shelbyville",
+            "40.00000, -74.00000", "Corner Cafe", "Example Park",
+            "Second Path Name", "The Shop"])
+        self.assertEqual((self.empty, self.unread), (2, 1))
+
+    def test_the_kind_of_each_place(self):
+        self.assertEqual(self.by["Example Park"]["kind"], "Place")
+        self.assertEqual(self.by["The Shop"]["kind"], "Place")
+        self.assertEqual(self.by["Corner Cafe"]["kind"], "Place")
+        self.assertEqual(self.by["1 Main St, Springfield"]["kind"], "Address")
+        self.assertEqual(self.by["2 Side Rd, Shelbyville"]["kind"], "Address")
+        self.assertEqual(self.by["40.00000, -74.00000"]["kind"], "Location")
+
+    def test_what_each_place_holds(self):
+        park = self.by["Example Park"]
+        self.assertEqual((park["phone"], park["web"], park["category"]),
+                         ("+1 555 0100", "https://park.example.com", "Park"))
+        self.assertEqual((park["lat"], park["lon"]), (12.5, -45.25))
+        self.assertEqual(park["place"], "12.50000, -45.25000")
+        cafe = self.by["Corner Cafe"]
+        self.assertEqual(cafe["category"], "Food")
+        self.assertEqual((cafe["lat"], cafe["lon"]), (None, None))
+        home = self.by["1 Main St, Springfield"]
+        self.assertEqual((home["name"], home["place"]), ("", ""))
+        shop = self.by["The Shop"]
+        self.assertEqual((shop["category"], shop["city"]),
+                         ("Shopping", "Springfield"))
+
+    def test_a_blank_text_is_skipped_for_the_next_path(self):
+        self.assertEqual(self.by["Second Path Name"]["kind"], "Place")
+
+    def test_a_place_with_only_coordinates_is_kept(self):
+        row = self.by["40.00000, -74.00000"]
+        self.assertEqual((row["name"], row["address"]), ("", ""))
+
+    def test_the_searches(self):
+        self.assertEqual(self.searches, ["first search", "second search",
+                                         "third search"])
+
+    def test_the_tables(self):
+        saved, searches = mp.legacy_datasets(self.path)
+        self.assertEqual((saved.key, saved.title), ("saved", "Saved places"))
+        self.assertEqual(len(saved.rows), 7)
+        self.assertIn("more than the favorites", saved.note)
+        self.assertIn("Not shown: 2 empty entries (left over from deletions), "
+                      "1 entry of kinds this program does not read yet",
+                      saved.note)
+        self.assertIn("gpx", saved.formats)
+        text = saved.details(self.by["Example Park"])
+        for expected in ("Example Park", "Phone: +1 555 0100",
+                         "Category: Park",
+                         "Web address: https://park.example.com"):
+            self.assertIn(expected, text)
+        self.assertEqual((searches.key, len(searches.rows)), ("searches", 3))
+        self.assertEqual(searches.details(searches.rows[0]), "first search")
+
+    def test_every_record_is_read(self):
+        folder = self.work(fx.legacy_maps_files(extra_records=2))
+        rows, searches, empty, unread = mp.legacy_rows(
+            os.path.join(folder, "GeoBookmarks.plist"))
+        self.assertEqual((len(rows), len(searches), empty, unread),
+                         (21, 9, 6, 3))
+
+    def test_no_places_no_table(self):
+        folder = self.work(fx.legacy_maps_files(entries=[]))
+        self.assertEqual(mp.legacy_datasets(
+            os.path.join(folder, "GeoBookmarks.plist")), [])
+
+    def test_only_searches_still_make_a_table(self):
+        from tests.protobuf_builder import message
+        entry = message((1, 1), (8, message(
+            (26, message((1, "only search"))))))
+        folder = self.work(fx.legacy_maps_files(entries=[entry]))
+        (table,) = mp.legacy_datasets(
+            os.path.join(folder, "GeoBookmarks.plist"))
+        self.assertEqual(table.key, "searches")
+
+    def test_damaged_files_are_not_a_crash(self):
+        bad = os.path.join(self.work([]), "bad.plist")
+        with open(bad, "wb") as handle:
+            handle.write(b"not a property list")
+        with self.assertRaises(ValueError):
+            mp.legacy_rows(bad)
+        self.assertEqual(mp.legacy_datasets(bad), [])
+        import plistlib
+        for content in ({"MSPBookmarks": {"records": {"a": {
+                            "contents": b"\xff\xff"}}}},
+                        {"MSPBookmarks": {"records": {"a": {"contents": 5}}}},
+                        {"MSPBookmarks": {"records": {"a": 7}}},
+                        {"MSPBookmarks": []}, {"other": 1}, [1, 2]):
+            with open(bad, "wb") as handle:
+                plistlib.dump(content, handle)
+            with self.subTest(content):
+                self.assertEqual(mp.legacy_rows(bad), ([], [], 0, 0))
+
+    def test_coordinates_off_the_map_are_not_places(self):
+        from tests.protobuf_builder import message
+        entry = message((1, 1), (8, message((2, message((1, message(
+            (1, 123.0), (2, 500.0))))))))
+        folder = self.work(fx.legacy_maps_files(entries=[entry]))
+        self.assertEqual(
+            mp.legacy_rows(os.path.join(folder, "GeoBookmarks.plist")),
+            ([], [], 0, 1))
+
+    def test_the_legacy_file_is_found_only_without_the_newer_database(self):
+        index = make_index(fx.legacy_maps_files())
+        self.assertEqual(mp.discover(index), [mp.LEGACY])
+        both = make_index(fx.legacy_maps_files() + fx.maps_files())
+        self.assertEqual(mp.discover(both), [mp.DATABASE])
+        self.assertEqual(mp.discover(make_index([])), [])
+        self.assertEqual(mp.discover(None), [])
+
+
 # ── Podcasts ─────────────────────────────────────────────────
 
 class PodcastTests(WorkCase):
@@ -347,6 +474,56 @@ class WindowTests(TabCase):
         self.assertEqual(self.dialogs[-1][0], "showinfo", self.dialogs[-1])
         with open(os.path.join(out, "favorites.gpx"), encoding="utf-8") as f:
             self.assertEqual(len(re.findall("<wpt ", f.read())), 2)
+
+    def test_the_favorites_of_ios_12(self):
+        self.open_files(fx.legacy_maps_files())
+        self.assertIn("Maps", self.tab_titles())
+        tab = self.shown("Maps")
+        self.assertEqual(list(tab.datasets), ["saved", "searches"])
+        self.assertEqual(sorted(self.column(tab, "name")),
+                         ["", "", "", "Corner Cafe", "Example Park",
+                          "Second Path Name", "The Shop"])
+        self.assertIn("2 empty entries", tab.dataset.note)
+        # only the two places that store coordinates go into a GPX file
+        out = os.path.join(self.tmp, "export")
+        with mock.patch.object(rv, "ask_export",
+                               return_value=("gpx", "all", out)):
+            tab.export()
+            self.wait_for(lambda: self.dialogs, "the export")
+        self.assertEqual(self.dialogs[-1][0], "showinfo", self.dialogs[-1])
+        with open(os.path.join(out, "saved-places.gpx"), encoding="utf-8") as f:
+            self.assertEqual(len(re.findall("<wpt ", f.read())), 2)
+
+    def test_the_file_of_ios_12_is_extracted_as_it_is(self):
+        self.open_files(fx.legacy_maps_files())
+        tab = self.shown("Maps")
+        extracted = []
+        self.explorer.apps.extract = extracted.append
+        tab.extract_originals()
+        (ids,) = extracted
+        self.assertEqual(set(ids), {self.ids[(fx.LEGACY_MAPS_DOMAIN,
+                                              fx.LEGACY_MAPS)]})
+
+    def test_the_originals_can_be_extracted_before_the_tab_was_shown(self):
+        self.open_files(fx.maps_files())
+        tab = self.panel_titled("Maps")              # (not shown yet)
+        extracted = []
+        self.explorer.apps.extract = extracted.append
+        tab.extract_originals()
+        (ids,) = extracted
+        self.assertEqual(set(ids), {self.ids[(fx.MAPS_DOMAIN, fx.MAPS_DB)]})
+
+    def test_the_database_of_a_newer_phone_still_has_its_journal_files(self):
+        self.open_files(fx.maps_files() + [
+            (fx.MAPS_DOMAIN, fx.MAPS_DB + "-wal", b"x")])
+        tab = self.shown("Maps")
+        extracted = []
+        self.explorer.apps.extract = extracted.append
+        tab.extract_originals()
+        (ids,) = extracted
+        self.assertEqual(set(ids), {
+            self.ids[(fx.MAPS_DOMAIN, fx.MAPS_DB)],
+            self.ids[(fx.MAPS_DOMAIN, fx.MAPS_DB + "-wal")]})
 
     def test_podcasts_and_their_original_files(self):
         self.open_files(fx.podcasts_files())

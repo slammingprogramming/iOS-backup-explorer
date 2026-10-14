@@ -95,6 +95,12 @@ tools by Jean-Baptiste Bedrune and Jean Sigwald (see the credits in the
   That run also showed how a real key bag behaves: it lists keys for the *this
   device only* classes too, but they do not unwrap those items (the phone wrapped
   them with its own keys), so such an item is reported as locked to the phone.
+- **On a real iOS 12.4 backup** (716 items) every item is accounted for: 396 opened
+  (275 + 108 passwords, 4 certificates, 9 keys), and the other 320 are the *this
+  device only* items (classes 9 to 11), reported as locked to the phone. Of the
+  383 passwords that opened, 3 are the deleted items iCloud Keychain leaves
+  behind, which the table leaves out and says so in its note, leaving the 380 it
+  shows. Nothing is lost silently.
 - **In the tests** the keychains are made by this program's own test code: the
   AES-GCM (including the empty nonce the keychain uses) is checked against
   `pycryptodome` and a published test vector, the key wrapping against the RFC

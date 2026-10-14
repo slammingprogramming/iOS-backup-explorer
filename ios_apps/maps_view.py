@@ -29,8 +29,14 @@ def _load(conn, _book, _index):
 
 
 class MapsPanel(RecordsPanel):
-    DATABASE = mp.DATABASE
-    ORIGINALS = (mp.DATABASE,)
     FOLDER = "maps"
     LOADER = staticmethod(_load)
     MISSING = "This backup has no Maps data."
+
+    def discover(self, index):
+        return mp.discover(index)
+
+    def extra_originals(self):
+        return [p + suffix for p in (self.DATABASES or (mp.DATABASE,))
+                for suffix in (("", "-wal", "-shm")
+                               if not p.endswith(".plist") else ("",))]

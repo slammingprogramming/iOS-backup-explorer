@@ -74,6 +74,8 @@ kinnay/AEA, python-aea (Yannik Marchand; MIT License): an implementation of the
 ipsw (blacktop; MIT License): its AEA decoder describes the key derivation
     steps of the format. https://github.com/blacktop/ipsw
 The Apple Wiki: its page on the Apple Encrypted Archive format.
+Protocol Buffers encoding guide (Google; https://protobuf.dev/programming-guides/encoding/):
+    the public description of the wire format read by ios_apps/protobuf_wire.py.
 HL7 FHIR (https://hl7.org/fhir) and Apple's HealthKit documentation: the names
     and values used to read Health records, symptoms and cycle tracking.
 

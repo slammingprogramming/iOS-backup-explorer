@@ -47,6 +47,68 @@ def build_maps(conn):
     conn.commit()
 
 
+LEGACY_MAPS_DOMAIN = "AppDomain-com.apple.Maps"
+LEGACY_MAPS = "Library/Maps/GeoBookmarks.plist"
+
+
+def legacy_entries():
+    """Entries of the kind iOS 12 keeps, with invented places."""
+    from tests.protobuf_builder import field, message, nested
+    park = message((1, 3), (2, 0), (4, 43200), (2000, 559000000.0),
+                   (8, message(
+                       (1, message((2, "+1 555 0100"),
+                                   (6, "https://park.example.com"),
+                                   (10, message((1, "x"), (3, "Example Park")),),
+                                   (12, message((4, "Park")))),),
+                       (2, message((1, message((1, 12.5), (2, -45.25)))))
+                   )))
+    cafe = message((1, 5), (4, 43200), (2000, 559000100.0), (9, "Food"),
+                   (8, message(
+                       (1, message((11, message((3, "Corner Cafe"))))))))
+    home =message((1, 6), (8, message(
+        (5, nested((1, 3), field(11, "1 Main St, Springfield"))))))
+    home31 = message((1, 8), (8, message((31, nested(
+        (1, 101, 2), field(11, "2 Side Rd, Shelbyville"))))))
+    blank = message((1, 10), (8, message((1, message(
+        (10, message((3, "   "))),
+        (11, message((3, "Second Path Name"))))))))
+    shop = message((1, 7), (8, message(
+        (30, message((1, "The Shop"), (2, "Shopping"), (5, "Springfield")))),),
+        (7, message((4, "ignored"))))
+    unnamed_place = message((1, 9), (8, message(
+        (2, message((1, message((1, 40.0), (2, -74.0)))))),))
+    searches = message((1, 15), (8, message(
+        (26, message((1, "first search"), (5, message((1, "x"))))),
+        (26, message((1, "second search"))),
+        (26, message((1, "third search"))))))
+    unread = message((1, 17), (8, message((41, message((1, "unread kind"))))))
+    empty = message((1, 11), (2, 0))
+    stub = message((1, 13))
+    return [park, cafe, home, home31, blank, shop, unnamed_place, searches,
+            unread, empty, stub]
+
+
+def legacy_maps_plist(entries=None, extra_records=0):
+    import plistlib
+    from tests.protobuf_builder import field, message
+    entries = legacy_entries() if entries is None else entries
+    body = message((1, 1 << 40), (2, 1),
+                   *[(4, e) for e in entries])
+    contents = message((1, 1), (2, "A1B2"), (5, message((1, message(
+        (1, body))))))
+    records = {"ACA6B299-F478-49AA-8837-19D0AD146386": {
+        "contents": contents, "contentsTimestamp": b"x" * 20,
+        "position": b"p", "positionTimestamp": b"y" * 20}}
+    for number in range(extra_records):
+        records[f"EXTRA-{number}"] = {"contents": contents}
+    return plistlib.dumps({"MSPBookmarks": {
+        "records": records, "clientIdentifier": "C"}, "MSPBookmarksVersion": 1})
+
+
+def legacy_maps_files(**kw):
+    return [(LEGACY_MAPS_DOMAIN, LEGACY_MAPS, legacy_maps_plist(**kw))]
+
+
 def maps_files():
     return [(MAPS_DOMAIN, MAPS_DB, database_bytes(build_maps))]
 

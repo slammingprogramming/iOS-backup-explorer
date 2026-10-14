@@ -26,9 +26,13 @@ than named by the user) are inside a binary record that is not read: such
 a place is listed with its coordinates.
 """
 
+import os
+import plistlib
 import re
 
-from .common import apple_time, format_datetime, table_columns
+from . import protobuf_wire as pb
+from .common import (apple_time, format_datetime, own_path,
+                     table_columns)
 from .export_util import write_text_file
 from .records import Column, Dataset, fetch_dicts, sqlite_rows
 
@@ -36,11 +40,14 @@ DATABASES = (
     "AppDomainGroup-group.com.apple.Maps/Maps/MapsSync_0.0.1",
     "AppDomainGroup-group.com.apple.Maps/Maps/MapsSync_0.0.1_deviceLocalCache.db")
 DATABASE = DATABASES[0]
+# iOS 12 and earlier: the favorites are a property list holding protocol
+# buffer records, not a database
+LEGACY = "AppDomain-com.apple.Maps/Library/Maps/GeoBookmarks.plist"
 
 
 def discover(index):
     found = []
-    for path in DATABASES:
+    for path in DATABASES + (LEGACY,):
         node = index.get(path) if index is not None else None
         if node is not None and not node.is_dir:
             found.append(path)
@@ -170,10 +177,149 @@ def write_gpx(base, rows):
     return [path]
 
 
+# ── iOS 12 and earlier ───────────────────────────────────────
+
+# Where the entries of ``GeoBookmarks.plist`` keep what they hold. Apple does
+# not publish the layout, so what follows was found on a real iOS 12.4 backup,
+# by listing every stored text field with examples and asking its owner what
+# each held, and by comparing the result with what the Maps app shows. Each
+# entry is a protocol buffer message; the numbers are paths of nested fields.
+# The first path that has a text is used.
+ENTRY_PATH = (5, 1, 1, 4)           # the repeated entries in a record
+PLACE_FIELD = 8                     # an entry that holds a place has this
+# An entry's place is of one of several kinds, told apart by which field of
+# it is present. These are the kinds that have been identified.
+KIND_NAMES = {1: "Place", 30: "Place", 5: "Address", 31: "Address",
+              2: "Location"}
+SEARCH_KIND = 26                    # a list of searches
+SEARCH_PATH = (8, 26, 1)
+NAME_PATHS = ((8, 1, 10, 3), (8, 1, 11, 3), (8, 30, 1))
+ADDRESS_PATHS = ((8, 5, 1, 3, 11), (8, 31, 1, 101, 2, 11))
+CITY_PATHS = ((8, 30, 5),)
+PHONE_PATHS = ((8, 1, 2),)
+WEB_PATHS = ((8, 1, 6),)
+CATEGORY_PATHS = ((8, 1, 12, 4), (8, 30, 2), (9,))
+LOCATION_PATH = (8, 2, 1)           # a message of two doubles (lat, lon)
+
+
+def _first_text(entry, paths):
+    for path in paths:
+        for text in pb.texts_at(entry, path):
+            if text.strip():
+                return text.strip()
+    return ""
+
+
+def _location(entry):
+    for message in pb.messages_at(entry, LOCATION_PATH):
+        numbers = {field: value for field, wire, value in
+                   pb.parse(message) or () if wire == pb.FIXED64}
+        lat, lon = _coordinate(numbers.get(1), numbers.get(2))
+        if lat is not None:
+            return lat, lon
+    return None, None
+
+
+def _place_kind(entry):
+    """The kind of place an entry holds (the number of the one field the
+    place message has), or None if it holds none."""
+    place = pb.messages_at(entry, (PLACE_FIELD,))
+    fields = pb.parse(place[0]) if place else None
+    return fields[0][0] if fields else None
+
+
+def legacy_rows(path):
+    """``(places, searches, empty, unread)`` from a ``GeoBookmarks.plist``:
+    a row for each place of a kind that is read (a name, an address or a
+    location), the texts of the searches, and how many entries are empty
+    (left over from deletions) or are of a kind that is not read yet. Raises
+    ``ValueError`` if the file is not a property list."""
+    try:
+        with open(path, "rb") as handle:
+            data = plistlib.load(handle)
+    except (OSError, plistlib.InvalidFileException) as error:
+        raise ValueError(str(error)) from error
+    records = ((data.get("MSPBookmarks") or {}).get("records") or {}) \
+        if isinstance(data, dict) else {}
+    rows, searches, empty, unread = [], [], 0, 0
+    for record in records.values():
+        contents = record.get("contents") if isinstance(record, dict) else None
+        if not isinstance(contents, (bytes, bytearray)):
+            continue
+        for entry in pb.messages_at(bytes(contents), ENTRY_PATH):
+            kind = _place_kind(entry)
+            if kind is None:
+                empty += 1
+                continue
+            if kind == SEARCH_KIND:
+                searches += [s.strip() for s in pb.texts_at(entry, SEARCH_PATH)
+                             if s.strip()]
+                continue
+            name = _first_text(entry, NAME_PATHS)
+            address = _first_text(entry, ADDRESS_PATHS)
+            lat, lon = _location(entry)
+            if kind not in KIND_NAMES or not (
+                    name or address or lat is not None):
+                unread += 1
+                continue
+            rows.append({
+                "kind": KIND_NAMES[kind], "name": name, "address": address,
+                "city": _first_text(entry, CITY_PATHS),
+                "phone": _first_text(entry, PHONE_PATHS),
+                "web": _first_text(entry, WEB_PATHS),
+                "category": _first_text(entry, CATEGORY_PATHS),
+                "lat": lat, "lon": lon, "place": _place_text(lat, lon)})
+    return rows, searches, empty, unread
+
+
+def _plural(count, one, many):
+    return f"{count:,} {one if count == 1 else many}"
+
+
+def legacy_datasets(path):
+    """The tables of an iOS 12 (or earlier) ``GeoBookmarks.plist``: the saved
+    places and the searches."""
+    try:
+        rows, searches, empty, unread = legacy_rows(path)
+    except ValueError:
+        return []
+    result = []
+    gpx = {"gpx": ("Places (GPX, for mapping programs)", write_gpx)}
+    if rows:
+        left = []
+        if empty:
+            left.append(_plural(empty, "empty entry", "empty entries")
+                        + " (left over from deletions)")
+        if unread:
+            left.append(_plural(unread, "entry", "entries")
+                        + " of kinds this program does not read yet")
+        result.append(Dataset("saved", "Saved places", [
+            Column("name", "Name", 220), Column("kind", "Kind", 80),
+            Column("address", "Address", 300),
+            Column("phone", "Phone", 110), Column("web", "Web address", 180),
+            Column("category", "Category", 110),
+            Column("place", "Coordinates", 150)],
+            rows, sort=("name", False), details=_details, formats=gpx,
+            note="The places iOS 12 and earlier keep in the Maps file. It "
+                 "holds more than the favorites the Maps app lists: "
+                 "addresses and locations too, and nothing in it says which "
+                 "is which. Only some store their coordinates; the others "
+                 "are known by name and address."
+                 + (" Not shown: " + ", ".join(left) + "." if left else "")))
+    if searches:
+        result.append(Dataset("searches", "Searches", [
+            Column("search", "Searched for", 400)],
+            [{"search": s} for s in searches],
+            details=lambda row: row["search"]))
+    return result
+
+
 def _details(row):
     lines = [row.get("name") or row.get("search") or row.get("collection")
              or "(no name)"]
-    for label, key in (("Address", "address"), ("Search", "search"),
+    for label, key in (("Address", "address"), ("City", "city"),
+                       ("Phone", "phone"), ("Web address", "web"),
+                       ("Category", "category"), ("Search", "search"),
                        ("Collection", "collection"), ("Place", "place")):
         if row.get(key) and row[key] not in lines:
             lines.append(f"{label}: {row[key]}")
@@ -224,4 +370,7 @@ class MapsReader:
         self.conn = conn
 
     def datasets(self):
+        own = own_path(self.conn)
+        if own.lower().endswith(".plist"):         # iOS 12 and earlier
+            return legacy_datasets(own)
         return datasets(self.conn)

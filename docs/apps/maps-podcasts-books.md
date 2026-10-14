@@ -29,6 +29,26 @@ Tables, chosen with **Show:**:
 
 Source: `AppDomainGroup-group.com.apple.Maps/Maps/MapsSync_0.0.1`.
 
+**iOS 12 and earlier** keep their Maps data in a different file,
+`AppDomain-com.apple.Maps/Library/Maps/GeoBookmarks.plist`, as records in
+Apple's binary format that Apple does not document. For such a backup the tab
+shows two tables, read from the fields that were found by comparing a real
+iOS 12.4 backup with what its owner saw in Maps:
+
+| Table | What it holds |
+|---|---|
+| **Saved places** | The places the file holds: name, kind (place, address or location), address, phone, web address, category and coordinates where they are stored |
+| **Searches** | The searches the file lists |
+
+This is **less sure than the rest**. The file holds more than the favorites the
+Maps app lists (addresses and locations too), and nothing in it says which is
+which, so the table is not called "Favorites". Only some places store their
+coordinates. Entries of kinds nobody has identified yet are counted in the
+table's note and not shown; so are the empty entries left over from deletions.
+The history of the iOS 12 Maps app (`GeoHistory.mapsdata`) is not read. If your
+backup has entries that do not show, a [layout report](../HELPING.md) is the
+way to help.
+
 ## Podcasts
 
 ![Podcast episodes](../images/33-podcasts.png)

@@ -100,6 +100,7 @@ REQUIRED = {
     "ios_apps/aea.py": ["SPDX-License-Identifier: AGPL-3.0-or-later",
                         "kinnay/AEA"],
     "ios_apps/health_events.py": ["SPDX-License-Identifier: AGPL-3.0-or-later"],
+    "ios_apps/protobuf_wire.py": ["SPDX-License-Identifier: AGPL-3.0-or-later"],
     "ios_apps/health_kinds.py": ["SPDX-License-Identifier: AGPL-3.0-or-later"],
     "ios_apps/health_medications.py": ["SPDX-License-Identifier: AGPL-3.0-or-later"],
     "ios_apps/health_more.py": ["SPDX-License-Identifier: AGPL-3.0-or-later"],

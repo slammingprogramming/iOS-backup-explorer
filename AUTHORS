@@ -76,6 +76,8 @@ the key derivation steps of the format.
     https://github.com/blacktop/ipsw
 The Apple Wiki — its page on the Apple Encrypted Archive format (profiles, header
 and layout). https://theapplewiki.com/wiki/Apple_Encrypted_Archive
+Protocol Buffers encoding guide — Google (https://protobuf.dev/programming-guides/encoding/),
+the public description of the wire format that the Maps records of iOS 12 use.
 HL7 FHIR — the open standard (https://hl7.org/fhir) in which Health stores the
 records it receives from clinics; reading them relies on its published names.
 Apple HealthKit documentation — Apple Inc. The public names and values of

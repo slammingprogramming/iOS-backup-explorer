@@ -60,11 +60,14 @@ layout):
   kinds of the iOS 12 backup (height, body mass, steps, walking distance,
   sleep) are in it. There is no daily summary of activity and no workouts in
   it.
-- **Maps, iOS 12 and earlier**: favorites and history are not in a database
-  but in `Library/Maps/GeoBookmarks.plist` and `GeoHistory.mapsdata`, which
-  hold nested records in Apple's own binary format. **Not read yet**: the
-  layout was looked at (29 favorites stored) but its fields could not be
-  named with certainty. The Maps tab shows nothing for such a backup.
+- **Maps, iOS 12 and earlier**: the places are not in a database but in
+  `Library/Maps/GeoBookmarks.plist`, which holds protocol buffer records in
+  Apple's undocumented layout, and the history in `GeoHistory.mapsdata`. The
+  Maps tab reads the places and the searches from the first, using fields
+  identified on the iOS 12 backup: 5 saved places (2 places, 2 addresses, 1
+  location), 3 searches; 17 entries were empty and 6 are of kinds not
+  identified, so they are counted and not shown. The owner saw 2 favorites in
+  Maps, so the table cannot be called favorites. The history file is not read.
 - **Not in the iOS 12 backup used**: notes (the old `notes.sqlite` holds only
   its accounts), Photos (the library lists 36 albums and no pictures; the
   pictures were not backed up), Books, Podcasts and Screen Time.
