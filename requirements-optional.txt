@@ -7,5 +7,5 @@
 #         (Linux and macOS already have one).
 Pillow>=10.0
 pillow-heif>=0.16
-fpdf2>=2.7
+fpdf2>=2.8.9
 tzdata>=2024.1
