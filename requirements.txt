@@ -1,1 +1,1 @@
-iphone_backup_decrypt>=0.9.0
+iphone_backup_decrypt>=0.11.2
