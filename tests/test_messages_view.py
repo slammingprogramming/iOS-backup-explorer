@@ -305,7 +305,10 @@ class ChatViewTests(MessagesGuiCase):
         widths = [measure(line) for line in lines]
         self.assertLessEqual(max(widths) - min(widths),
                              self.tab._space * 2)
-        self.assertLessEqual(max(widths), 260 + self.tab._space * 2)
+        # (a line wrapped right up to the limit, with the two spaces of
+        # padding that each side of every line has; the fonts of some
+        # systems wrap right up to it, others a little short of it)
+        self.assertLessEqual(max(widths), 260 + self.tab._space * 4)
         words = " ".join(lines).split()
         self.assertEqual(words, fa.LONG_TEXT.strip().split())
 

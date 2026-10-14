@@ -7,6 +7,17 @@ Eyyup (Eric) Gunes. Entries below the fork point record the original project's h
 
 ## [Unreleased]
 
+## [2.3.1] - 2026-10-14
+
+A fix to the tests only; the program itself is unchanged from 2.3.0.
+
+### Fixed
+- **The Linux jobs of CI failed on 2.3.0**: the tests of `tools/compat_report.py` open a window and had lost their "needs a display" skip when the password-window tests were added, so they failed wherever there is no display (Windows always has one, which hid it). They skip again
+- A test of the Messages tab assumed a wrapped line could never be as wide as the limit plus two spaces of padding; a line wrapped right up to the limit is wider, which fonts on Linux produce. The test now allows the four spaces of padding every line has. The tab itself was always correct
+
+### Changed
+- [Testing](docs/TESTING.md) explains how to run the suite without a display, as CI does, and with one on Linux, before sending a change
+
 ## [2.3.0] - 2026-10-14
 
 **iOS 12 backups are now read and checked** against a real iOS 12.4.8 backup (every tab; the counts match the raw tables), with the Reminders, Permissions, Safari, Health and Maps differences of that version handled, and the Keychain of that backup accounted for item by item. **Anyone can now help without sharing anything private**: issue forms, a guide and three tools that print the shape of a backup and none of its contents. Maps on iOS 12 is less sure than the rest, and the documentation says why.

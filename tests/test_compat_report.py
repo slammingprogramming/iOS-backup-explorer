@@ -105,7 +105,6 @@ class MarkdownTests(unittest.TestCase):
             {"opened": False, "reason": "bad password"}))
 
 
-@unittest.skipUnless(display_available(), "needs a display")
 @unittest.skipUnless(display_available(), "no display available")
 class PasswordWindowTests(unittest.TestCase):
     def setUp(self):
@@ -142,6 +141,7 @@ class PasswordWindowTests(unittest.TestCase):
         self.assertEqual(seen, ["\u2022"])
 
 
+@unittest.skipUnless(display_available(), "needs a display")
 class RunTests(unittest.TestCase):
     def setUp(self):
         self.tool = load_tool()

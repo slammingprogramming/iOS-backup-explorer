@@ -26,6 +26,23 @@ clean under it.
 | **Checks** | `tools/check_attribution.py`, `tools/check_version.py` | Run in CI, and from `test_version.py` |
 | **Release** | `test_release.py` | The release notes, the tag check and the archives (`tools/release.py`), and the shape of `release.yml` (who may write, what runs first) |
 
+### Run them without a display too
+
+Windows always has a display, so a test that opens a window passes there even if
+it forgot to skip itself, and only the Linux jobs of CI (which have no display)
+show it. Before a change that adds tests, run the suite once the way CI does,
+on Linux with no display (WSL works):
+
+```bash
+env -u DISPLAY -u WAYLAND_DISPLAY python -m unittest discover -s tests -t .
+```
+
+Any test that needs a window must skip itself when there is none (a class
+decorator `@unittest.skipUnless(display_available(), ...)`, or `AppGuiCase`,
+which does it for you). Also run it once *with* a display on Linux: fonts differ
+between systems, so a test must not depend on a text measuring exactly what it
+does on Windows.
+
 ### `AppGuiCase`
 
 ```python
