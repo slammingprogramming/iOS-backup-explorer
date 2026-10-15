@@ -128,6 +128,24 @@ class UnencryptedGuiTests(unittest.TestCase):
         with open(path, "rb") as handle:
             self.assertEqual(handle.read(), fb.content_of(*key))
 
+    def test_a_detection_still_waiting_cannot_overwrite_the_status_of_the_open(
+            self):
+        # Setting the path schedules a detection 300 ms later, which writes
+        # "Click Open Backup" into the status bar. An open that is quicker
+        # than that (a small backup, a fast disk) was followed by that
+        # stale message.
+        ex = self.explorer
+        ex.path_var.set(self.plain_dir)
+        self.assertIsNotNone(ex._detect_job)
+        ex._decrypt()
+        self.assertIsNone(ex._detect_job)
+        self.wait_for(lambda: ex.backup_open, "backup to open")
+        end = time.monotonic() + 0.5          # past the 300 ms
+        while time.monotonic() < end:
+            self.root.update()
+            time.sleep(0.01)
+        self.assertNotIn("Click Open Backup", ex.status_var.get())
+
     def test_typing_a_password_for_an_unencrypted_backup_is_harmless(self):
         ex = self.explorer
         ex.path_var.set(self.plain_dir)

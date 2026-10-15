@@ -1157,6 +1157,12 @@ class BackupExplorer:
         if kind in (UNENCRYPTED, EXTRACTED):
             passphrase = None  # never needed, never passed on
 
+        if self._detect_job is not None:
+            # A detection still waiting for its 300 ms would write "Click
+            # Open Backup" over the status of this open if the open is
+            # quicker than that. Apply it now (which also cancels it).
+            self._update_backup_kind()
+
         self.decrypt_btn.configure(state="disabled")
         self.status_var.set(
             "Decrypting... this may take a moment." if kind == ENCRYPTED

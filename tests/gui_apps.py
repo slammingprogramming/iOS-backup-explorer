@@ -68,8 +68,11 @@ class AppGuiCase(unittest.TestCase):
             if condition():
                 return
             time.sleep(0.01)
+        # what a failing run on a machine we cannot look at needs to say
+        shown = [(d[0], d[1][1:] if len(d) > 1 else ())
+                 for d in getattr(self, "dialogs", [])]
         self.fail(f"timed out waiting for {what}; status="
-                  f"{self.explorer.status_var.get()!r}")
+                  f"{self.explorer.status_var.get()!r}; dialogs={shown!r}")
 
     def open_files(self, files, encrypted=False, extra_class_keys=None):
         """Make a backup holding *files* (``[(domain, path, bytes)]``) and

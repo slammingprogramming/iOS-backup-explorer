@@ -7,6 +7,12 @@ Eyyup (Eric) Gunes. Entries below the fork point record the original project's h
 
 ## [Unreleased]
 
+### Fixed
+- **The status bar could tell you to "Click Open Backup" after the backup was open.** Choosing a folder schedules a check of its kind 300 ms later; an open that finished sooner than that (a small backup, a fast disk) was followed by that late message over its own. Opening now applies the check first. This was also the cause of a test (`Save as JPEG`) that failed now and then on CI: its "Saved" message was overwritten before the test saw it
+
+### Changed
+- When a test of a window times out, it now says which dialogs had been shown, so a failure on a machine we cannot look at is explained by its log
+
 ## [2.3.2] - 2026-10-14
 
 **The first release since 2.2.0 that is published with everything in it.** The releases of 2.3.0 and 2.3.1 could not be published (the tests of 2.3.0 failed on Linux; one Windows job of 2.3.1 ran for 21 minutes and failed, on a run that was otherwise green), so what they hold comes out here: **iOS 12 backups are read and checked** against a real iOS 12.4.8 backup (Reminders, Permissions, Safari, Health and Maps differences handled, the Keychain accounted for item by item, Maps places less sure than the rest and documented as such), and **anyone can help without sharing anything private** (issue forms, a guide, and tools that print the shape of a backup and none of its contents). The full lists are in the 2.3.0 and 2.3.1 sections of the changelog. The program itself is unchanged from 2.3.1; this release repairs the project's automation and writes down why the code-scanning findings are not weaknesses.
