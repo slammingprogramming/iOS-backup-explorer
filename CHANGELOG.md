@@ -7,6 +7,10 @@ Eyyup (Eric) Gunes. Entries below the fork point record the original project's h
 
 ## [Unreleased]
 
+## [2.3.2] - 2026-10-14
+
+**The first release since 2.2.0 that is published with everything in it.** The releases of 2.3.0 and 2.3.1 could not be published (the tests of 2.3.0 failed on Linux; one Windows job of 2.3.1 ran for 21 minutes and failed, on a run that was otherwise green), so what they hold comes out here: **iOS 12 backups are read and checked** against a real iOS 12.4.8 backup (Reminders, Permissions, Safari, Health and Maps differences handled, the Keychain accounted for item by item, Maps places less sure than the rest and documented as such), and **anyone can help without sharing anything private** (issue forms, a guide, and tools that print the shape of a backup and none of its contents). The full lists are in the 2.3.0 and 2.3.1 sections of the changelog. The program itself is unchanged from 2.3.1; this release repairs the project's automation and writes down why the code-scanning findings are not weaknesses.
+
 ### Changed
 - The workflows use the current versions of the GitHub actions (`checkout` 7, `setup-python` 7, `upload-artifact` 7), which also ends the "Node.js 20 is deprecated" warning of every run. A test keeps every workflow on the same version of each action
 - Dependabot no longer raises the minimum versions in `requirements*.txt` to the newest release (`versioning-strategy: increase-if-necessary`): fpdf2 2.8.9 and pillow-heif 1.8.1 need Python 3.10, and the program supports 3.9, where pip already picks the newest version that fits
