@@ -297,6 +297,21 @@ class OtherFileTests(unittest.TestCase):
         self.assertIn('package-ecosystem: "github-actions"', source)
         self.assertIn('package-ecosystem: "pip"', source)
 
+    def test_dependabot_does_not_raise_the_minimum_versions(self):
+        # fpdf2 2.8.9 and pillow-heif 1.8.1 need Python 3.10; raising the
+        # minimum in requirements-optional.txt would lock out Python 3.9
+        self.assertIn("versioning-strategy: increase-if-necessary",
+                      text(GITHUB / "dependabot.yml"))
+
+    def test_every_workflow_uses_the_same_version_of_an_action(self):
+        found = {}
+        for path in (GITHUB / "workflows").glob("*.yml"):
+            for action, version in re.findall(
+                    r"uses: ([\w./-]+)@(\S+)", text(path)):
+                found.setdefault(action, set()).add(version)
+        for action, versions in found.items():
+            self.assertEqual(len(versions), 1, (action, versions))
+
     def test_the_helping_guide_is_linked_from_where_people_look(self):
         for path in ("README.md", "CONTRIBUTING.md", "docs/README.md",
                      "docs/IOS_VERSIONS.md", ".github/SUPPORT.md"):

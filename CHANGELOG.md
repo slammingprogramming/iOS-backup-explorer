@@ -7,6 +7,11 @@ Eyyup (Eric) Gunes. Entries below the fork point record the original project's h
 
 ## [Unreleased]
 
+### Changed
+- The workflows use the current versions of the GitHub actions (`checkout` 7, `setup-python` 7, `upload-artifact` 7), which also ends the "Node.js 20 is deprecated" warning of every run. A test keeps every workflow on the same version of each action
+- Dependabot no longer raises the minimum versions in `requirements*.txt` to the newest release (`versioning-strategy: increase-if-necessary`): fpdf2 2.8.9 and pillow-heif 1.8.1 need Python 3.10, and the program supports 3.9, where pip already picks the newest version that fits
+- [SECURITY.md](SECURITY.md) lists the code-scanning findings that are by design (AES in ECB mode as the block operation of key wrapping and GCM, and the exports of your own data) and why
+
 ## [2.3.1] - 2026-10-14
 
 A fix to the tests only; the program itself is unchanged from 2.3.0.

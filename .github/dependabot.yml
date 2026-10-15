@@ -12,6 +12,12 @@ updates:
     open-pull-requests-limit: 3
   - package-ecosystem: "pip"
     directory: "/"
+    # The files say "at least this version" and the program supports Python
+    # 3.9, which newer fpdf2 and pillow-heif no longer install on. pip picks
+    # the newest version each Python can use; raising the minimum to the
+    # newest release would lock those users out. So only change a line when
+    # the newest release no longer fits it.
+    versioning-strategy: increase-if-necessary
     schedule:
       interval: "monthly"
     labels: ["dependencies", "python"]

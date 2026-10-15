@@ -69,6 +69,15 @@ Mounting (optional, see the README) makes the open backup's contents available a
 - On Windows the files are owned by the account that mounted them and are not readable by other accounts. The `\\ios-backup\...` path is served by WinFsp on this computer only; the app makes no network connections.
 - The mount is read-only; nothing can change the backup through it.
 
+## Code-scanning findings that are by design
+
+GitHub's CodeQL scan reports a few findings in this project. They were looked at one by one and are not weaknesses; the reasons are written down here so that anyone reviewing them can check:
+
+- **"Use of a broken or weak cryptographic algorithm" (AES in ECB mode)** in `ios_apps/notes_crypto.py` and `ios_apps/keychain_crypto.py`. The program does not choose to encrypt anything with ECB. It *reads* what Apple wrote. ECB appears only as the plain AES block operation inside two published constructions that Apple's formats use: the RFC 3394 key wrap (locked notes and keychain item keys) and AES-GCM, which is built from that block operation and is done here because the keychain's GCM has an empty nonce, which common libraries refuse. Each use handles exactly one 16-byte block; the tests check both against `pycryptodome` and the RFC 3394 test vector.
+- **"Clear-text storage of sensitive information"** in `ios_apps/export_util.py` and `ios_apps/contacts_export.py`: exporting your own data to files you choose is what these functions are for, and is described above (exports are readable files; exporting passwords asks you to confirm first). The same finding in `tools/demo/__init__.py` and `tests/test_health.py` is the invented data of the demo backup and of the tests.
+
+If a scan finds something that is *not* described here, please report it (see below).
+
 ## Supported Backup Sources
 
 iOS Backup Explorer only reads **local iPhone/iPad backups** created by:
