@@ -7,6 +7,12 @@ Eyyup (Eric) Gunes. Entries below the fork point record the original project's h
 
 ## [Unreleased]
 
+## [2.3.4] - 2026-10-15
+
+A small fix to what the status bar says right after a backup is opened, and a test that failed now and then because of it.
+
+There is a tag `v2.3.3`: it was pushed by mistake on the commit before this change, so it holds the code of 2.3.2, fails the release checks and has no release. Tags are never moved, so this fix is 2.3.4.
+
 ### Fixed
 - **The status bar could tell you to "Click Open Backup" after the backup was open.** Choosing a folder schedules a check of its kind 300 ms later; an open that finished sooner than that (a small backup, a fast disk) was followed by that late message over its own. Opening now applies the check first. This was also the cause of a test (`Save as JPEG`) that failed now and then on CI: its "Saved" message was overwritten before the test saw it
 
