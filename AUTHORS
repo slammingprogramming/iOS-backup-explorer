@@ -66,6 +66,10 @@ to, if someone installs hashcat themselves.
 itunes_backup2hashcat — philsmd. The field order of the mode 14800 hash line
 (WPKY, ITER, SALT, DPIC, DPSL) that the "Forgot password?" helper builds.
     https://github.com/philsmd/itunes_backup2hashcat
+"Cracking iTunes Backup Passwords with Hashcat" — darell tan (irq5.io). A
+worked example of that same format (which fields are hex, which bag entry
+SALT/ITER/DPIC/DPSL come from), read alongside philsmd's tool.
+    https://irq5.io/2017/03/07/cracking-itunes-backup-passwords-with-hashcat/
 applenotes2john.py, from John the Ripper — Dhiru Kholia. The field order of
 the mode 16200 hash line ($ASN$, the note's own row id, iterations, salt,
 wrapped key) that the same helper builds for a locked note.

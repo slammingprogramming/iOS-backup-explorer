@@ -44,7 +44,13 @@ disagree about what a correct password is). Confirmed against the format
 and `a worked example <https://irq5.io/2017/03/07/cracking-itunes-backup-passwords-with-hashcat/>`_
 describe, and hashcat's own wiki (mode 14800 is "iTunes backup >= 10.0",
 which is the only kind this program's own ``unlock_keybag`` reads, since it
-already requires ``DPIC``/``DPSL``).
+already requires ``DPIC``/``DPSL``). A
+`hashcat forum thread <https://hashcat.net/forum/thread-8977.html>`_ shows
+the same ``$itunes_backup$*10*...`` form still made on iOS 12 and 13, and
+is a reminder that each backup gets its own random salt and key: cracking
+one backup's hash says nothing about a different backup of the same
+device, even with the same password, and finding the password needs a
+fresh hash from that backup's own ``Manifest.plist``.
 
 ``$ASN$*Z_PK*ITERATIONS*SALT*WRAPPEDKEY`` (hashcat mode 16200, "Apple Secure
 Notes") is the same PBKDF2-HMAC-SHA256 and key-unwrap check that

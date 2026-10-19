@@ -67,8 +67,11 @@ hashcat (the hashcat developers; MIT License): the Apple Secure Notes module
     (hash mode 16200) and the iTunes Backup module (hash mode 14800), which
     the optional "Forgot password?" helper hands a password to try to, if
     someone installs hashcat themselves. https://hashcat.net/hashcat/
-itunes_backup2hashcat (philsmd; MIT License): the field order of the mode
+itunes_backup2hashcat (philsmd; public domain): the field order of the mode
     14800 hash line that helper builds. https://github.com/philsmd/itunes_backup2hashcat
+"Cracking iTunes Backup Passwords with Hashcat" (darell tan, irq5.io): a
+    worked example of that format, read alongside philsmd's tool.
+    https://irq5.io/2017/03/07/cracking-itunes-backup-passwords-with-hashcat/
 applenotes2john.py, from John the Ripper (Dhiru Kholia; released to the
     public to redistribute and use, with or without modification): the field
     order of the mode 16200 hash line that the same helper builds for a

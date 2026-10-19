@@ -32,6 +32,14 @@ This only works on a password that is short, or that can be narrowed down
 to a manageable number of guesses. hashcat cannot find a long, random
 password in any useful time, and nothing here changes that.
 
+Each backup gets its own random key when it is made, even of the same
+device with the same password, so this only tries candidates against the
+one backup you opened this window from; it does not search any other
+backup you may have. If you have more than one backup of the same device
+and the password turns out to be the one you always use, typing it into
+the other backup is quick to try; but if it is a different password
+there, this tab has to be run again, against that backup's own hash.
+
 What the tab does:
 
 1. It builds the one line hashcat needs from the backup's key bag (its
