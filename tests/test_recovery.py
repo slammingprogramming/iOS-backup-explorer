@@ -193,6 +193,39 @@ class HashcatRunTests(unittest.TestCase):
         run.close()
         self.assertFalse(os.path.isdir(folder))
 
+    def _run_mask(self, recovery_hash, mask, extra_args=()):
+        lines, done = [], threading.Event()
+        result = {}
+
+        def on_done(password, note):
+            result["password"], result["note"] = password, note
+            done.set()
+
+        run = rec.HashcatRun(self.hashcat, recovery_hash, mask=mask,
+                             extra_args=extra_args, on_line=lines.append,
+                             on_done=on_done)
+        run.start()
+        return run, lines, done, result
+
+    def test_a_mask_attack_that_succeeds(self):
+        # A wordlist is never sent on this path: if it were (a mixed-up
+        # argument list), the fake would try to open None as a file and
+        # this would error out instead of reporting "Cracked".
+        found = rec.RecoveryHash("$itunes_backup$*4242*x", "14800", "backup")
+        run, lines, done, result = self._run_mask(found, "?d?d?d?d")
+        self.assertTrue(done.wait(10))
+        run.close()
+        self.assertEqual(result["password"], "4242")
+        self.assertIsNone(result["note"])
+
+    def test_a_mask_attack_that_exhausts_the_pattern(self):
+        found = rec.RecoveryHash("$itunes_backup$*4242*x", "14800", "backup")
+        run, lines, done, result = self._run_mask(found, "?d?d?d")  # 3, not 4
+        self.assertTrue(done.wait(10))
+        run.close()
+        self.assertIsNone(result["password"])
+        self.assertIsNone(result["note"])
+
 
 class CuppProfileTests(unittest.TestCase):
     def test_a_name_is_needed(self):

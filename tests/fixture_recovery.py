@@ -17,7 +17,7 @@ import sys
 import textwrap
 
 FAKE_HASHCAT = textwrap.dedent("""\
-    import sys, time
+    import itertools, sys, time
     args = sys.argv[1:]
     def opt(name, default=None):
         return args[args.index(name) + 1] if name in args else default
@@ -32,13 +32,27 @@ FAKE_HASHCAT = textwrap.dedent("""\
     print(f"Hash.Target......: {hash_text[:20]}...", flush=True)
     if sleep_for:
         time.sleep(sleep_for)
-    candidates = []
+    password = None
     if attack == "0":
         wordlist = args[args.index(hash_path) + 1]
         with open(wordlist, encoding="utf-8") as handle:
             candidates = [line.rstrip("\\n") for line in handle]
-    password = "FOUND-ME" if ("FOUND-ME" in hash_text
-                              and "FOUND-ME" in candidates) else None
+        password = "FOUND-ME" if ("FOUND-ME" in hash_text
+                                  and "FOUND-ME" in candidates) else None
+    elif attack == "3":
+        # Only "?d" (one digit) placeholders are expanded, which is all a
+        # real mask this fixture is given in tests ever uses: enough to
+        # notice a wrong argument order or a missing/extra one, without
+        # reimplementing hashcat's own mask language. A candidate "cracks"
+        # the hash when it is the exact digit string the test embedded in
+        # the hash text (never a looser, accidental substring match).
+        mask = args[args.index(hash_path) + 1]
+        assert set(mask.replace("?d", "")) == set(), mask
+        digits = mask.count("?d")
+        candidates = ["".join(d) for d in
+                      itertools.product("0123456789", repeat=digits)]
+        marker = hash_text.split("*")[1] if "*" in hash_text else ""
+        password = marker if marker in candidates else None
     if "--fake-fail" in args:
         sys.exit(2)
     if password:
