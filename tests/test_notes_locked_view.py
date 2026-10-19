@@ -9,8 +9,10 @@ import time
 import unittest
 from unittest import mock
 
+from ios_apps import notes_crypto as nc
 from ios_apps import notes_unlock as nu
 from ios_apps import notes_view as nv
+from ios_apps import recovery as rec
 from tests import fixture_notes_locked as fl
 from tests.gui_apps import AppGuiCase
 
@@ -26,12 +28,14 @@ class LockedGuiCase(AppGuiCase):
         self.wait_for(lambda: self.tab.notes, "the notes")
         self.asked = []
         self.answers = []
+        self.recoveries = []
         patcher = mock.patch.object(nv, "ask_password", side_effect=self.ask)
         patcher.start()
         self.addCleanup(patcher.stop)
 
-    def ask(self, parent, title, message, hint=""):
+    def ask(self, parent, title, message, hint="", recovery=None):
         self.asked.append((title, message, hint))
+        self.recoveries.append(recovery)
         return self.answers.pop(0) if self.answers else None
 
     def note(self, pk):
@@ -78,6 +82,22 @@ class ClickingTests(LockedGuiCase):
         self.assertEqual(len(self.asked), 1)
         self.assertIn("Bank PINs", self.asked[0][1])
         self.assertEqual(self.asked[0][2], "")
+
+    def test_the_forgot_password_hash_matches_this_note(self):
+        self.click(fl.BANK)
+        self.settle(lambda: self.asked, "the question")
+        title, official, workaround, hash_factory = self.recoveries[0]
+        self.assertIn("Bank PINs", title)
+        self.assertTrue(official and workaround)
+        found = hash_factory()
+        self.assertEqual(found.mode, rec.NOTE_MODE)
+        _prefix, pk, rounds, _salt, wrapped = found.text.split("*")
+        self.assertEqual(pk, str(fl.BANK))
+        self.assertEqual(rounds, str(fl.ROUNDS))
+        salt = bytes([fl.BANK]) * 16
+        key = bytes([fl.BANK + 1]) * 16
+        kek = nc.derive_key(fl.SHARED.encode("utf-8"), salt, fl.ROUNDS)
+        self.assertEqual(wrapped, nc.key_wrap(kek, key).hex())
 
     def test_the_hint_is_shown(self):
         self.click(fl.VAULT)
@@ -264,6 +284,13 @@ class ExportWithoutClickingTests(LockedGuiCase):
 
 
 class ButtonTests(LockedGuiCase):
+    def test_unlock_all_offers_a_real_note_to_recover(self):
+        self.tab.unlock_all()
+        self.settle(lambda: self.recoveries, "the question")
+        _title, _official, _workaround, hash_factory = self.recoveries[0]
+        found = hash_factory()          # does not raise RecoveryUnavailable
+        self.assertEqual(found.mode, rec.NOTE_MODE)
+
     def test_unlock_notes_tries_one_password_on_all(self):
         self.answers = [fl.SHARED]
         self.tab.unlock_all()

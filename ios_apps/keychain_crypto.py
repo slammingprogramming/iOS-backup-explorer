@@ -305,10 +305,12 @@ def _number(value):
     return struct.unpack(">L", value)[0] if len(value) == 4 else value
 
 
-def unlock_keybag(keybag_blob, password):
-    """Unlock the key bag of a backup (``Manifest.plist``'s ``BackupKeyBag``)
-    with the backup password. Returns ``ClassKeys``. Takes some seconds: the
-    password is stretched by millions of rounds, on purpose."""
+def parse_keybag(keybag_blob):
+    """``(attrs, classes)`` of a backup key bag: *attrs* are the top-level
+    values (``DPIC``, ``DPSL``, ``ITER``, ``SALT``...) and *classes* maps a
+    protection class number to its own entry (``WRAP``, ``WPKY``...). Shared
+    by :func:`unlock_keybag` and the password-recovery helpers, so a hash
+    built for cracking always matches what unlocking actually checks."""
     attrs, classes, current = {}, {}, None
     for tag, data in _tlv(keybag_blob):
         data = _number(data)
@@ -324,6 +326,14 @@ def unlock_keybag(keybag_blob, password):
             attrs.setdefault(tag, data)
     if current and b"CLAS" in current:
         classes[current[b"CLAS"]] = current
+    return attrs, classes
+
+
+def unlock_keybag(keybag_blob, password):
+    """Unlock the key bag of a backup (``Manifest.plist``'s ``BackupKeyBag``)
+    with the backup password. Returns ``ClassKeys``. Takes some seconds: the
+    password is stretched by millions of rounds, on purpose."""
+    attrs, classes = parse_keybag(keybag_blob)
     try:
         rounds1, salt1 = attrs[b"DPIC"], attrs[b"DPSL"]
         rounds2, salt2 = attrs[b"ITER"], attrs[b"SALT"]

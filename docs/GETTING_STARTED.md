@@ -61,10 +61,13 @@ it: it is kept in memory while the backup is open and is cleared from the
 window as soon as the backup has opened.
 
 The program cannot recover a forgotten password and cannot bypass it; nobody
-can. If you forgot it, try your password manager, and on macOS look in Keychain
-Access for an item called "iOS Backup". As a last resort Apple lets you
-[reset the backup password](https://support.apple.com/en-us/102566) by
-resetting the phone's settings, after which you must make a new backup.
+can. The **Forgot password?** button beside the field covers what is worth
+trying, including a password manager, Keychain Access on a Mac (look for an
+item called "iOS Backup"), and, as a last resort, hashcat if you install it
+yourself — see [Forgot a password?](RECOVERY.md). Apple separately lets you
+[reset the backup password](https://support.apple.com/ht213037) by
+resetting the phone's settings, after which you must make a new backup (this
+does not open the old one).
 
 ## 3. Open it
 

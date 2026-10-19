@@ -31,6 +31,8 @@ until the dialog closes.
 import tkinter as tk
 from tkinter import ttk
 
+from . import recovery_view
+
 # what to do with the notes that are still locked, in an export
 KEEP = "keep"        # export them as locked entries, without their text
 LEAVE = "leave"      # export everything else
@@ -46,7 +48,13 @@ CHOICES = {
 class PasswordDialog(tk.Toplevel):
     """Ask for a password. ``result`` is the text typed, or None."""
 
-    def __init__(self, parent, title, message, hint=""):
+    def __init__(self, parent, title, message, hint="", recovery=None):
+        """*recovery*, if given, is ``(title, official, workaround,
+        hash_factory)`` for :class:`~ios_apps.recovery_view.ForgotPasswordDialog`
+        (its last argument, what to do with a password it finds, is
+        supplied here): it adds a "Forgot password?" button that fills
+        this dialog's own entry and submits it, the same as typing the
+        password and clicking Unlock."""
         super().__init__(parent)
         self.title(title)
         self.resizable(False, False)
@@ -78,6 +86,10 @@ class PasswordDialog(tk.Toplevel):
         self.ok_button.pack(side="right")
         ttk.Button(buttons, text="Cancel", command=self.destroy).pack(
             side="right", padx=6)
+        if recovery is not None:
+            ttk.Button(buttons, text="Forgot password?",
+                      command=lambda: self._forgot(recovery)).pack(
+                side="left")
         self.bind("<Escape>", lambda e: self.destroy())
         self.bind("<Return>", lambda e: self._ok())
         self.entry.focus_set()
@@ -85,15 +97,26 @@ class PasswordDialog(tk.Toplevel):
     def _toggle(self):
         self.entry.configure(show="" if self.show.get() else "•")
 
+    def _forgot(self, recovery):
+        dialog_title, official, workaround, hash_factory = recovery
+        recovery_view.ForgotPasswordDialog(
+            self, dialog_title, official, workaround, hash_factory,
+            self._use_recovered_password)
+
+    def _use_recovered_password(self, password):
+        self.var.set(password)
+        self._ok()
+
     def _ok(self):
         if self.var.get():
             self.result = self.var.get()
             self.destroy()
 
 
-def ask_password(parent, title, message, hint=""):
-    """Show the dialog and wait. The password, or None if cancelled."""
-    dialog = PasswordDialog(parent, title, message, hint)
+def ask_password(parent, title, message, hint="", recovery=None):
+    """Show the dialog and wait. The password, or None if cancelled. See
+    :class:`PasswordDialog` for *recovery*."""
+    dialog = PasswordDialog(parent, title, message, hint, recovery=recovery)
     dialog.grab_set()
     dialog.wait_window()
     return dialog.result

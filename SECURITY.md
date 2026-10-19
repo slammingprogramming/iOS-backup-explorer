@@ -10,10 +10,11 @@ iOS Backup Explorer is designed from the ground up with your privacy and securit
 ## How iOS Backup Explorer Protects You
 
 ### 100% Offline
-- iOS Backup Explorer makes **zero network connections**. None. Ever.
+- iOS Backup Explorer itself makes **zero network connections**. None. Ever.
 - No HTTP requests, no DNS lookups, no telemetry, no analytics.
 - You can verify this yourself: disconnect from the internet and the app works identically.
 - You can also verify by reading every line of the source code — it's intentionally small and auditable.
+- The one thing that leaves this rule to you: clicking a web link (in Notes, Safari history, or the **Forgot password?** window) opens *your own browser*, a separate program, the same way clicking a link anywhere else does; the program itself still makes no request. Running hashcat or CUPP from that same window (see [Forgot Password?](#forgot-password) below) is local to your computer too — neither one is fetched, installed or connected to anything by this program.
 
 ### No Data Storage
 - Your backup password is **never saved** to disk, logs, or any file.
@@ -38,11 +39,17 @@ The password you enter into iOS Backup Explorer is the **encryption password you
 - If you don't remember your backup password, check your system keychain:
   - **macOS:** Keychain Access app, search for "iOS Backup"
   - **Windows:** The password is not stored in Windows Credential Manager by default
-- iOS Backup Explorer cannot recover or bypass your password. This is by design — it means no one else can either.
+- iOS Backup Explorer itself neither recovers nor bypasses your password: it is still checked exactly as Apple's own tools check it, with nothing skipped. The **Forgot password?** button next to the password field is a separate, honest helper for this, covered below, and never guesses or weakens anything on its own.
 
 ## Passwords of Locked Notes
 
 A note locked with a password in the Notes app is opened with that password, which you type into the program when you click the note, use *Unlock notes...* or export. **Passwords are kept in memory only**, in the program that has the backup open: they are never written to a file, a log or the working copies, and they are dropped with *Forget passwords*, when another backup is opened and when the program closes. A wrong password never produces wrong text (the encryption is authenticated), and the program never guesses passwords. Opened notes are shown, searched and exported in readable form: exported files carry no password, so protect or delete them yourself.
+
+## Forgot Password?
+
+Both password prompts above have a **Forgot password?** button (see [Forgot a password?](docs/RECOVERY.md) for the full guide). It never weakens how a password is checked: it still has to be exactly right, the same as typing it. Its "Official" and "Workaround" tabs are only static advice. Its "Hashcat" tab can call [hashcat](https://hashcat.net/hashcat/) and, for building a wordlist, [CUPP](https://github.com/Mebus/cupp) — **neither is bundled with this program, and neither is ever downloaded by it**; the tab only looks for a copy already on the computer, or lets you point to one, and a link to get either opens your browser the same way a link in Notes or Safari history does. What it builds for hashcat to try (a single hash line, from the backup's key bag or a locked note's own row) holds no password and nothing readable; what it finds is shown to you, in this window, the same as if you had typed it.
+
+This is a deliberate, acknowledged trade-off: it does not stop someone who already has hashcat and the backup file, since the technique this automates is public and has existed for years; it only spares someone recovering their own data from having to do each step themselves.
 
 ## The Keychain Tab
 

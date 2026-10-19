@@ -59,6 +59,7 @@ import browser_panel
 import folder_backup
 from ios_apps import registry as app_registry
 from ios_apps import keychain_crypto
+from ios_apps import recovery, recovery_view
 from ios_apps.context import AppContext
 from file_index import (  # noqa: F401
     FileIndex, format_size, read_file_details,
@@ -952,6 +953,10 @@ class BackupExplorer:
         self.decrypt_btn = ttk.Button(row2, text="Open Backup",
                                        command=self._decrypt, style="Safe.TButton")
         self.decrypt_btn.pack(side="left", padx=8)
+        self.forgot_btn = ttk.Button(row2, text="Forgot password?",
+                                     command=self._forgot_backup_password,
+                                     state="disabled")
+        self.forgot_btn.pack(side="left")
 
         self.status_var = tk.StringVar(
             value="Select a backup folder to begin. A password is only "
@@ -1106,6 +1111,8 @@ class BackupExplorer:
         self.decrypt_btn.configure(
             text="Decrypt & Open" if kind == ENCRYPTED else "Open Backup"
         )
+        self.forgot_btn.configure(
+            state="normal" if kind == ENCRYPTED else "disabled")
         if self.decrypt_btn.instate(["disabled"]) or self._extracting:
             return  # an open is in progress; leave its status alone
 
@@ -1127,6 +1134,27 @@ class BackupExplorer:
                 "needed. Click Open Backup.")
         elif problem:
             self.status_var.set(problem)
+
+    # ── Forgotten passwords ───────────────────────────────────
+
+    def _forgot_backup_password(self):
+        backup_dir = self.path_var.get().strip()
+        manifest_path = os.path.join(backup_dir, "Manifest.plist")
+
+        def hash_factory():
+            return recovery.backup_hash_from_manifest(manifest_path)
+
+        recovery_view.ForgotPasswordDialog(
+            self.root, "this backup", recovery.BACKUP_OFFICIAL,
+            recovery.BACKUP_WORKAROUND, hash_factory,
+            self._use_recovered_password)
+
+    def _use_recovered_password(self, password):
+        self.pass_var.set(password)
+        self.pass_entry.focus_set()
+        self.status_var.set(
+            "The password hashcat found has been filled in. Click "
+            + self.decrypt_btn.cget("text") + " to use it.")
 
     # ── Decryption ───────────────────────────────────────────
 

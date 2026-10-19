@@ -44,10 +44,14 @@ dates shown for files are those of the extracted files, because extraction does
 not keep the original backup's dates.
 
 **I forgot my backup password. Can you help?**
-It cannot be recovered or bypassed. Try your password manager; on macOS look in
-Keychain Access for "iOS Backup". As a last resort you can
-[reset the backup password](https://support.apple.com/en-us/102566) by resetting
-the phone's settings (your data is kept, but you must make a new backup).
+Apple cannot recover or reset it either. The password field has its own
+**Forgot password?** button: it covers what to try (Keychain Access on a Mac,
+a password manager) and, as a last resort, a way to let hashcat try to find
+it for you if you install it yourself — see
+[Forgot a password?](RECOVERY.md). You can also
+[reset the backup password](https://support.apple.com/ht213037) by resetting
+the phone's settings (your data is kept, but you must make a new backup, and
+this does not open the old one).
 
 **Some files show warnings during extraction. Is that normal?**
 Yes. Some files (especially app databases) can show size-mismatch warnings. It

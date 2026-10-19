@@ -58,8 +58,22 @@ note and its attachments keep their lock details (salt, rounds, wrapped key,
 nonce, tag) and how they are opened.
     https://github.com/threeplanetssoftware/apple_cloud_notes_parser
 hashcat — the hashcat developers. Its Apple Secure Notes module (hash mode
-16200) confirms how a locked note's key is derived and unwrapped.
+16200) confirms how a locked note's key is derived and unwrapped, and its
+iTunes Backup module (hash mode 14800) does the same for a backup's key bag;
+both are what the optional "Forgot password?" helper hands a password to try
+to, if someone installs hashcat themselves.
     https://hashcat.net/hashcat/
+itunes_backup2hashcat — philsmd. The field order of the mode 14800 hash line
+(WPKY, ITER, SALT, DPIC, DPSL) that the "Forgot password?" helper builds.
+    https://github.com/philsmd/itunes_backup2hashcat
+applenotes2john.py, from John the Ripper — Dhiru Kholia. The field order of
+the mode 16200 hash line ($ASN$, the note's own row id, iterations, salt,
+wrapped key) that the same helper builds for a locked note.
+    https://github.com/openwall/john
+CUPP — Mebus. A wordlist generator the "Forgot password?" helper can run, for
+someone who chooses to build a list of guesses from things they remember
+about themselves, rather than only trying one they already have.
+    https://github.com/Mebus/cupp
 Apple Platform Security Guide — Apple Inc. The documented design of locked
 notes and of keychain data protection.
     https://support.apple.com/guide/security/

@@ -16,6 +16,7 @@ import ios_backup_explorer as app
 from ios_apps import keychain as kn
 from ios_apps import keychain_crypto as kc
 from ios_apps import keychain_view as kv
+from ios_apps import recovery as rec
 from tests import fixture_backup as fb
 from tests import fixture_keychain as fk
 from tests.gui_apps import AppGuiCase
@@ -165,12 +166,14 @@ class KeychainGuiCase(AppGuiCase):
         super().setUp()
         self.asked = []
         self.answers = []
+        self.recoveries = []
         patcher = mock.patch.object(kv, "ask_password", side_effect=self.ask)
         patcher.start()
         self.addCleanup(patcher.stop)
 
-    def ask(self, parent, title, message, hint=""):
+    def ask(self, parent, title, message, hint="", recovery=None):
         self.asked.append(message)
+        self.recoveries.append(recovery)
         return self.answers.pop(0) if self.answers else None
 
     def open_encrypted(self):
@@ -320,6 +323,16 @@ class ExtractedFolderTests(KeychainGuiCase):
         self.show()
         self.assertEqual(len(self.asked), 2)
         self.assertTrue([d for d in self.dialogs if d[0] == "showwarning"])
+
+    def test_the_forgot_password_hash_matches_this_backup(self):
+        self.open_folder()
+        self.answers = [fk.PASSWORD]
+        self.show()
+        title, official, workaround, hash_factory = self.recoveries[0]
+        self.assertEqual(title, "this backup")
+        self.assertTrue(official and workaround)
+        self.assertEqual(hash_factory().text,
+                         rec.backup_hash_from_keybag(fk.keybag_blob()).text)
 
     def test_the_password_is_not_kept(self):
         self.open_folder()

@@ -32,6 +32,7 @@ from tkinter import messagebox, ttk
 
 from . import keychain as kn
 from . import keychain_crypto as kc
+from . import recovery
 from .common import own_path
 from .notes_unlock import ask_password
 from .panel_base import AppPanel
@@ -104,7 +105,15 @@ class KeychainPanel(RecordsPanel):
         if self._closed or self._key_bag is None or self._keys is not None:
             return
         self.password_button.pack(side="left", padx=(0, 8))
-        password = ask_password(self, "Backup password", ASK)
+        key_bag = self._key_bag
+
+        def hash_factory():
+            return recovery.backup_hash_from_keybag(key_bag)
+
+        password = ask_password(
+            self, "Backup password", ASK,
+            recovery=("this backup", recovery.BACKUP_OFFICIAL,
+                     recovery.BACKUP_WORKAROUND, hash_factory))
         if password is None:
             self.state_var.set("The keychain stays closed without the "
                                "backup password.")

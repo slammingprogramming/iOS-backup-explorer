@@ -64,6 +64,8 @@ pip install -r requirements-optional.txt
 | **tzdata** | A time zone database, which the Health tab's *Sleep per night* needs to place each night on a day (Windows has none; Linux and macOS do) |
 | **ffmpeg** (a separate program, not a pip package; [ffmpeg.org](https://ffmpeg.org)) | Mixing the two sides of a call recording into one `.m4a` |
 | **mfusepy** (`pip install -r requirements-mount.txt`) | Mounting a backup as a drive or folder; also needs WinFsp, macFUSE/FUSE-T or FUSE, see [the file browser](FILE_BROWSER.md#mounting-a-backup) |
+| **hashcat** (a separate program, not a pip package; [hashcat.net](https://hashcat.net/hashcat/)) | The "Hashcat" tab of **Forgot password?**, see [Forgot a password?](RECOVERY.md) |
+| **CUPP** (a separate program, not a pip package; [github.com/Mebus/cupp](https://github.com/Mebus/cupp)) | Building a wordlist from things you remember about yourself, inside that same tab |
 
 ## Platform notes
 

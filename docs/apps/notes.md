@@ -65,7 +65,9 @@ password; different notes can have different passwords.)
   hint you wrote on the phone is shown if there is one. If the password is
   right the note opens, and **every other locked note with the same password
   opens too**, marked **(unlocked)**. If you cancel, the *Unlock this note...*
-  button above the note asks again.
+  button above the note asks again. That password prompt (and the one from
+  **Unlock notes...** below) also has a **Forgot password?** button; see
+  [Forgot a password?](../RECOVERY.md).
 - **The password is remembered** while this backup is open, so you are asked
   again only when you click a note locked with a *different* password. A wrong
   password never shows wrong text: the note simply stays locked.

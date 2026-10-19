@@ -27,7 +27,8 @@ encrypted backup it also writes a small `Manifest.plist` into the folder with
 just the key bag (still locked by the password; no password or key is written).
 That way the extracted folder is complete: open it later in this program, type
 the backup password, and the keychain opens. Without that file, the extracted
-keychain would be a pile of locked blobs for ever.
+keychain would be a pile of locked blobs for ever. That password prompt has a
+**Forgot password?** button too; see [Forgot a password?](../RECOVERY.md).
 
 (Other programs may treat a folder holding a `Manifest.plist` as a backup. It is
 safe to delete the file if you do not need the keychain from that folder.)

@@ -38,6 +38,7 @@ from ui_util import post_when_done, weak_notifier
 from . import audio_tools, imaging
 from . import notes as nt
 from . import notes_export as nx
+from . import recovery
 from .common import format_datetime
 from .dialogs import ask_choice, ask_export
 from .notes_unlock import (KEEP, LEAVE, ONLY, LockedNotesDialog,
@@ -50,6 +51,37 @@ SORTS = {"Date edited": lambda n: n.modified or 0,
 PICTURE_BOX = (420, 320)
 _MUTED = "#6b7280"
 _LINK = "#0b5ac8"
+
+NOTE_OFFICIAL = (
+    "Apple's own words: \"If you use a unique password for Notes, there "
+    "is no way to access your locked notes if you forget the password.\" "
+    "Apple cannot help you open them either.",
+    "Setting a new Notes password only locks notes from now on; it does "
+    "not unlock any note already locked with the old one.",
+    "Locking with your device's passcode instead of a separate Notes "
+    "password avoids this: there is then nothing extra to forget.",
+    ("Apple's own page on locking and unlocking notes",
+     "https://support.apple.com/102537"),
+)
+NOTE_WORKAROUND = (
+    "If any of your other notes are unlocked and you remember opening "
+    "them with a password before, that password is likely the one this "
+    "note needs too: Notes normally asks for one password for all of "
+    "them, not a different one each time.",
+    "Check the hint shown above, if this note has one.",
+    "Check any password manager, or a note, where you may have written "
+    "it down.",
+)
+
+
+def _note_recovery(title, note):
+    """``recovery=`` for :func:`ios_apps.notes_unlock.ask_password`, built
+    from one locked note's own crypto details."""
+    def hash_factory():
+        crypto = note.crypto or {}
+        return recovery.note_hash(note.pk, crypto.get("salt"),
+                                  crypto.get("rounds"), crypto.get("wrapped"))
+    return title, NOTE_OFFICIAL, NOTE_WORKAROUND, hash_factory
 
 
 def _load(conn, _book, index):
@@ -388,7 +420,8 @@ class NotesPanel(AppPanel):
         password = ask_password(
             self, "Locked note",
             f"\u201c{note.display_title}\u201d is locked with a password. "
-            "Enter it to read the note.", note.hint)
+            "Enter it to read the note.", note.hint,
+            recovery=_note_recovery(note.display_title, note))
         if password is None:
             return
         self.try_password(password, self._unlock_tried, note)
@@ -430,7 +463,8 @@ class NotesPanel(AppPanel):
             self, "Unlock notes",
             f"{len(locked):,} note{'' if len(locked) == 1 else 's'} "
             "locked with a password. Enter a password to try on all of "
-            "them.")
+            "them.",
+            recovery=_note_recovery("one of your locked notes", locked[0]))
         if password is None:
             return
         self.try_password(password, self._unlock_all_tried, len(locked))

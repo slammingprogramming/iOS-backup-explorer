@@ -64,7 +64,18 @@ Apple Cloud Notes Parser (Jon Baumann, Ciofeca Forensics, threeplanetssoftware; 
     locked notes and their attachments keep their lock details, and how they
     are opened. https://github.com/threeplanetssoftware/apple_cloud_notes_parser
 hashcat (the hashcat developers; MIT License): the Apple Secure Notes module
-    (hash mode 16200). https://hashcat.net/hashcat/
+    (hash mode 16200) and the iTunes Backup module (hash mode 14800), which
+    the optional "Forgot password?" helper hands a password to try to, if
+    someone installs hashcat themselves. https://hashcat.net/hashcat/
+itunes_backup2hashcat (philsmd; MIT License): the field order of the mode
+    14800 hash line that helper builds. https://github.com/philsmd/itunes_backup2hashcat
+applenotes2john.py, from John the Ripper (Dhiru Kholia; released to the
+    public to redistribute and use, with or without modification): the field
+    order of the mode 16200 hash line that the same helper builds for a
+    locked note. https://github.com/openwall/john
+CUPP (Mebus; GPL-3.0): an optional wordlist generator the same helper can
+    run, never downloaded or bundled by this program.
+    https://github.com/Mebus/cupp
 Apple Platform Security Guide (Apple Inc.): the documented design of locked
     notes and of keychain data protection.
 RFC 3394 and NIST SP 800-38D: the AES key wrap and AES-GCM standards.

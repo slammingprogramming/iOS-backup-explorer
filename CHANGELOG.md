@@ -7,6 +7,10 @@ Eyyup (Eric) Gunes. Entries below the fork point record the original project's h
 
 ## [Unreleased]
 
+### Added
+- **A "Forgot password?" button**, next to where this program asks for a backup password (the main window, and the Keychain tab's extracted-folder prompt) and a locked note's password. It opens a window with three tabs: Official (what Apple itself says — it cannot recover either password), Workaround (Keychain Access, a password manager, a note's own hint), and Hashcat, which can call [hashcat](https://hashcat.net/hashcat/) to try a password, and [CUPP](https://github.com/Mebus/cupp) to build a wordlist from things you remember about yourself. Neither is bundled with this program or ever downloaded by it: the tab only looks for a copy already installed, or lets you point to one. See [Forgot a password?](docs/RECOVERY.md)
+- Fixed two Apple support links that pointed at the wrong article (About iCloud Data Recovery Service, not the one about a forgotten backup password)
+
 ## [2.3.4] - 2026-10-15
 
 A small fix to what the status bar says right after a backup is opened, and a test that failed now and then because of it.
