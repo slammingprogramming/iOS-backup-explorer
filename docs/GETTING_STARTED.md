@@ -35,7 +35,7 @@ explore everything.
 2. Open **iTunes** (Windows) or **Finder** (macOS), or the **Apple Devices**
    app, and select the device.
 3. Tick **Encrypt local backup**.
-4. Set a password and **remember it**. It cannot be recovered.
+4. Set a password and **remember it**. A forgotten one is not easily recovered.
 5. Click **Back Up Now**.
 
 ## 2. Choose the kind of backup
@@ -60,14 +60,17 @@ Devices app**. It is *not* your Apple ID password. The program never stores
 it: it is kept in memory while the backup is open and is cleared from the
 window as soon as the backup has opened.
 
-The program cannot recover a forgotten password and cannot bypass it; nobody
-can. The **Forgot password?** button beside the field covers what is worth
-trying, including a password manager, Keychain Access on a Mac (look for an
-item called "iOS Backup"), and, as a last resort, hashcat if you install it
-yourself — see [Forgot a password?](RECOVERY.md). Apple separately lets you
-[reset the backup password](https://support.apple.com/ht213037) by
-resetting the phone's settings, after which you must make a new backup (this
-does not open the old one).
+The program's own check cannot be bypassed: a wrong password never opens the
+backup, for this program or anyone else. If you no longer have the right
+one, it is not necessarily gone: the **Forgot password?** button beside the
+field covers what is worth trying, including a password manager, Keychain
+Access on a Mac (look for an item called "iOS Backup"), and, as a last
+resort, letting hashcat try to find it if it is short or guessable, if you
+install hashcat yourself — see [Forgot a password?](RECOVERY.md). Apple
+separately lets you [reset the backup
+password](https://support.apple.com/ht213037) by resetting the phone's
+settings, after which you must make a new backup (this does not open the
+old one).
 
 ## 3. Open it
 

@@ -186,7 +186,7 @@ The full list is in the [FAQ](docs/FAQ.md). A few of the most asked:
 <details>
 <summary><strong>Can it crack or bypass my backup password?</strong></summary>
 
-No. It needs the correct encryption password. It cannot guess, crack or bypass passwords, which also means no one else can read your backup without it. A forgotten password cannot be recovered (see the FAQ for what you can try).
+The program's own check cannot be bypassed: it needs the exact password, so no one else can read your backup without it either. The password field's **Forgot password?** button can try to find a short or guessable one for you, with [hashcat](https://hashcat.net/hashcat/) (a separate program you install yourself) — see [Forgot a password?](docs/RECOVERY.md). It does not help with a long, random password.
 </details>
 
 <details>

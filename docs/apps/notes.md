@@ -91,8 +91,10 @@ file. (*Extract original files...* still copies the files exactly as the backup
 has them, locked.) If the backup holds no lock details for a file, it is
 listed but cannot be opened, and the note says how many.
 
-What is **not** done: the program does not guess passwords, and the names that
-Notes keeps for the files of a locked note are locked as well, so they are shown
+What is **not** done: opening a note never guesses its password (the
+**Forgot password?** button on the prompt is a separate, optional step for
+that; see [Forgot a password?](../RECOVERY.md)), and the names that Notes
+keeps for the files of a locked note are locked as well, so they are shown
 by their kind.
 
 **How well this is checked:** Apple describes the scheme in its Platform

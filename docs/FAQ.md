@@ -9,9 +9,15 @@ reading the source, which is plain Python without a build step, and with the
 steps in [SECURITY.md](../SECURITY.md) and the README's *Verify it yourself*.
 
 **Can it crack or bypass my backup password?**
-No. It needs the correct encryption password to decrypt the backup, and it
-cannot guess, crack or bypass it. This is a feature: it means nobody else can
-read your backup without the password either.
+The program's own check cannot be bypassed: it needs the exact password, the
+same way Apple's own tools check it, and a wrong one never gets in — which
+also means no one else can read your backup without it either. What it *can*
+do, if you ask it to, is try to find a short or guessable password for your
+own backup: the password field's **Forgot password?** button can hand the
+backup's own key bag to [hashcat](https://hashcat.net/hashcat/) (a separate
+program you install yourself) to try candidates against. It does not find a
+long, random password in any useful time, and it never changes what counts
+as the right password. See [Forgot a password?](RECOVERY.md).
 
 **What does it write to my computer?**
 Only what you ask for (exports and extractions, in the folder you choose) and

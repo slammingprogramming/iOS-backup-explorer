@@ -43,7 +43,7 @@ The password you enter into iOS Backup Explorer is the **encryption password you
 
 ## Passwords of Locked Notes
 
-A note locked with a password in the Notes app is opened with that password, which you type into the program when you click the note, use *Unlock notes...* or export. **Passwords are kept in memory only**, in the program that has the backup open: they are never written to a file, a log or the working copies, and they are dropped with *Forget passwords*, when another backup is opened and when the program closes. A wrong password never produces wrong text (the encryption is authenticated), and the program never guesses passwords. Opened notes are shown, searched and exported in readable form: exported files carry no password, so protect or delete them yourself.
+A note locked with a password in the Notes app is opened with that password, which you type into the program when you click the note, use *Unlock notes...* or export. **Passwords are kept in memory only**, in the program that has the backup open: they are never written to a file, a log or the working copies, and they are dropped with *Forget passwords*, when another backup is opened and when the program closes. A wrong password never produces wrong text (the encryption is authenticated), and opening a note never guesses its password: the one offered a guess is the optional **Forgot password?** helper below, which is a separate, honest step you choose to take, not something this unlocking does on its own. Opened notes are shown, searched and exported in readable form: exported files carry no password, so protect or delete them yourself.
 
 ## Forgot Password?
 
