@@ -55,6 +55,7 @@ import plistlib
 import platform
 import re
 
+import about
 import browser_panel
 import folder_backup
 from ios_apps import registry as app_registry
@@ -863,6 +864,10 @@ class BackupExplorer:
                          foreground=c["accent"], font=(font, 18, "bold"))
         style.configure("Subtitle.TLabel", background=c["bg"],
                          foreground=c["muted"], font=(font, 9))
+        style.configure("Link.TLabel", background=c["bg"],
+                         foreground=c["muted"], font=(font, 9, "underline"))
+        style.map("Link.TLabel", foreground=[("active", c["accent"]),
+                                              ("focus", c["accent"])])
         style.configure("Status.TLabel", background=c["green_light"],
                          foreground=c["green"], font=(font, 9),
                          padding=6)
@@ -910,6 +915,15 @@ class BackupExplorer:
         ttk.Label(header, text="Your data. Your eyes only.",
                   style="Subtitle.TLabel").pack(side="left", padx=(12, 0),
                                                  pady=(6, 0))
+        # A small, quiet way to the About window (and to the ways of saying
+        # thanks in it): there to be found, not to be in the way.
+        self.about_link = ttk.Label(header, text="About & support",
+                                    style="Link.TLabel", cursor="hand2",
+                                    takefocus=True)
+        self.about_link.pack(side="right", pady=(6, 0))
+        for sequence in ("<Button-1>", "<Return>", "<space>"):
+            self.about_link.bind(sequence, lambda e: self.show_about())
+        self.root.bind("<F1>", lambda e: self.show_about())
 
         # Privacy banner
         privacy_frame = ttk.Frame(self.root)
@@ -1135,6 +1149,11 @@ class BackupExplorer:
                 "needed. Click Open Backup.")
         elif problem:
             self.status_var.set(problem)
+
+    # ── About & support ───────────────────────────────────────
+
+    def show_about(self):
+        about.AboutDialog(self.root, APP_NAME, __version__)
 
     # ── Forgotten passwords ───────────────────────────────────
 

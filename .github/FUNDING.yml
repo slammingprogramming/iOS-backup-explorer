@@ -1,0 +1,7 @@
+# The Sponsor button of the repository. Ko-fi is listed by name; the page
+# linked under it holds the cryptocurrency addresses, which GitHub's file has
+# no field for. The addresses are kept in one place (about.py) and a test
+# (tests/test_about.py) compares them with the README and that page.
+ko_fi: scenprogramming
+custom:
+  - "https://github.com/slammingprogramming/iOS-backup-explorer/blob/main/docs/DONATE.md"

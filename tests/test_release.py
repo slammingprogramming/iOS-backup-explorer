@@ -134,6 +134,9 @@ class NotesTests(FakeRepository):
         self.assertIn("SHA256SUMS", notes)
         self.assertIn("python ios_backup_explorer.py", notes)
         self.assertIn("/blob/v2.0.0/docs/INSTALL.md", notes)
+        # (a line, at the end, for whoever would like to say thanks)
+        self.assertIn("/blob/v2.0.0/docs/DONATE.md", notes)
+        self.assertGreater(notes.index("DONATE.md"), notes.index("SHA256SUMS"))
         self.assertNotIn("Nothing yet.", notes)
 
     def test_notes_for_a_missing_version(self):

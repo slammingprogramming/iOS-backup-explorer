@@ -13,6 +13,8 @@ correct.
    |-- file_index.py           the backup as a tree of nodes (no GUI)
    |-- folder_backup.py        the backend for already-extracted folders
    |-- backup_mount.py         optional: mount a backup (FUSE / WinFsp)
+   |-- about.py                the "About & support" window, and the one list of
+   |                           the project's donation details (see DONATE.md)
    |-- ui_util.py              thread-safe callbacks that hold panels weakly
    `-- ios_apps/               everything for the app tabs
          registry.py           the list of tabs and when each appears

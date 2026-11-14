@@ -91,8 +91,10 @@ picture of the password box can be taken.
 The dialogs are the real ones, opened and captured before they are closed
 again: the export dialog, the password boxes of the locked note and of the
 Keychain tab (the tool types the demo's own invented passwords into them, so
-nothing waits for a person), and the three tabs of the **Forgot password?**
-window. In that window hashcat and CUPP are shown as not found, as they are
+nothing waits for a person), the **About & support** window (it shows the
+project's real donation addresses, which are public by design and belong to the
+project, not to the computer the pictures are made on), and the three tabs of
+the **Forgot password?** window. In that window hashcat and CUPP are shown as not found, as they are
 on most computers, so that no path of the computer the pictures were made on
 can appear in them.
 

@@ -364,6 +364,15 @@ class Shooter:
             window._on_close()
             self.pump(0.5)
 
+    def about(self):
+        """The About & support window (showing it opens nothing)."""
+        self.explorer.show_about()
+        self.pump(0.8)
+        window = self.find_dialog(self.root)
+        self.shoot("60-about-support", window)
+        window.destroy()
+        self.pump(0.3)
+
     def export_dialog(self):
         panel = self.show("Calendar")
         self.loaded(panel, "datasets")
@@ -425,6 +434,7 @@ class Shooter:
         self.table("Apps", "38-apps", row=None)
         self.table("iCloud Drive", "39-icloud-drive")
         self.keychain()
+        self.about()
         self.export_dialog()
         self.pump(0.5)
         self.root.destroy()

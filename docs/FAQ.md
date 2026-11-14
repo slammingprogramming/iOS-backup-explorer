@@ -124,3 +124,11 @@ iPhone Backup"` and open that folder. See [SCREENSHOTS.md](SCREENSHOTS.md).
 **How do I report a problem?**
 See [Contributing](../CONTRIBUTING.md#reporting-a-problem). Never include your
 password or your data.
+
+**Is it really free? How can I support it?**
+Yes, and it stays free: nothing in the program is locked or limited, and it
+never asks for anything. If it was useful to you and you would like to say
+thanks, the optional ways (Ko-fi, cryptocurrency) are on
+[Supporting the project](DONATE.md), and in the program under **About &
+support** at the top right of the window (or **F1**). A star, a report or a fix
+helps just as much; see [How to help](HELPING.md).

@@ -7,6 +7,9 @@ Eyyup (Eric) Gunes. Entries below the fork point record the original project's h
 
 ## [Unreleased]
 
+### Added
+- **A way to say thanks, kept out of the way.** A small **About & support** link at the top right of the window (or the **F1** key) opens a window with the program's credit and licence and the optional ways to support it: Ko-fi, and Bitcoin (a Silent Payments address), Ethereum and Monero addresses with a *Copy* button each. Nothing in the program depends on a donation or asks for one, showing the window opens nothing, and the two buttons that open a page only hand a link to your own browser when you click them. The same details are in a new page, [Supporting the project](docs/DONATE.md), in the README, in the repository's Sponsor button (`.github/FUNDING.yml`), in the FAQ, in `SUPPORT.md` and under every release. They are kept in one file (`about.py`), and a test fails if the README, the page or the Sponsor button differs from it, or if an address is mistyped (the Bitcoin one is checked against its own checksum)
+
 ## [2.5.0] - 2026-11-14
 
 Found by checking the program against real backups of iOS 27.0.1 (an iPhone 14) and of an iPad on iOS 12.5.8 (see [iOS versions](docs/IOS_VERSIONS.md)): every tab loads on both, and every count of the iOS 27 backup was compared with its raw table.

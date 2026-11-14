@@ -100,6 +100,10 @@ def notes(version, root=ROOT):
         "`Get-FileHash <file>` in PowerShell). The files are what "
         f"`git archive` makes from the tag, so you can also rebuild them from "
         "a clone.", "",
+        "Free and open source, and nothing in it depends on a donation. If "
+        "it was useful to you, the ways to say thanks are in "
+        f"[Supporting the project]({REPOSITORY}/blob/v{version}/docs/"
+        "DONATE.md).", "",
     ])
 
 

@@ -133,7 +133,7 @@ Full walkthrough: [Getting started](docs/GETTING_STARTED.md). Don't have a backu
 | [FAQ](docs/FAQ.md) · [Troubleshooting](docs/TROUBLESHOOTING.md) · [Forgot a password?](docs/RECOVERY.md) · [Glossary](docs/GLOSSARY.md) · [How a backup is built](docs/HOW_BACKUPS_WORK.md) | Help and background |
 | [iOS versions](docs/IOS_VERSIONS.md) · [How to help](docs/HELPING.md) · [The demo backup and the screenshots](docs/SCREENSHOTS.md) | Which versions were checked, how to help without sharing anything private, how the pictures are made |
 | [Contributing](CONTRIBUTING.md) · [Architecture](docs/ARCHITECTURE.md) · [Development](docs/DEVELOPMENT.md) · [Testing](docs/TESTING.md) · [Versioning](docs/VERSIONING.md) | Working on it |
-| [Changelog](CHANGELOG.md) · [Security policy](SECURITY.md) | Project |
+| [Changelog](CHANGELOG.md) · [Security policy](SECURITY.md) · [Supporting the project](docs/DONATE.md) | Project |
 
 ---
 
@@ -230,6 +230,23 @@ Support for an iOS version needs someone to have looked at a real backup of it, 
 ## Contributing
 
 Contributions are welcome, and the rules are short: **no network access**, **keep it auditable**, **never put real data anywhere** (tests use invented data), and **never remove the original author's credit**. See [CONTRIBUTING.md](CONTRIBUTING.md), the [development guide](docs/DEVELOPMENT.md) and [Testing](docs/TESTING.md). Releases follow [Semantic Versioning](docs/VERSIONING.md).
+
+## Support the project
+
+iOS Backup Explorer is free and stays free: nothing in it depends on a
+donation, and it never asks. If it was useful to you and you would like to say
+thanks, you can, entirely optionally:
+
+- **Ko-fi:** [https://ko-fi.com/scenprogramming](https://ko-fi.com/scenprogramming)
+- **Bitcoin (BTC):** `sp1qq2637t6ve9zp4wh0e4ly2u7h7jwfn0k6c4535lxpp3wrqvmkua6xjqkwevyz0wwqx5ly2f0q29qh48wgf9gl0zt049za9kr9m8xgkey4cyggxa0x`
+- **Ethereum (ETH):** `0x8F238db898102125Fd968ed7CaD959Cb594a7e93`
+- **Monero (XMR):** `8AYK93mQEzsFFEFkuPN7wC9rPcXCyEXa1Ye5bH9U2GR3PpaZiYc84SxjMcdSdVMaaQUGmCXYkuxdDSG5bM3EVyqR25nbumV`
+
+The Bitcoin address is a **Silent Payments** address, so only a wallet that
+supports them can send to it. Please check an address here against
+[the support page](docs/DONATE.md) (and the program's **About & support**
+window, at the top right, or **F1**) before you send: a cryptocurrency payment
+cannot be taken back. The program itself never contacts any of these.
 
 ---
 

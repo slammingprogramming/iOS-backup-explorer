@@ -117,3 +117,10 @@ to a fix, say so in the issue; otherwise you stay anonymous.
   on invented backups, that no row, text, name or date comes out
   (`tests/test_report_tools.py`, `tests/test_compat_report.py`).
 - They read the source of your backup only; they never change it.
+
+## Other ways to help
+
+A good report, a backup of a version nobody has checked (as reports, never the
+backup itself), a fix or a star all help the project. If you would rather say
+thanks with money, that is optional too: see
+[Supporting the project](DONATE.md).
