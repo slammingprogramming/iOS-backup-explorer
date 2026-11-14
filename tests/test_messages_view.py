@@ -444,6 +444,16 @@ class SearchTests(MessagesGuiCase):
         self.assertIn("see you there",
                       self.tab.chat_text.get(marked[0], marked[1]))
 
+    def test_a_single_click_on_a_result_opens_it(self):
+        # (as in the list of conversations; the page says "click one", and it
+        # used to take a double click: choosing the row did nothing)
+        self.search("see you there")
+        tree = self.tab.result_tree
+        tree.selection_set(tree.get_children()[0])      # (what a click does)
+        self.wait_for(lambda: self.tab._messages, "the conversation")
+        self.assertEqual(self.tab.title_var.get(), "Alice Example")
+        self.assertTrue(self.tab.chat_text.tag_ranges("hit"))
+
     def test_clearing_the_search_brings_the_conversations_back(self):
         self.search("snacks")
         self.tab.search_var.set("")

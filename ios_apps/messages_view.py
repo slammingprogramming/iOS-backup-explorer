@@ -176,6 +176,10 @@ class MessagesPanel(ttk.Frame):
         self.result_tree.configure(yscrollcommand=result_scroll.set)
         self.result_tree.pack(side="left", fill="both", expand=True)
         result_scroll.pack(side="right", fill="y")
+        # (choosing a result opens it, like choosing a conversation; a double
+        # click or Return opens the chosen one again, to come back to it)
+        self.result_tree.bind("<<TreeviewSelect>>",
+                              lambda e: self._open_result())
         self.result_tree.bind("<Double-1>", lambda e: self._open_result())
         self.result_tree.bind("<Return>", lambda e: self._open_result())
 

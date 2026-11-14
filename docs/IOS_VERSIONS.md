@@ -15,8 +15,8 @@ versions have been, and what was found.
 | 26.6 | iPhone14,7 | Every tab run on it; the counts of Photos, Voice Memos, Maps, Books, Reminders compared with the raw tables; Health in full (every table, the routes, the files of clinical documents) | |
 | 16.7 | iPhone10,6 | Every tab run on it, Health in full | No Maps, Books, Photos or Voice Memos data in the backup |
 | 17, 18 | | The first checks of Messages, Notes, Calls, Contacts, Safari, Calendar... | Before this page; not repeated |
-| 12.4.8 | iPhone6,1 | Every tab run on the encrypted backup and on a full copy; the counts of Messages (1,278), Calls, Contacts, Voicemail, Calendar, Reminders (67), Safari bookmarks, Voice Memos, Wi-Fi, Bluetooth, data usage, Accounts, Privacy (17), Apps and Keychain compared with the raw tables | No notes, history, tabs, photos, books or Screen Time data in the backup (see below) |
-| 12.5.8 | iPad4,5 | Every tab run on the encrypted backup (15 tabs, all loaded); the counts were not yet compared with the raw tables | An iPad: no Health, Voicemail, Recents, iCloud Drive or Screen Time tabs |
+| 12.4.8 | iPhone6,1 | Run again on a newer encrypted backup (14 tabs, all loaded, with the same counts as below). Earlier: every tab run on the encrypted backup and on a full copy; the counts of Messages (1,278), Calls, Contacts, Voicemail, Calendar, Reminders (67), Safari bookmarks, Voice Memos, Wi-Fi, Bluetooth, data usage, Accounts, Privacy (17), Apps and Keychain compared with the raw tables | No notes, history, tabs, photos, books or Screen Time data in the backup (see below) |
+| 12.5.8 | iPad4,5 | Every tab run on the encrypted backup (15 tabs, all loaded); the counts of Messages, Contacts, Calls, Calendar (events and reminders), Photos, Voice Memos, Safari bookmarks, Privacy and Apps compared with the raw tables, and every keychain entry accounted for | An iPad: no Health, Voicemail, Recents, iCloud Drive or Screen Time tabs; no messages outside a conversation |
 | 13, 14, 15, 19-25 | | **Not checked** | Backups of these are wanted, see below |
 
 Newer and older versions of the same major number are expected to behave alike;
