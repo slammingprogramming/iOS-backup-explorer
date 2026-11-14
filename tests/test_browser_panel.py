@@ -419,8 +419,14 @@ class SearchTests(PanelCase):
         self.search("txt")
         self.assertEqual(self.shown(), ["note.txt"])
         self.assertEqual(self.panel.count_var.get(), "1 item")
-        self.assertIn("matches", self.status[-1])
+        self.assertIn("1 match in", self.status[-1])      # (not "1 matches")
         self.assertIn("location", self.panel.file_tree["displaycolumns"])
+
+    def test_the_status_says_one_item_for_one_item(self):
+        # (it said "1 items in HomeDomain." in the picture of the Files tab)
+        self.go("HomeDomain")
+        self.assertEqual(self.panel.count_var.get(), "1 item")
+        self.assertIn("1 item in HomeDomain", self.status[-1])
 
     def test_search_before_choosing_anything_searches_the_whole_backup(self):
         self.search("heic")

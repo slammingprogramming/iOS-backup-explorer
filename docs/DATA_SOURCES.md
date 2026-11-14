@@ -28,7 +28,7 @@ Paths are `Domain/path inside the domain`. See
 | Tab | Files read | Checked |
 |---|---|---|
 | **Messages** | `HomeDomain/Library/SMS/sms.db` (+ `-wal`, `-shm`); attachments in `MediaDomain/Library/SMS/Attachments/`; names from the address book | Real |
-| **Notes** | `AppDomainGroup-group.com.apple.notes/NoteStore.sqlite` (+ journals) and `Accounts/<id>/Media/...` | Real (call recordings against iOS 18 data; the backup used had no notes, so formatting is covered by generated notes) |
+| **Notes** | `AppDomainGroup-group.com.apple.notes/NoteStore.sqlite` (+ journals) and `Accounts/<id>/Media/...` | Real (call recordings against iOS 18 data; the number of notes of an iOS 27.0.1 backup was compared with the raw table; formatting is also covered by generated notes) |
 | **Calls** | `HomeDomain/Library/CallHistoryDB/CallHistory.storedata` | Real |
 | **Contacts** | `HomeDomain/Library/AddressBook/AddressBook.sqlitedb` | Real |
 | **Photos** | `CameraRollDomain/Media/DCIM/*`, `CameraRollDomain/Media/PhotoData/Photos.sqlite` | Real on iOS 26 (all 40 of the files sampled matched a row of the library; albums were not compared one by one); the backup checked before had a library with no photos |
@@ -59,10 +59,11 @@ The goal is to read backups of **every iOS version**, over time. Today the
 program is built for **iOS 13 and newer** (encrypted backups made by iTunes,
 Finder or the Apple Devices app; unencrypted ones with the `Manifest.db` layout
 of iOS 10 and newer). The app layouts it reads were first seen on iOS 17 and
-18, then on **iOS 16.7 and 26.6**, which every tab was run against for this
-page; some of the backups used in earlier checks were made on **iOS 12**, which
-is older than the program claims to support, and more backups of each major
-iOS version are being collected to test and build against.
+18, then on **iOS 16.7 and 26.6**, which every tab was run against, and since
+on **iOS 27.0.1** (an iPhone) and **iOS 12.4.8 and 12.5.8** (an iPhone and an
+iPad). **iOS 12** is older than the program claims to support, so it is read as
+far as those backups have been checked. More backups of each major iOS version
+are being collected to test and build against.
 
 The databases change between iOS versions. Each reader looks for the columns
 and tables it needs and copes when one is missing, so a tab may show less on an

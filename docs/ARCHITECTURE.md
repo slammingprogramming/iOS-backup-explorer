@@ -1,7 +1,7 @@
 # Architecture
 
-iOS Backup Explorer is plain Python (about 17,000 lines in 70 files, plus the
-tests) with **no build step** and one required dependency. This page maps the
+iOS Backup Explorer is plain Python (about 22,000 lines in 85 files, plus the
+tests and the tools) with **no build step** and one required dependency. This page maps the
 code so that you can find your way around and know the rules that keep it
 correct.
 
@@ -167,6 +167,32 @@ builds the panel. The window adds a tab for each entry that detects.
   attributes; **messages** (`messages.py`) decodes `attributedBody`;
   `keyed_archive.py` decodes `NSKeyedArchiver` lists; `ics.py` writes
   iCalendar; `contacts_export.py` writes vCard.
+- **The keychain** (`keychain.py`) reads `keychain-backup.plist` and opens each
+  item with the class keys; `keychain_crypto.py` unlocks the backup's *key
+  bag* with the password (PBKDF2, then AES key unwrapping, RFC 3394);
+  `keychain_view.py` is the tab, which asks for the password when the backup
+  was extracted by the program. Items locked to the phone are counted, not
+  opened.
+- **Locked notes:** `notes_crypto.py` derives the key from the note's own
+  password (PBKDF2) and opens the note (RFC 3394 key unwrap, AES-GCM);
+  `notes_unlock.py` holds the password dialogs (one note, or every locked note
+  of an export); the reader and the Notes tab keep the passwords typed, in
+  memory only.
+- **Health** is split by what it reads: `health.py` (activity, workouts and
+  routes, measurements, the Medical ID, and the assembly of the tables),
+  `health_sleep.py` (nights from sleep records and time zones),
+  `health_medications.py`, `health_records.py` (FHIR resources of health
+  records and the files of clinical documents), `health_events.py` (events,
+  symptoms, cycle tracking), `health_more.py` (awards, audiograms, sleep
+  schedules, friends) and `health_kinds.py` (the names of the data types for
+  databases that do not name them). `aea.py` opens Apple Encrypted Archives
+  (the clinical documents' files); `protobuf_wire.py` reads the protocol
+  buffer records of the Maps places of iOS 12.
+- **Forgotten passwords:** `recovery.py` (no GUI) builds the hash that hashcat
+  needs from a backup or a locked note, finds a hashcat or CUPP already
+  installed, and runs them as a separate process; `recovery_view.py` is the
+  **Forgot password?** window and the CUPP window. Neither tool is bundled or
+  downloaded.
 - **Dates:** `common.apple_time` (Cocoa seconds or nanoseconds to Unix time),
   `common.unix_time` (plist dates), `common.utc_datetime` (any year, even on
   Windows), `common.format_datetime`.
@@ -175,6 +201,27 @@ builds the panel. The window adds a tab for each entry that detects.
 - **Names:** `export_util.safe_filename` and friends; `folder_backup`/
   `build_output_path` for extraction paths (refuses `..`, sanitises Windows
   names, handles collisions).
+
+## The tools
+
+`tools/` is for the people who work on or help with the project, not for the
+program's own use:
+
+- `backup_access.py` is what the report tools share: opening a backup (asking
+  for its password in a small window or on the terminal), listing its files,
+  copying a few into a temporary folder that is deleted afterwards, and
+  keeping the decryption library's own notes (which name local folders) out of
+  what is printed.
+- `compat_report.py`, `schema_report.py` and `health_kinds_report.py` print
+  the *shape* of a backup (counts, tables, columns, unnamed kinds of data) and
+  none of its contents, for pasting into an issue; see
+  [How to help](HELPING.md).
+- `make_demo_backup.py` and `make_screenshots.py` make the invented demo
+  backup and the pictures of the documentation; see
+  [The demo backup and the screenshots](SCREENSHOTS.md).
+- `release.py`, `check_version.py`, `check_attribution.py` and
+  `sync_labels.py` serve the release workflow and the repository's checks; see
+  [Versioning](VERSIONING.md).
 
 ## Where the numbers and formats come from
 

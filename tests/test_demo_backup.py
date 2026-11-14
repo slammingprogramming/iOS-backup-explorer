@@ -108,6 +108,72 @@ class DemoBackupTests(unittest.TestCase):
                 self.assertRegex(item.attrs["srvr"],
                                  r"example\.(com|org|net)$")
 
+    # -- what was added after 2.0.0 shows in the demo too -------------------
+
+    def database(self, *parts):
+        path = os.path.join(self.root, *parts)
+        conn = sqlite3.connect(path)
+        self.addCleanup(conn.close)
+        return conn
+
+    def test_some_messages_belong_to_no_conversation(self):
+        conn = self.database("HomeDomain", "Library", "SMS", "sms.db")
+        rows = conn.execute(
+            "SELECT m.text, m.is_from_me, m.attributedBody FROM message m "
+            "WHERE NOT EXISTS (SELECT 1 FROM chat_message_join j "
+            "WHERE j.message_id = m.ROWID)").fetchall()
+        self.assertGreaterEqual(len(rows), 3)
+        self.assertTrue(any(r[1] for r in rows), "one is the owner's own")
+        self.assertTrue(any(not r[1] for r in rows), "one is received")
+
+    def test_a_note_is_locked_and_opens_with_the_demo_note_password(self):
+        from ios_apps import notes as nt
+        conn = self.database("AppDomainGroup-group.com.apple.notes",
+                             "NoteStore.sqlite")
+        reader = nt.NotesReader(
+            conn, lambda media, name: f"Media/{media}/{name}")
+        notes = reader.notes()
+        locked = [n for n in notes if n.locked]
+        self.assertEqual([n.title for n in locked], ["Private"])
+        self.assertTrue(locked[0].hint, "the dialog shows the hint")
+        opened, still = reader.try_password(
+            notes, "not the demo note password")
+        self.assertEqual(opened, [])
+        opened, still = reader.try_password(
+            notes, self.maker.media.NOTE_PASSWORD)
+        self.assertEqual([n.title for n in opened], ["Private"])
+        self.assertTrue(opened[0].unlocked)
+        self.assertIn("Dana", reader.load(opened[0]).text)
+
+    def test_health_shows_what_version_2_2_added(self):
+        from ios_apps import health as hl
+        conn = self.database("HealthDomain", "Health", "healthdb_secure.sqlite")
+        keys = [d.key for d in hl.HealthReader(conn).datasets()]
+        for wanted in ("sleep_nights", "medications", "medication_doses",
+                       "lab_results", "immunizations", "conditions",
+                       "prescriptions", "clinical_documents", "awards",
+                       "audiograms", "sleep_schedules", "events",
+                       "friend_workouts", "friend_activity"):
+            self.assertIn(wanted, keys)
+
+    def test_the_clinical_documents_have_files_that_open(self):
+        from ios_apps import aea
+        from ios_apps import health as hl
+        from ios_apps import health_records as hr
+        conn = self.database("HealthDomain", "Health", "healthdb_secure.sqlite")
+        sets = {d.key: d for d in hl.HealthReader(conn).datasets()}
+        documents = sets["clinical_documents"].rows
+        self.assertGreaterEqual(len(documents), 2)
+        found = [f for row in documents for f in row.get("attached", [])]
+        self.assertGreaterEqual(len(found), 2)
+        for item in found:
+            path = os.path.join(self.root, *item["path"].split("/"))
+            self.assertTrue(os.path.isfile(path), item["path"])
+            with open(path, "rb") as handle:
+                text = aea.decrypt(handle.read(), item["key"])
+            self.assertTrue(text.strip(), item["path"])
+            self.assertNotIn(b"%PDF", text[:8])      # (invented text only)
+
     def test_the_addresses_are_not_real(self):
         path = os.path.join(self.root, "HomeDomain", "Library", "AddressBook",
                             "AddressBook.sqlitedb")

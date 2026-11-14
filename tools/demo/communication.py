@@ -201,6 +201,14 @@ CONVERSATIONS = [
     ]),
 ]
 
+# (who, text, minutes ago): the rest of a conversation that was deleted
+LEFTOVERS = [
+    ("sam", "Are we still on for the trail on Saturday?", 61000),
+    ("me", "Yes, I will bring the map and the thermos.", 60990),
+    ("sam", "Perfect. Parking is at the north gate.", 60985),
+    ("sam", "Sorry, running ten minutes late.", 60700),
+]
+
 CODES = [("55501", "482910 is your verification code. Don't share it with "
           "anyone.", 4000)]
 
@@ -262,8 +270,9 @@ def messages(conn):
              stamp + 60 * NS if not from_me else 0, from_me,
              1 if "attach" in extras else 0, item_type, title, 0,
              assoc_guid, assoc_type))
-        conn.execute("INSERT INTO chat_message_join VALUES (?, ?, ?)",
-                     (chat_id, cur.lastrowid, stamp))
+        if chat_id is not None:          # (None: no conversation lists it)
+            conn.execute("INSERT INTO chat_message_join VALUES (?, ?, ?)",
+                         (chat_id, cur.lastrowid, stamp))
         rowids[guid] = cur.lastrowid
         if "attach" in extras:
             path, data = files[extras["attach"]]
@@ -299,6 +308,9 @@ def messages(conn):
         conn.execute("INSERT INTO chat_handle_join VALUES (?, ?)",
                      (chat_id, handle(sender, "SMS")))
         add(chat_id, "code", sender, text, minutes, {"service": "SMS"}, 1)
+    # what a deleted conversation leaves behind: messages that no chat lists
+    for index, (who, text, minutes) in enumerate(LEFTOVERS, 1):
+        add(None, "leftover", who, text, minutes, None, index)
 
 
 def message_files():

@@ -61,6 +61,8 @@ Their text is encrypted in the backup, and only the password you chose in
 Notes can open it. (This is the password for locked notes, not the backup
 password; different notes can have different passwords.)
 
+![A locked note: listed with its lock, and an Unlock this note button where the text would be](../images/43-notes-locked.png)
+
 - **Click a locked note** and the program asks for its password. The password
   hint you wrote on the phone is shown if there is one. If the password is
   right the note opens, and **every other locked note with the same password
@@ -68,6 +70,10 @@ password; different notes can have different passwords.)
   button above the note asks again. That password prompt (and the one from
   **Unlock notes...** below) also has a **Forgot password?** button; see
   [Forgot a password?](../RECOVERY.md).
+
+![The password box of a locked note: the hint written on the phone, a box for the password, and Forgot password?](../images/44-notes-password.png)
+
+![The same note once its password was typed: the text, and the note marked as unlocked](../images/45-notes-unlocked.png)
 - **The password is remembered** while this backup is open, so you are asked
   again only when you click a note locked with a *different* password. A wrong
   password never shows wrong text: the note simply stays locked.

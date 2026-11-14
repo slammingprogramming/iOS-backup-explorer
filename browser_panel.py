@@ -572,9 +572,9 @@ class FileBrowserPanel(ttk.Frame):
                 "or narrow the search to see the rest.")
         else:
             self.page_var.set("")
-            self._on_status(
-                f"{total:,} {'matches' if searching else 'items'} in "
-                f"{self._scope_name()}.")
+            counted = count_text(total, "match", "matches") if searching \
+                else count_text(total, "item")
+            self._on_status(f"{counted} in {self._scope_name()}.")
         self._update_nav_buttons()
 
     @staticmethod

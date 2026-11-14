@@ -32,6 +32,21 @@ sys.path.insert(0, os.path.dirname(HERE))
 
 WIDTH, HEIGHT = 1280, 860
 
+# the tables of the Health tab that version 2.2.0 added: (picture, table, the
+# row to choose so that its details show; None for no row)
+HEALTH_MORE = [
+    ("50-health-sleep-nights", "sleep_nights", 0),
+    ("51-health-medications", "medications", 0),
+    ("52-health-medication-log", "medication_doses", 1),
+    ("53-health-lab-results", "lab_results", 1),
+    ("54-health-clinical-documents", "clinical_documents", 0),
+    ("55-health-events", "events", None),
+    ("56-health-audiogram", "audiograms", None),
+    ("57-health-awards", "awards", 1),
+    ("58-health-sleep-schedules", "sleep_schedules", None),
+    ("59-health-friends-activity", "friend_activity", None),
+]
+
 
 def grab(hwnd):
     """A picture (PIL image) of the window *hwnd*, whatever is on top of
@@ -161,6 +176,7 @@ class Shooter:
         ex.pass_var.set("example-password")
         self.pump(1.5)
         self.shoot("02-encrypted-backup")
+        self.forgot_password()
         ex.pass_var.set("")
 
     def open_backup(self):
@@ -197,7 +213,13 @@ class Shooter:
         self.pump(1.5)
         self.shoot("11-messages-search")
         panel.search_var.set("")
+        self.pump(1.2)                 # (the list comes back after 0.4 s)
+        # the messages that no conversation lists: the last "conversation"
+        self.pick(panel.conversation_tree, -1)
+        self.pump(2.5)
+        panel.chat_text.yview_moveto(0)
         self.pump(0.5)
+        self.shoot("42-messages-no-conversation")
 
     def notes(self):
         panel = self.show("Notes")
@@ -209,6 +231,26 @@ class Shooter:
                 panel.select_note(note)
                 self.pump(2.5)
                 self.shoot(wanted[note.title])
+        self.locked_note(panel)
+
+    def locked_note(self, panel):
+        """A note locked with a password: as listed, the dialog that asks
+        for the password (the demo's own, typed in for the picture), and
+        the note once open."""
+        from demo import media
+        note = next(n for n in panel.notes if n.locked)
+        panel.select_note(note, ask=False)      # (a click would ask)
+        self.pump(2.0)
+        self.shoot("43-notes-locked")
+
+        def answer(window):
+            self.shoot("44-notes-password", window)
+            window.var.set(media.NOTE_PASSWORD)
+            window._ok()
+
+        self.dialog_while(panel.unlock_current, answer)
+        self.pump(2.5)
+        self.shoot("45-notes-unlocked")
 
     def contacts(self):
         panel = self.show("Contacts")
@@ -238,13 +280,17 @@ class Shooter:
     def keychain(self):
         """The Keychain tab. The demo is a folder that kept its key bag, so
         the tab asks for the backup password: the demo's own, given here."""
-        from unittest import mock
         from demo import keychain as demo_keychain
-        from ios_apps import keychain_view
-        with mock.patch.object(keychain_view, "ask_password",
-                               return_value=demo_keychain.PASSWORD):
-            panel = self.show("Keychain")
-            self.loaded(panel, "datasets")
+
+        def answer(window):
+            self.shoot("49-keychain-password", window)
+            window.var.set(demo_keychain.PASSWORD)
+            window._ok()
+
+        # (the tab asks for the password as soon as it is shown)
+        self.dialog_while(lambda: self.show("Keychain"), answer)
+        panel = self.panel("Keychain")
+        self.loaded(panel, "datasets")
         panel.choose_dataset("passwords")
         self.pump(0.6)
         self.pick(panel.tree, 3)
@@ -264,6 +310,59 @@ class Shooter:
             if found is not None:
                 return found
         return None
+
+    def dialog_while(self, trigger, act, delay=800, tries=60):
+        """Call *trigger* (it opens a dialog and waits until it is closed)
+        and, once the dialog is on screen, call ``act(window)`` from inside
+        the wait. *act* must end by closing the dialog."""
+        attempts = []
+
+        def poll():
+            window = self.find_dialog(self.root)
+            if window is None and len(attempts) < tries:
+                attempts.append(1)
+                self.root.after(250, poll)
+                return
+            if window is not None:
+                act(window)
+
+        self.root.after(delay, poll)
+        return trigger()
+
+    def find_widget(self, widget, kind):
+        """The first widget of class *kind* inside *widget*, or None."""
+        for child in widget.winfo_children():
+            if isinstance(child, kind):
+                return child
+            found = self.find_widget(child, kind)
+            if found is not None:
+                return found
+        return None
+
+    def forgot_password(self):
+        """The "Forgot password?" window, one picture for each of its
+        three tabs. The tools it can call (hashcat, CUPP) are shown as not
+        found, as they are on most computers, so that no path of this one
+        is ever in a picture."""
+        from tkinter import ttk
+        from unittest import mock
+        from ios_apps import recovery
+        with mock.patch.object(recovery, "locate_hashcat",
+                               return_value=None), \
+                mock.patch.object(recovery, "locate_cupp",
+                                  return_value=None):
+            self.explorer._forgot_backup_password()
+            self.pump(1.0)
+            window = self.find_dialog(self.root)
+            notebook = self.find_widget(window, ttk.Notebook)
+            for index, name in enumerate(("46-forgot-password-official",
+                                          "47-forgot-password-workaround",
+                                          "48-forgot-password-hashcat")):
+                notebook.select(index)
+                self.pump(1.5 if index == 2 else 0.5)
+                self.shoot(name, window)
+            window._on_close()
+            self.pump(0.5)
 
     def export_dialog(self):
         panel = self.show("Calendar")
@@ -313,6 +412,8 @@ class Shooter:
         self.table("Health", "29-health-activity", "activity")
         self.table("Health", "30-health-workouts", "workouts", row=1)
         self.table("Health", "31-health-vitals", "measurements", row=None)
+        for name, dataset, row in HEALTH_MORE:
+            self.table("Health", name, dataset, row=row)
         self.table("Maps", "32-maps")
         self.table("Podcasts", "33-podcasts", "episodes")
         self.table("Books", "34-books", "books", row=0)

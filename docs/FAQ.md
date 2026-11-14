@@ -32,9 +32,12 @@ tool.
 ## Backups
 
 **What iOS versions are supported?**
-Encrypted backups from **iOS 13 and newer** (including iOS 17 and 18), which
-covers the iPhone 6s and later. The app layouts it reads were seen on recent
-versions; see [Where the data comes from](DATA_SOURCES.md#ios-versions).
+Encrypted backups from **iOS 13 and newer**, which covers the iPhone 6s and
+later, and iPads. The app layouts it reads were checked on real backups of
+iOS 16.7, 26.6 and 27.0.1, among others, and **iOS 12** is read as far as real
+iOS 12.4.8 and 12.5.8 backups have been checked; what was checked on which
+version is in [iOS versions](IOS_VERSIONS.md), and more is in
+[Where the data comes from](DATA_SOURCES.md#ios-versions).
 
 **Does it work with unencrypted backups?**
 Yes; they are detected and opened without a password, read-only. They must use

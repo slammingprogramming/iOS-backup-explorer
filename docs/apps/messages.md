@@ -29,6 +29,8 @@ Messages app does.
 - **Attachments** (pictures, files) are listed in the message; **click one to
   save it** (the program asks where). Large conversations load a page at a time.
 
+![Messages in no conversation: the last item of the list, with the leftover messages of a deleted conversation](../images/42-messages-no-conversation.png)
+
 ## Searching
 
 Type in **Search messages** to look inside **every conversation**. The results

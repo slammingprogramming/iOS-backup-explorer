@@ -45,10 +45,18 @@ CHOICES = {
 }
 
 
+FOOTER = ("The password is kept in memory only, while this backup is open, "
+          "so other notes locked with the same password open without "
+          "asking.")
+"""What the password box says under the entry, for a locked note. Another
+use of the box (the Keychain tab's) passes its own, or "" for nothing."""
+
+
 class PasswordDialog(tk.Toplevel):
     """Ask for a password. ``result`` is the text typed, or None."""
 
-    def __init__(self, parent, title, message, hint="", recovery=None):
+    def __init__(self, parent, title, message, hint="", recovery=None,
+                 footer=FOOTER):
         """*recovery*, if given, is ``(title, official, workaround,
         hash_factory)`` for :class:`~ios_apps.recovery_view.ForgotPasswordDialog`
         (its last argument, what to do with a password it finds, is
@@ -75,11 +83,9 @@ class PasswordDialog(tk.Toplevel):
         self.entry.pack(fill="x", pady=(10, 0))
         ttk.Checkbutton(body, text="Show the password", variable=self.show,
                         command=self._toggle).pack(anchor="w", pady=(4, 0))
-        ttk.Label(body, text="The password is kept in memory only, while "
-                  "this backup is open, so other notes locked with the same "
-                  "password open without asking.", wraplength=420,
-                  justify="left", style="Subtitle.TLabel").pack(
-            anchor="w", pady=(8, 0))
+        if footer:
+            ttk.Label(body, text=footer, wraplength=420, justify="left",
+                      style="Subtitle.TLabel").pack(anchor="w", pady=(8, 0))
         buttons = ttk.Frame(body)
         buttons.pack(fill="x", pady=(14, 0))
         self.ok_button = ttk.Button(buttons, text="Unlock", command=self._ok)
@@ -113,10 +119,12 @@ class PasswordDialog(tk.Toplevel):
             self.destroy()
 
 
-def ask_password(parent, title, message, hint="", recovery=None):
+def ask_password(parent, title, message, hint="", recovery=None,
+                 footer=FOOTER):
     """Show the dialog and wait. The password, or None if cancelled. See
-    :class:`PasswordDialog` for *recovery*."""
-    dialog = PasswordDialog(parent, title, message, hint, recovery=recovery)
+    :class:`PasswordDialog` for *recovery* and *footer*."""
+    dialog = PasswordDialog(parent, title, message, hint, recovery=recovery,
+                            footer=footer)
     dialog.grab_set()
     dialog.wait_window()
     return dialog.result

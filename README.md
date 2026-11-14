@@ -53,15 +53,17 @@ You made an encrypted iPhone backup with iTunes, Finder, or the Apple Devices ap
 - **Opens any local backup**: encrypted (with your backup password), unencrypted, or a folder that was **already decrypted and extracted**. Nothing in the backup is ever changed.
 - **A real file manager** for the whole backup: folders, sorting, instant search, extraction of any file, folder or the **entire backup**, and optionally **mounting** it as a read-only drive.
 - **One tab for each app**, reading the app's data the way the phone shows it, with search, details and export. A tab appears only when the backup has its data.
+- **Reads backups of many iOS versions**, iPhone and iPad (iOS 13 to 27, and iOS 12 as far as it was checked), each checked against real backups; [iOS versions](docs/IOS_VERSIONS.md) lists which, and what differs between them.
+- **Forgot a password?** A button next to every password prompt (the backup's, a locked note's) opens Apple's own answer, workarounds, and an optional [hashcat](https://hashcat.net/hashcat/) helper you install yourself; see [Forgot a password?](docs/RECOVERY.md).
 - **Exports in formats you can use**: text, Markdown, web pages, PDF, spreadsheets, JSON, vCard, iCalendar, GPX routes, bookmarks files, JPEG, audio with transcripts. **The original files can always be extracted untouched**, too.
 
 ### The tabs
 
 | | | |
 |---|---|---|
-| **Messages**: chat bubbles, tapbacks, attachments, search | **Notes**: formatting, checklists, pictures, folders, call recordings | **Calls** and **Contacts** |
+| **Messages**: chat bubbles, tapbacks, attachments, search, and the messages that no conversation lists any more | **Notes**: formatting, checklists, pictures, folders, call recordings, and **notes locked with a password** | **Calls** and **Contacts** |
 | **Photos**: a thumbnail grid with albums | **Voice Memos** | **Voicemail** with the phone's transcripts |
-| **Safari**: history, bookmarks, reading list, tabs | **Calendar** and **Reminders** | **Health**: activity, workouts and routes, body measurements, sleep, Medical ID |
+| **Safari**: history, bookmarks, reading list, tabs | **Calendar** and **Reminders** | **Health**: activity, workouts and routes, body measurements, sleep per night, medications, health records and clinical documents, hearing tests, symptoms, Medical ID |
 | **Screen Time**: days, weeks, apps, websites | **Network**: Wi-Fi, Bluetooth, data used by apps | **Accounts** and device information |
 | **Keychain**: saved and Wi-Fi passwords (encrypted backups) | | |
 | **Maps**, **Podcasts**, **Books** | **Privacy**: app permissions and location access | **Recents**, **Apps**, **iCloud Drive** |
@@ -74,6 +76,17 @@ You made an encrypted iPhone backup with iTunes, Finder, or the Apple Devices ap
   <tr>
     <td width="50%"><img src="docs/images/12-notes.png" alt="Notes: a recipe with headings, lists and a picture"><br><sub><b>Notes</b>: formatting, checklists and pictures like on the phone</sub></td>
     <td width="50%"><img src="docs/images/26-screen-time-days.png" alt="Screen Time by day"><br><sub><b>Screen Time</b>: time per day, week, app and website</sub></td>
+  </tr>
+</table>
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/images/40-keychain.png" alt="Keychain: saved passwords, Wi-Fi networks and website logins"><br><sub><b>Keychain</b>: saved and Wi-Fi passwords of an encrypted backup, with every stored detail</sub></td>
+    <td width="50%"><img src="docs/images/45-notes-unlocked.png" alt="A note locked with a password, opened"><br><sub><b>Locked notes</b> open with their own password, and every note with the same password opens too</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="docs/images/51-health-medications.png" alt="Health: medications with their form and ingredients"><br><sub><b>Health</b>: medications and their log, sleep per night, health records, hearing tests</sub></td>
+    <td width="50%"><img src="docs/images/46-forgot-password-official.png" alt="The Forgot password window"><br><sub><b>Forgot password?</b> next to every password prompt: Apple's own answer, workarounds, optional hashcat</sub></td>
   </tr>
 </table>
 
@@ -117,7 +130,8 @@ Full walkthrough: [Getting started](docs/GETTING_STARTED.md). Don't have a backu
 | [Installation](docs/INSTALL.md) · [Getting started](docs/GETTING_STARTED.md) · [The file browser](docs/FILE_BROWSER.md) | Using the program |
 | [The app tabs](docs/apps/README.md) | One page per group of tabs |
 | [Exporting](docs/EXPORTING.md) · [Where the data comes from](docs/DATA_SOURCES.md) · [Health data](docs/HEALTH.md) | Reference |
-| [FAQ](docs/FAQ.md) · [Troubleshooting](docs/TROUBLESHOOTING.md) · [Glossary](docs/GLOSSARY.md) · [How a backup is built](docs/HOW_BACKUPS_WORK.md) | Help and background |
+| [FAQ](docs/FAQ.md) · [Troubleshooting](docs/TROUBLESHOOTING.md) · [Forgot a password?](docs/RECOVERY.md) · [Glossary](docs/GLOSSARY.md) · [How a backup is built](docs/HOW_BACKUPS_WORK.md) | Help and background |
+| [iOS versions](docs/IOS_VERSIONS.md) · [How to help](docs/HELPING.md) · [The demo backup and the screenshots](docs/SCREENSHOTS.md) | Which versions were checked, how to help without sharing anything private, how the pictures are made |
 | [Contributing](CONTRIBUTING.md) · [Architecture](docs/ARCHITECTURE.md) · [Development](docs/DEVELOPMENT.md) · [Testing](docs/TESTING.md) · [Versioning](docs/VERSIONING.md) | Working on it |
 | [Changelog](CHANGELOG.md) · [Security policy](SECURITY.md) | Project |
 
@@ -128,7 +142,7 @@ Full walkthrough: [Getting started](docs/GETTING_STARTED.md). Don't have a backu
 Honesty matters when you are reading someone's data:
 
 - Every tab has automated tests on **invented** data, and the readers were **mutation-checked** (the code is broken on purpose to prove the tests notice).
-- Most tabs were also checked against a **real backup**: their counts and values were compared with the raw databases. **Maps, Podcasts, Books, Photos and Voice Memos** were written from the apps' database layouts, because the backup used had no data for them, so they are tested on generated data only. [Where the data comes from](docs/DATA_SOURCES.md) lists the status of each tab.
+- Most tabs were also checked against **real backups** (iOS 12.4, 12.5 on an iPad, 16.7, 26.6 and 27.0.1): their counts and values were compared with the raw databases, and what differs between versions is handled and written down in [iOS versions](docs/IOS_VERSIONS.md). **Podcasts** has never had a real library to read, and parts of Maps, Books and Voice Memos could not be compared because the backups held no data for them, so those are tested on generated data only. [Where the data comes from](docs/DATA_SOURCES.md) lists the status of each tab.
 - **Health** is read reliably where it can be proved, and the rest is listed openly as not yet covered: kinds of data the database does not name, values whose unit was not verified, ECG waveforms (no backup used held one). Sleep per night, medications, the contents of health records and the files of clinical documents, hearing tests, symptoms and cycle tracking, awards and friends' activity are read now. **Why, and what is needed to close each gap, is in [Health data](docs/HEALTH.md).**
 - A backup holds only what the phone kept: iCloud-only photos and messages, are not readable; passwords (the keychain) open only from an encrypted backup, and "this device only" items from none. Locked notes open with their own password, but that part has not been checked against a real locked note ([how](docs/apps/notes.md#locked-notes)). See the [FAQ](docs/FAQ.md).
 
@@ -204,7 +218,7 @@ A backup holds what was on the phone when it was made: iCloud-only data and unen
 <details>
 <summary><strong>What iOS versions are supported?</strong></summary>
 
-Encrypted backups from **iOS 13 and newer** (including iOS 17 and 18); **iOS 12** is read as far as a real iOS 12.4.8 backup has been checked; unencrypted backups with the `Manifest.db` layout (iOS 10 and newer). The aim is every iOS version; what was checked on which one is in [iOS versions](docs/IOS_VERSIONS.md). Details in [Where the data comes from](docs/DATA_SOURCES.md#ios-versions).
+Encrypted backups from **iOS 13 and newer**, checked on real backups of iOS 16.7, 26.6 and 27.0.1 (and of iOS 17 and 18 before), and of an iPad; **iOS 12** is read as far as real iOS 12.4.8 and 12.5.8 backups have been checked; unencrypted backups with the `Manifest.db` layout (iOS 10 and newer). The aim is every iOS version; what was checked on which one is in [iOS versions](docs/IOS_VERSIONS.md). Details in [Where the data comes from](docs/DATA_SOURCES.md#ios-versions).
 </details>
 
 ---

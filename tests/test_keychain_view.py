@@ -167,13 +167,15 @@ class KeychainGuiCase(AppGuiCase):
         self.asked = []
         self.answers = []
         self.recoveries = []
+        self.footers = []
         patcher = mock.patch.object(kv, "ask_password", side_effect=self.ask)
         patcher.start()
         self.addCleanup(patcher.stop)
 
-    def ask(self, parent, title, message, hint="", recovery=None):
+    def ask(self, parent, title, message, hint="", recovery=None, **more):
         self.asked.append(message)
         self.recoveries.append(recovery)
+        self.footers.append(more.get("footer"))
         return self.answers.pop(0) if self.answers else None
 
     def open_encrypted(self):
@@ -316,6 +318,9 @@ class ExtractedFolderTests(KeychainGuiCase):
         self.assertIn("backup password", self.asked[0])
         self.assertEqual(len(tab.datasets["passwords"].rows), 5)
         self.assertEqual(tab.password_button.winfo_manager(), "")
+        # (the dialog is shared with the locked notes, whose sentence about
+        # "other notes" has nothing to do with a keychain)
+        self.assertEqual(self.footers, [""])
 
     def test_a_wrong_password_asks_again(self):
         self.open_folder()

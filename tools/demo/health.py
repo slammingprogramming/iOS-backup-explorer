@@ -7,7 +7,7 @@ import math
 import random
 from datetime import datetime, timedelta, timezone
 
-from . import NOW, ago, clone_schema, cocoa
+from . import NOW, ago, clone_schema, cocoa, health_extra
 
 DOMAIN = "HealthDomain"
 
@@ -28,6 +28,11 @@ TYPES = {
     70: "HKCategoryTypeIdentifierAppleStandHour",
     75: "HKQuantityTypeIdentifierAppleExerciseTime",
     79: "HKWorkoutTypeIdentifier",
+    99: "HKCategoryTypeIdentifierMindfulSession",
+    145: "HKDataTypeIdentifierAudiogram",
+    160: "HKCategoryTypeIdentifierHeadache",
+    167: "HKCategoryTypeIdentifierFatigue",
+    237: "HKCategoryTypeIdentifierHandwashingEvent",
     118: "HKQuantityTypeIdentifierRestingHeartRate",
     124: "HKQuantityTypeIdentifierVO2Max",
     137: "HKQuantityTypeIdentifierWalkingHeartRateAverage",
@@ -136,7 +141,9 @@ def health(writer):
             quantity(124, ago(days=days), rng.gauss(43, 1), provenance=2)
         # sleep: a night is a run of stages
         for night in range(0, 21):
-            start = _utc_day(night) - timedelta(hours=1, minutes=rng.randrange(
+            # (bedtime between 23:00 and 00:30 where the invented town is,
+            # which is five hours behind UTC in October)
+            start = _utc_day(night) + timedelta(hours=4, minutes=rng.randrange(
                 0, 90))
             stages = []
             moment = start
@@ -214,8 +221,11 @@ def health(writer):
                 ("Cetirizine 10 mg tablet", "MedicationRequest"),
                 ("Allergic rhinitis", "Condition")):
             data_id = sample(RECORD_TYPE, ago(days=rng.randrange(20, 400)))
-            conn.execute("INSERT INTO clinical_record_samples VALUES "
-                         "(?, ?, ?)", (data_id, name, kind))
+            conn.execute("INSERT INTO clinical_record_samples (data_id, "
+                         "display_name, fhir_resource_resource_type) "
+                         "VALUES (?, ?, ?)", (data_id, name, kind))
+        # what version 2.2.0 of the program added to the Health tab
+        health_extra.extend(conn, sample, rng)
 
     def sources(conn):
         clone_schema(fh.build_sources, conn)
@@ -226,6 +236,8 @@ def health(writer):
     writer.database(DOMAIN, fh.HEALTH, build)
     writer.database(DOMAIN, fh.SOURCES, sources)
     writer.file(DOMAIN, fh.MEDICAL_ID, medical_id())
+    for path, data in health_extra.document_files():
+        writer.file(DOMAIN, path, data)
 
 
 def medical_id():

@@ -461,6 +461,19 @@ class SearchTests(MessagesGuiCase):
                       "the conversation list")
         self.assertFalse(self.tab.result_frame.winfo_manager())
 
+    def test_clearing_the_search_brings_the_status_line_back(self):
+        # (it used to go on saying "5 matching messages" over the list of
+        # all the conversations)
+        self.wait_for(lambda: self.tab.conversations, "the conversations")
+        summary = self.tab.state_var.get()
+        self.assertIn("conversation", summary)
+        self.search("snacks")
+        self.assertEqual(self.tab.state_var.get(), "1 matching message")
+        self.tab.search_var.set("")
+        self.wait_for(lambda: self.tab.list_frame.winfo_manager(),
+                      "the conversation list")
+        self.assertEqual(self.tab.state_var.get(), summary)
+
     def test_an_unsuccessful_search(self):
         self.search("zzzzzz")
         self.assertEqual(self.tab.result_tree.get_children(), ())

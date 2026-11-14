@@ -65,6 +65,8 @@ the phone was. On **Windows** this table needs the optional `tzdata` package
 (`pip install tzdata`); without it the table is left out and says why. The rules
 are in [Health data](../HEALTH.md#sleep-per-night).
 
+![Sleep per night: when each night began and ended, the time asleep and in each stage](../images/50-health-sleep-nights.png)
+
 **Sleep** lists every stage the phone recorded: *From*, *To*, *Length*, the
 *Stage* (In bed, Asleep, Awake, and Core, Deep and REM where the phone
 distinguishes them) and who recorded it.
@@ -74,6 +76,10 @@ distinguishes them) and who recorded it.
 The medications you track (name, form, ingredients), and **Medication log**:
 every dose that was due or logged, with the amount and whether it was *Taken* or
 *Not answered*. A status the data does not explain is shown as "Status N".
+
+![Medications: each medication with its form and ingredients](../images/51-health-medications.png)
+
+![The medication log: every dose that was due, with the amount and whether it was taken](../images/52-health-medication-log.png)
 
 ## Health records
 
@@ -91,6 +97,10 @@ they say, in a table for each kind:
   is in the Health database. A document the clinic sent without its file, or
   whose file the phone never downloaded, shows no file.
 
+![Lab results: the test, the result with its unit, and the reference range](../images/53-health-lab-results.png)
+
+![Clinical documents: reports and notes from a clinic, with a Files column that counts the files the phone downloaded for each](../images/54-health-clinical-documents.png)
+
 ## Hearing, events and the rest
 
 - **Audiograms**: each frequency of a hearing test with the left and right ear.
@@ -99,6 +109,16 @@ they say, in a table for each kind:
 - **Awards** and **Sleep schedules**.
 - **Friends' activity** and **Friends' workouts**: what people in Activity
   sharing sent to this phone. The backup holds no names, so they are numbered.
+
+![Events and symptoms: stand hours, hand washing, mindful sessions and the symptoms that were logged](../images/55-health-events.png)
+
+![Audiograms: each frequency of a hearing test, with the left and right ear](../images/56-health-audiogram.png)
+
+![Awards earned in the Fitness app, with their internal names made readable](../images/57-health-awards.png)
+
+![Sleep schedules, and the one-day changes made to them](../images/58-health-sleep-schedules.png)
+
+![Friends' activity: the daily rings of a person in Activity sharing, numbered because the backup holds no names](../images/59-health-friends-activity.png)
 
 Tables appear only when the backup has rows for them.
 

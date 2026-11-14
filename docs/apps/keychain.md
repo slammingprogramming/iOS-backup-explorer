@@ -30,6 +30,12 @@ the backup password, and the keychain opens. Without that file, the extracted
 keychain would be a pile of locked blobs for ever. That password prompt has a
 **Forgot password?** button too; see [Forgot a password?](../RECOVERY.md).
 
+![The prompt the Keychain tab shows for a folder extracted by this program: the backup password, with a Forgot password? button](../images/49-keychain-password.png)
+
+If you cancel the prompt, the tab stays closed and keeps an **Enter the backup
+password...** button at the top, which asks again. A wrong password is refused
+with a message and the prompt comes back.
+
 (Other programs may treat a folder holding a `Manifest.plist` as a backup. It is
 safe to delete the file if you do not need the keychain from that folder.)
 

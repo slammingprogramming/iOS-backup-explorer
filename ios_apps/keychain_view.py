@@ -113,7 +113,8 @@ class KeychainPanel(RecordsPanel):
         password = ask_password(
             self, "Backup password", ASK,
             recovery=("this backup", recovery.BACKUP_OFFICIAL,
-                     recovery.BACKUP_WORKAROUND, hash_factory))
+                     recovery.BACKUP_WORKAROUND, hash_factory),
+            footer="")        # (the usual sentence is about locked notes)
         if password is None:
             self.state_var.set("The keychain stays closed without the "
                                "backup password.")

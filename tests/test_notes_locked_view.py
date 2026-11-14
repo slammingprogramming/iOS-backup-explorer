@@ -534,6 +534,28 @@ class PasswordDialogTests(AppGuiCase):
         dialog._toggle()
         self.assertEqual(dialog.entry.cget("show"), "")
 
+    def texts(self, widget):
+        found = []
+        for child in widget.winfo_children():
+            if "text" in child.keys():
+                found.append(str(child.cget("text")))
+            found.extend(self.texts(child))
+        return found
+
+    def test_a_note_dialog_says_other_notes_open_with_the_same_password(self):
+        dialog = nu.PasswordDialog(self.root, "t", "m")
+        self.addCleanup(dialog.destroy)
+        self.assertTrue(any("other notes locked with the same password" in t
+                            for t in self.texts(dialog)))
+
+    def test_the_sentence_about_notes_can_be_left_out(self):
+        # (the prompt of the Keychain tab used the same dialog and told the
+        # person that "other notes" would open without asking)
+        dialog = nu.PasswordDialog(self.root, "t", "m", footer="")
+        self.addCleanup(dialog.destroy)
+        self.assertFalse(any("notes" in t.lower() for t in self.texts(dialog)
+                             if t != "t" and t != "m"))
+
     def test_ok_needs_a_password_and_returns_it(self):
         dialog = nu.PasswordDialog(self.root, "t", "m")
         dialog._ok()

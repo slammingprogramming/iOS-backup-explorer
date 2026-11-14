@@ -127,7 +127,19 @@ NOTES_DOMAIN = "AppDomainGroup-group.com.apple.notes"
 ACCOUNT = "Accounts/AAAAAAAA-0000-0000-0000-00000000DEMO"
 
 
+NOTE_PASSWORD = "demo-note-password"
+"""The password of the demo's locked note, "Private" (invented, like all
+the rest; the screenshots type it into the real dialog)."""
+NOTE_HINT = "the demo's own invented password (see docs/SCREENSHOTS.md)"
+NOTE_ROUNDS = 20_000
+NOTE_TEXT = [("Private\n", 0),
+             ("Gift ideas for Dana: a hiking map, a thermos and good "
+              "socks.\n", None),
+             ("Hide the box in the hall closet until Saturday.\n", None)]
+
+
 def notes(writer):
+    from ios_apps import notes_crypto
     from tests import fixture_notes as fn
     media = {
         "MEDIA-CAKE": ("lemon-cake.jpg", pictures.jpeg("flowers", seed=5)),
@@ -240,7 +252,7 @@ def notes(writer):
             run("￼", attachment=("ATT-CALL", "com.apple.m4a-audio")),
             run("\n")], 2)
         note(18, 2, "Private", [], 55, locked=1,
-             data=b"\x01\x02 encrypted bytes, not a note")
+             data=b"replaced below by the locked note")
         note(19, 4, "Old shopping list", [run("Old shopping list\n", style=0),
                                          run("nothing important\n")], 70)
         for pk, key, name in ((20, "MEDIA-CAKE", "lemon-cake.jpg"),
@@ -259,6 +271,36 @@ def notes(writer):
         row(33, 3, ident="ATT-CALL-MOV", uti="public.mpeg-4-audio", media=23)
         conn.execute("UPDATE ZICCLOUDSYNCINGOBJECT SET ZPARENTATTACHMENT = "
                      "32, ZDURATION = 94.0, ZNOTE = 17 WHERE Z_PK = 33")
+
+        lock_note(conn, 18)
+
+    def lock_note(conn, pk):
+        """Lock note *pk* the way the Notes app does (the layout of the
+        locked-notes tests): a key from the password wraps the note's own
+        key, which encrypts the note. Fixed salt, key and iv, so the demo
+        is the same every time."""
+        for column, kind in (("ZCRYPTOSALT", "BLOB"),
+                             ("ZCRYPTOWRAPPEDKEY", "BLOB"),
+                             ("ZCRYPTOITERATIONCOUNT", "INTEGER"),
+                             ("ZPASSWORDHINT", "VARCHAR")):
+            conn.execute("ALTER TABLE ZICCLOUDSYNCINGOBJECT ADD COLUMN "
+                         f"{column} {kind}")
+        for column in ("ZCRYPTOINITIALIZATIONVECTOR", "ZCRYPTOTAG"):
+            conn.execute(f"ALTER TABLE ZICNOTEDATA ADD COLUMN {column} BLOB")
+        salt, key, iv = bytes(range(16)), bytes(range(16, 32)), \
+            bytes(range(32, 48))
+        runs = [run(text, style=style) if style is not None else run(text)
+                for text, style in NOTE_TEXT]
+        wrapped, tag, data = notes_crypto.encrypt(
+            NOTE_PASSWORD, salt, NOTE_ROUNDS, key, iv, fn.blob(runs))
+        conn.execute(
+            "UPDATE ZICCLOUDSYNCINGOBJECT SET ZCRYPTOSALT = ?, "
+            "ZCRYPTOWRAPPEDKEY = ?, ZCRYPTOITERATIONCOUNT = ?, "
+            "ZPASSWORDHINT = ? WHERE Z_PK = ?",
+            (salt, wrapped, NOTE_ROUNDS, NOTE_HINT, pk))
+        conn.execute(
+            "UPDATE ZICNOTEDATA SET ZDATA = ?, ZCRYPTOINITIALIZATIONVECTOR = "
+            "?, ZCRYPTOTAG = ? WHERE ZNOTE = ?", (data, iv, tag, pk))
 
     writer.database(NOTES_DOMAIN, "NoteStore.sqlite", build)
     for key, path in paths.items():

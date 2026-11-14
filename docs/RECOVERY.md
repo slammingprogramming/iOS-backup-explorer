@@ -5,6 +5,8 @@ itself (if it is encrypted) and a note locked from inside the Notes app.
 Next to where the program asks for either, a **Forgot password?** button
 opens a window with three tabs.
 
+![The Forgot password window, on its Official tab](images/46-forgot-password-official.png)
+
 ## Official
 
 What Apple itself says about it, and a link to Apple's own page. For both
@@ -20,6 +22,8 @@ Places the password might already be sitting: a Mac's Keychain Access
 (backups only), a password manager, a note where it was written down, or
 a hint shown next to a locked note.
 
+![The Workaround tab](images/47-forgot-password-workaround.png)
+
 ## Hashcat
 
 If neither of those helps, the last tab can try the password itself,
@@ -27,6 +31,8 @@ with [hashcat](https://hashcat.net/hashcat/): a free program that tries
 candidate passwords very quickly. It is **not included with this program**
 and is never downloaded by it; the tab only looks for a copy already on
 the computer, or lets you point to one.
+
+![The Hashcat tab on a computer where hashcat is not installed: it says so, offers to locate it and links to where to get it](images/48-forgot-password-hashcat.png)
 
 This only works on a password that is short, or that can be narrowed down
 to a manageable number of guesses. hashcat cannot find a long, random

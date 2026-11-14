@@ -96,6 +96,7 @@ class MessagesPanel(ttk.Frame):
         self._loaded = False
         self._request = 0
         self._search_job = None
+        self._summary = ""               # the status line over the list
         self._resize_job = None
         self._rendered_width = 0
         self.conversations = []
@@ -311,6 +312,7 @@ class MessagesPanel(ttk.Frame):
         loose = sum(c.count for c in self.conversations if c.unlinked)
         if loose:
             text += f", and {loose:,} more in no conversation"
+        self._summary = text
         self.state_var.set(text)
 
     # ── Showing a conversation ───────────────────────────────
@@ -470,6 +472,8 @@ class MessagesPanel(ttk.Frame):
         if not text:
             self.result_frame.pack_forget()
             self.list_frame.pack(fill="both", expand=True)
+            if self._summary:            # (not "5 matching messages")
+                self.state_var.set(self._summary)
             return
         if self.source is None:
             return

@@ -40,8 +40,20 @@ Time for 60 days, Health (90 days of activity, workouts with routes, body
 measurements, sleep, records, Medical ID), Maps, Podcasts and Books, and a
 keychain of invented passwords (the Keychain tab asks for the demo's backup
 password, `demo-backup-password`, which the file `tools/demo/keychain.py`
-states). The
-result opens like any backup (it is an *extracted* backup folder), so it is
+states). It also holds what later versions of the program learned to read:
+
+- **a locked note**, "Private", really locked (with the same code the tests of
+  locked notes use) with the invented password `demo-note-password` and a hint
+  that says so (`tools/demo/media.py`);
+- **four messages that no conversation lists**, the rest of a deleted one;
+- in Health: **sleep per night** (the sources carry a time zone), **medications**
+  and two weeks of doses, the **contents of health records** (lab results,
+  vaccines, a prescription, a condition) with **two clinical documents** whose
+  files are kept encrypted as on a phone, a **hearing test**, **events and
+  symptoms**, **awards**, **sleep schedules** and two **friends** in Activity
+  sharing (`tools/demo/health_extra.py`).
+
+The result opens like any backup (it is an *extracted* backup folder), so it is
 also a safe way to try the program.
 
 The code is in `tools/demo/`:
@@ -54,6 +66,7 @@ The code is in `tools/demo/`:
 | `web.py` | Safari, calendar, reminders |
 | `device.py` | Device information, networks, accounts, permissions, apps, iCloud Drive, Screen Time |
 | `health.py` | Health and the Medical ID |
+| `health_extra.py` | The rest of Health: medications, health records and clinical documents, hearing, events, awards, sleep schedules, friends, time zones for sleep per night |
 | `extras.py` | Maps, Podcasts, Books |
 | `keychain.py` | The keychain, and the key bag that opens it |
 | `pictures.py` | The drawn photos (Pillow) |
@@ -75,8 +88,13 @@ where details help, takes a picture of the window, and writes
 fixtures' `build_backup` (an encrypted backup with a few files) so that the
 picture of the password box can be taken.
 
-The export-dialog picture opens the real dialog and captures it before closing
-it again.
+The dialogs are the real ones, opened and captured before they are closed
+again: the export dialog, the password boxes of the locked note and of the
+Keychain tab (the tool types the demo's own invented passwords into them, so
+nothing waits for a person), and the three tabs of the **Forgot password?**
+window. In that window hashcat and CUPP are shown as not found, as they are
+on most computers, so that no path of the computer the pictures were made on
+can appear in them.
 
 ## When to refresh them
 
