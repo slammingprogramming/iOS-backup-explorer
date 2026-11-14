@@ -106,14 +106,16 @@ DEFAULT_FILES = [
 
 
 def build_backup(parent_dir, files=None, passphrase=PASSPHRASE,
-                 encrypted=True, extra_class_keys=None):
+                 encrypted=True, extra_class_keys=None, claimed_extra=0):
     """Create the backup under *parent_dir*; return ``(backup_dir, ids)``.
 
     ``ids`` maps ``(domain, relative_path)`` to the file ID. With
     ``encrypted=False`` the backup is laid out like an unencrypted iTunes /
     Finder backup: a plain Manifest.db and plain file data.
     *extra_class_keys* (``{class: key}``) adds classes to the key bag, such as
-    the keychain's.
+    the keychain's. *claimed_extra* makes the manifest claim that many bytes
+    more than each file has, as a real one does for a database the phone
+    compacted when it backed it up (the decryption library then notes it).
     """
     files = DEFAULT_FILES if files is None else files
     backup_dir = os.path.join(parent_dir, "00000000-0000000000000000")
@@ -167,7 +169,8 @@ def build_backup(parent_dir, files=None, passphrase=PASSPHRASE,
             else:
                 file_key = os.urandom(32)
                 record = _file_record(
-                    size, mtime, FILE_CLASS,
+                    size + (claimed_extra if content is not None else 0),
+                    mtime, FILE_CLASS,
                     _wrap(class_keys[FILE_CLASS], file_key))
                 if content is not None:
                     blob_dir = os.path.join(backup_dir, file_id[:2])

@@ -32,6 +32,7 @@ import sys
 import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)                    # (backup_access, beside this)
 sys.path.insert(0, os.path.dirname(HERE))
 
 # a state text that means the tab did not load what it should have
@@ -103,6 +104,19 @@ def ask_password(message):
         root.destroy()
 
 
+def password_message(folder):
+    """What the password window says: which backup it is for (by the kind of
+    device and the iOS version, which tell several backups in one folder apart
+    and are not personal), and that the password is not kept."""
+    facts = backup_facts(folder)
+    which = ", ".join(part for part in (
+        facts["device"], f"iOS {facts['ios']}" if facts["ios"] else None)
+        if part)
+    return (f"Enter the password of this backup{f' ({which})' if which else ''}."
+            " It is used only to open it, then dropped (never saved or "
+            "printed).")
+
+
 def backup_facts(folder):
     """What the backup's own plists say (never personal details): the iOS
     version, the kind of device, and whether it is encrypted."""
@@ -123,9 +137,15 @@ def backup_facts(folder):
 
 
 def dataset_counts(panel):
+    """How many rows each of a tab's tables has. The one that lists what the
+    keychain cannot open has a row per kind and class, each with the number of
+    items it stands for, so it counts those: the rows would read as a handful
+    of items where thousands cannot be opened."""
     datasets = getattr(panel, "datasets", None)
     if isinstance(datasets, dict):
-        return {key: len(table.rows) for key, table in datasets.items()}
+        return {key: (sum(row.get("count") or 0 for row in table.rows)
+                      if key == "unreadable" else len(table.rows))
+                for key, table in datasets.items()}
     return {}
 
 
@@ -265,13 +285,13 @@ def main(argv=None):
     if options.password_prompt:
         password = getpass.getpass("Backup password: ")
     elif options.password_window:
-        password = ask_password(
-            "Enter the password of this backup. It is used only to open it, "
-            "then dropped (never saved or printed).")
+        password = ask_password(password_message(options.folder))
         if password is None:
             sys.stdout.write("The backup did not open: no password given.\n")
             return 1
-    report = run(os.path.abspath(options.folder), password, options.ios)
+    import backup_access
+    with backup_access.without_library_notes():
+        report = run(os.path.abspath(options.folder), password, options.ios)
     sys.stdout.write(markdown(report))
     return 0 if report.get("opened") else 1
 

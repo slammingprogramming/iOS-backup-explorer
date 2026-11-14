@@ -15,11 +15,75 @@ import os
 import shutil
 import sys
 import tempfile
+import threading
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
 
 SIDECARS = ("-wal", "-shm")          # (a database's journal files)
+
+# The decryption library prints this, about each file whose decrypted size is
+# not the one the manifest gave (routine for a database the phone compacted
+# as it backed it up).
+LIBRARY_NOTE = "INFO: decrypted "
+
+
+class _WithoutLibraryNotes:
+    """Stands in for ``sys.stdout``: the stream that was there, less the
+    library's note about each file.
+
+    The note names the working copy of the file, a path that holds the name of
+    whoever is logged in, and what the tools here print is meant to be pasted
+    into a public issue. Whole lines are judged; anything else is passed on as
+    it comes, so a prompt without a newline is not held back."""
+
+    def __init__(self, stream):
+        self._stream = stream
+        self._held = ""                 # (a start of a line that may be a note)
+        self._lock = threading.Lock()
+
+    def write(self, text):
+        with self._lock:
+            data, passed = self._held + text, []
+            while "\n" in data:
+                line, _, data = data.partition("\n")
+                if not line.startswith(LIBRARY_NOTE):
+                    passed.append(line + "\n")
+            if data and (data.startswith(LIBRARY_NOTE)
+                         or LIBRARY_NOTE.startswith(data)):
+                self._held = data
+            else:
+                self._held = ""
+                passed.append(data)
+            if passed:
+                self._stream.write("".join(passed))
+        return len(text)
+
+    def release(self):
+        """What is held, if it turned out not to be a note."""
+        with self._lock:
+            held, self._held = self._held, ""
+            if held and not held.startswith(LIBRARY_NOTE):
+                self._stream.write(held)
+
+    def __getattr__(self, name):        # (flush, isatty, encoding...)
+        return getattr(self._stream, name)
+
+
+@contextlib.contextmanager
+def without_library_notes():
+    """While inside, what is printed is cleared of the library's notes about
+    files (see ``_WithoutLibraryNotes``). Threads that print meanwhile (the
+    program's workers) are covered too, since ``sys.stdout`` is the one."""
+    previous = sys.stdout
+    filtered = _WithoutLibraryNotes(previous)
+    sys.stdout = filtered
+    try:
+        yield
+    finally:
+        if sys.stdout is filtered:
+            sys.stdout = previous
+        filtered.release()
 
 
 def add_password_options(parser):
@@ -39,8 +103,7 @@ def password_from(options):
     if getattr(options, "password_window", False):
         import compat_report
         return compat_report.ask_password(
-            "Enter the password of this backup. It is used only to open it, "
-            "then dropped (never saved or printed).")
+            compat_report.password_message(options.folder))
     return None
 
 
@@ -86,16 +149,17 @@ def open_backup(folder, password=None):
     import ios_backup_explorer as app
     from file_index import FileIndex
     session = app.BackupSession()
-    try:
-        session.open(folder, password).result(1800)
-        rows = session.scan().result(1800)
-        yield OpenedBackup(session, rows, FileIndex(rows))
-    finally:
+    with without_library_notes():
         try:
-            session.close()
-            session._executor.shutdown(wait=True)
-        except Exception:                              # (best effort)
-            pass
+            session.open(folder, password).result(1800)
+            rows = session.scan().result(1800)
+            yield OpenedBackup(session, rows, FileIndex(rows))
+        finally:
+            try:
+                session.close()
+                session._executor.shutdown(wait=True)
+            except Exception:                          # (best effort)
+                pass
 
 
 @contextlib.contextmanager

@@ -109,14 +109,21 @@ def describe_sqlite(path):
         tables, sql = [], []
         for name, statement in conn.execute(
                 "SELECT name, sql FROM sqlite_master WHERE type = 'table' "
-                "AND name NOT LIKE 'sqlite_%' ORDER BY name"):
+                "AND name NOT LIKE 'sqlite_%' ORDER BY name").fetchall():
             try:
                 rows = conn.execute(
                     f"SELECT COUNT(*) FROM {_quote(name)}").fetchone()[0]
             except sqlite3.Error:           # (a virtual table, say)
                 rows = None
-            columns = [(c[1], c[2]) for c in conn.execute(
-                f"PRAGMA table_info({_quote(name)})")]
+            try:
+                columns = [(c[1], c[2]) for c in conn.execute(
+                    f"PRAGMA table_info({_quote(name)})")]
+            except sqlite3.Error:
+                # a virtual table that needs something this SQLite does not
+                # have: the address book and the photo library search their
+                # text with tokenizers of Apple's own. One such table must not
+                # lose the report of the whole file.
+                columns = None
             tables.append((name, rows, columns))
             if statement:
                 sql.append(statement.strip() + ";")
@@ -202,7 +209,9 @@ def markdown(entries, missing=(), sql=False):
         lines += ["", "| Table | Rows | Columns |", "|---|---|---|"]
         for name, rows, columns in info["tables"]:
             shown = "?" if rows is None else f"{rows:,}"
-            cols = ", ".join(f"{c} {t}".strip() for c, t in columns)
+            cols = ("(not listed: the table needs a module this SQLite lacks)"
+                    if columns is None else
+                    ", ".join(f"{c} {t}".strip() for c, t in columns))
             lines.append(f"| {name} | {shown} | {cols} |")
         lines.append("")
         if sql:

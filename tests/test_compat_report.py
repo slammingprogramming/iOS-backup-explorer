@@ -53,6 +53,25 @@ def extracted_folder(parent, with_info=True):
     return root
 
 
+class TableCountTests(unittest.TestCase):
+    def test_unopenable_keychain_items_are_counted_not_their_groups(self):
+        # (the table of what cannot be opened has a row for each kind and
+        # class, with the number of items in it: nine rows of a real backup
+        # held 4,323 items, and "unreadable 9" would have said nine)
+        from types import SimpleNamespace
+        from ios_apps.records import Column, Dataset
+        columns = [Column("kind", "Kind", 100), Column("count", "Items", 70)]
+        panel = SimpleNamespace(datasets={
+            "passwords": Dataset("passwords", "Passwords", columns,
+                                 [{"kind": "x", "count": 1}] * 5),
+            "unreadable": Dataset("unreadable", "Cannot be opened", columns,
+                                  [{"kind": "genp", "count": 2203},
+                                   {"kind": "keys", "count": 103}])})
+        counts = load_tool().dataset_counts(panel)
+        self.assertEqual(counts["passwords"], 5)
+        self.assertEqual(counts["unreadable"], 2306)
+
+
 class FactsTests(unittest.TestCase):
     def setUp(self):
         self.tool = load_tool()
@@ -65,6 +84,21 @@ class FactsTests(unittest.TestCase):
         self.assertEqual(facts, {"ios": "17.4", "device": "iPhone15,2",
                                  "encrypted": None})
         self.assertNotIn("SECRET", str(facts))
+
+    def test_the_password_window_says_which_backup_it_is_for(self):
+        # (several backups sit in one folder; the model and the version tell
+        # them apart, and nothing that names the owner is in the message)
+        root = extracted_folder(self.tmp)
+        message = self.tool.password_message(root)
+        self.assertIn("iPhone15,2", message)
+        self.assertIn("iOS 17.4", message)
+        self.assertNotIn("SECRET", message)
+        self.assertIn("never saved or printed", message)
+
+    def test_the_password_message_without_any_facts_is_still_a_message(self):
+        message = self.tool.password_message(self.tmp)
+        self.assertIn("password of this backup", message)
+        self.assertNotIn("None", message)
 
     def test_a_folder_with_no_plists(self):
         facts = self.tool.backup_facts(self.tmp)

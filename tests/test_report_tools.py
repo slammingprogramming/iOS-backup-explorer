@@ -12,6 +12,7 @@ import shutil
 import sqlite3
 import sys
 import tempfile
+import threading
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
@@ -37,8 +38,9 @@ def load_tool(name):
     return module
 
 
-def plain_backup(parent, files, encrypted=False):
-    folder, _ids = fb.build_backup(parent, files=files, encrypted=encrypted)
+def plain_backup(parent, files, encrypted=False, **options):
+    folder, _ids = fb.build_backup(parent, files=files, encrypted=encrypted,
+                                   **options)
     return folder
 
 
@@ -158,6 +160,34 @@ class SchemaTests(ReportCase):
             text = self.schema.build(opened, ["HomeDomain/Library/SMS/sms.db"])
         self.assertIn("could not be read", text)
 
+    def test_a_table_that_needs_a_module_sqlite_lacks_does_not_lose_the_file(self):
+        # (the address book and the photo library of a real iOS 27 backup each
+        # have a text-search table with a tokenizer of Apple's own, which the
+        # SQLite of Python does not have: its columns cannot be listed, but the
+        # other tables of the file can, and must be)
+        path = os.path.join(self.tmp, "book.sqlitedb")
+        conn = sqlite3.connect(path)
+        conn.execute("CREATE TABLE ABPerson (ROWID INTEGER PRIMARY KEY, "
+                     "First TEXT)")
+        conn.execute("INSERT INTO ABPerson (First) VALUES ('Sam Example')")
+        conn.execute("PRAGMA writable_schema = ON")
+        conn.execute(
+            "INSERT INTO sqlite_master (type, name, tbl_name, rootpage, sql) "
+            "VALUES ('table', 'ABSearch', 'ABSearch', 0, 'CREATE VIRTUAL "
+            "TABLE ABSearch USING no_such_module(Value)')")
+        conn.commit()
+        conn.close()
+        with open(path, "rb") as handle:
+            data = handle.read()
+        name = "HomeDomain/Library/AddressBook/AddressBook.sqlitedb"
+        with self.opened(self.backup([tuple(name.split("/", 1)) + (data,)])
+                         ) as opened:
+            text = self.schema.build(opened, [name])
+        self.assertNotIn("could not be read", text)
+        self.assertIn("| ABPerson | 1 | ROWID INTEGER, First TEXT |", text)
+        self.assertRegex(text, r"\| ABSearch \| \? \| \(not listed")
+        self.assertNotIn("Sam Example", text)
+
     def test_find_lists_database_files_by_a_word(self):
         with self.opened(self.backup(self.files())) as opened:
             found = self.schema.find_paths(opened.index, "reminders")
@@ -200,6 +230,41 @@ class SchemaTests(ReportCase):
                                      "HealthDomain/Health/healthdb.sqlite"])
         self.assertEqual(code, 0, out.getvalue())
         self.assertIn("| sources |", out.getvalue())
+
+    def test_the_decryption_library_puts_no_paths_into_the_report(self):
+        # (the library prints a line about every file it decrypts, with the
+        # path of the working copy, which holds the name of whoever is logged
+        # in; a report is pasted into a public issue)
+        folder = self.backup(self.files(), encrypted=True, claimed_extra=777)
+        out = io.StringIO()
+        with mock.patch("getpass.getpass", return_value=fb.PASSPHRASE), \
+                redirect_stdout(out):
+            code = self.schema.main([folder, "--password-prompt", "--path",
+                                     "HealthDomain/Health/healthdb.sqlite"])
+        self.assertEqual(code, 0, out.getvalue())
+        self.assertIn("| sources |", out.getvalue())
+        self.assertNotIn("INFO:", out.getvalue())
+        self.assertNotIn("claimed", out.getvalue())
+        self.assertNotIn(tempfile.gettempdir(), out.getvalue())
+        self.assertNotIn("ibe-report-", out.getvalue())
+
+    def test_the_note_filter_leaves_everything_else_as_it_is(self):
+        note = "INFO: decrypted 5 bytes to 'C:\\Users\\sam\\x', iOS claimed 9."
+        out = io.StringIO()
+        with redirect_stdout(out), self.access.without_library_notes():
+            print("before")
+            print(note)
+            print("INFO: something else")           # (not the library's note)
+            sys.stdout.write("a prompt: ")           # (no newline: not held)
+            self.assertEqual(out.getvalue(), "before\nINFO: something else\n"
+                                             "a prompt: ")
+            sys.stdout.write("answer\n")
+            worker = threading.Thread(target=lambda: print(note))
+            worker.start()
+            worker.join()
+            sys.stdout.write("INF")             # (may yet become a note)
+        self.assertEqual(out.getvalue(), "before\nINFO: something else\n"
+                                         "a prompt: answer\nINF")
 
     def test_a_wrong_password_is_a_message(self):
         folder = self.backup(self.files(), encrypted=True)
