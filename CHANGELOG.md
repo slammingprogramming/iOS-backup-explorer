@@ -7,6 +7,8 @@ Eyyup (Eric) Gunes. Entries below the fork point record the original project's h
 
 ## [Unreleased]
 
+## [2.5.0] - 2026-11-14
+
 Found by checking the program against real backups of iOS 27.0.1 (an iPhone 14) and of an iPad on iOS 12.5.8 (see [iOS versions](docs/IOS_VERSIONS.md)): every tab loads on both, and every count of the iOS 27 backup was compared with its raw table.
 
 ### Added

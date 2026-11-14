@@ -66,7 +66,7 @@ from file_index import (  # noqa: F401
 )
 from ui_util import count_text
 
-__version__ = "2.4.0"
+__version__ = "2.5.0"
 APP_NAME = "iOS Backup Explorer"
 
 # The file list shows this many rows per page; longer listings are paged.
