@@ -24,6 +24,8 @@ web page, text, JSON), and the original database can always be extracted.
 import tkinter as tk
 from tkinter import messagebox, ttk
 
+from ui_util import count_text
+
 from . import calls as cl
 from . import calls_export as cx
 from .common import format_datetime
@@ -155,7 +157,7 @@ class CallsPanel(AppPanel):
 
     def on_loaded(self, calls):
         self.calls = calls
-        self.state_var.set(f"{len(calls):,} calls")
+        self.state_var.set(count_text(len(calls), "call"))
         self.refresh()
 
     def refresh(self):
@@ -174,7 +176,8 @@ class CallsPanel(AppPanel):
         self._show_more()
         totals = cl.summarize(calls)
         self.summary_var.set(
-            f"{totals['total']:,} calls · {totals['missed']:,} missed · "
+            f"{count_text(totals['total'], 'call')} · "
+            f"{totals['missed']:,} missed · "
             f"{describe_duration(totals['talk_seconds']) or '0:00'} talk time")
 
     def _show_more(self):
@@ -204,10 +207,11 @@ class CallsPanel(AppPanel):
         if not self.calls:
             messagebox.showinfo("Info", "There are no calls to export.")
             return
-        scopes = {"all": f"All {len(self.calls):,} calls"}
+        scopes = {"all": f"All {count_text(len(self.calls), 'call')}"}
         default = "all"
         if len(self.view) != len(self.calls):
-            scopes = {"view": f"The {len(self.view):,} calls shown",
+            scopes = {"view": f"The {count_text(len(self.view), 'call')} "
+                              "shown",
                       **scopes}
             default = "view"
         choice = ask_export(self, "Export calls", cx.FORMATS, scopes, default)

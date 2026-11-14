@@ -26,6 +26,8 @@ supplies a loader that returns the datasets.
 import tkinter as tk
 from tkinter import messagebox, ttk
 
+from ui_util import count_text
+
 from . import records_export as rx
 from .dialogs import ask_export
 from .panel_base import AppPanel
@@ -196,7 +198,8 @@ class RecordsPanel(AppPanel):
         self._show_more()
         total = len(self.dataset.rows)
         self.state_var.set(f"{len(self.rows):,} of {total:,}"
-                           if len(self.rows) != total else f"{total:,} rows")
+                           if len(self.rows) != total
+                           else count_text(total, "row"))
         self.summary_var.set("")
         self._describe([])
 
@@ -258,10 +261,11 @@ class RecordsPanel(AppPanel):
         if dataset is None or not dataset.rows:
             messagebox.showinfo("Info", "There is nothing to export.")
             return
-        scopes = {"all": f"All {len(dataset.rows):,} rows"}
+        scopes = {"all": f"All {count_text(len(dataset.rows), 'row')}"}
         default = "all"
         if len(self.rows) != len(dataset.rows):
-            scopes = {"view": f"The {len(self.rows):,} rows shown", **scopes}
+            scopes = {"view": f"The {count_text(len(self.rows), 'row')} "
+                              "shown", **scopes}
             default = "view"
         if self.selected_rows():
             scopes = {"selected":

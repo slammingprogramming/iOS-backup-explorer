@@ -29,6 +29,8 @@ import html
 import json
 import os
 
+from ui_util import count_text
+
 from .common import format_datetime
 from .export_util import (describe_size, iso_utc,  # noqa: F401
                           safe_filename)
@@ -256,7 +258,7 @@ def write_html(folder, items, attachment_files=None):
         listing.append(
             f"<li><a href=\"{html.escape(link_target(name), quote=True)}\">"
             f"{html.escape(conv.title)}</a><div class=\"meta\">"
-            f"{len(messages):,} messages"
+            f"{count_text(len(messages), 'message')}"
             + (f" &middot; last {html.escape(format_datetime(conv.last_when))}"
                if conv.last_when else "") + "</div></li>")
     index = os.path.join(folder, "index.html")

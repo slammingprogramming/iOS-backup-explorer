@@ -33,7 +33,7 @@ import tkinter.font as tkfont
 import webbrowser
 from tkinter import filedialog, messagebox, ttk
 
-from ui_util import post_when_done, weak_notifier
+from ui_util import count_text, post_when_done, weak_notifier
 
 from . import audio_tools, imaging
 from . import notes as nt
@@ -244,8 +244,8 @@ class NotesPanel(AppPanel):
         self.folders = {f.pk: f for f in folder_list}
         self._show_tree()
         shown = [n for n in self.notes if not n.deleted]
-        self.state_var.set(f"{len(shown):,} notes in "
-                           f"{len(folder_list):,} folders")
+        self.state_var.set(f"{count_text(len(shown), 'note')} in "
+                           f"{count_text(len(folder_list), 'folder')}")
 
     def _sorted(self, notes):
         key = SORTS[self.sort_var.get()]
@@ -729,7 +729,7 @@ class NotesPanel(AppPanel):
         self._items.clear()
         for note in results:
             self._add_note_row("", note, show_folder=True)
-        self.state_var.set(f"{len(results):,} matching notes")
+        self.state_var.set(count_text(len(results), "matching note"))
 
     # ── Exporting ────────────────────────────────────────────
 
@@ -763,7 +763,7 @@ class NotesPanel(AppPanel):
         if folder is not None:
             scopes["folder"] = (f"Everything in “{folder.title}” "
                                 f"({len(self._notes_in(folder)):,})")
-        scopes["all"] = f"All {len(self.notes):,} notes"
+        scopes["all"] = "All " + count_text(len(self.notes), "note")
         if default_scope not in scopes:
             default_scope = next(iter(scopes))
         extra = None

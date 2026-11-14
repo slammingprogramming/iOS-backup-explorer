@@ -7,6 +7,17 @@ Eyyup (Eric) Gunes. Entries below the fork point record the original project's h
 
 ## [Unreleased]
 
+Found by checking the program against real backups of iOS 27.0.1 (an iPhone 14) and of an iPad on iOS 12.5.8 (see [iOS versions](docs/IOS_VERSIONS.md)): every tab loads on both, and every count of the iOS 27 backup was compared with its raw table.
+
+### Added
+- **Messages that belong to no conversation are shown.** The Messages database can still hold messages that no chat lists (140 of 54,226 on the iOS 27 backup): what a deleted conversation leaves behind, which no tab showed. They are now the last item of the conversation list, **Messages in no conversation**, with who sent them and their attachments, found by the search, and included when everything is exported. The status line counts them apart ("709 conversations, 54,101 messages, and 140 more in no conversation") and the page says what they usually are
+
+### Fixed
+- **Counts read correctly for one**: "1 conversations", "1 notes", "1 items", "1 matching messages" and the like (the status lines, the export choices and the exported pages) now say "1 conversation", "1 note", "1 item"...
+- **The report tools no longer print local paths.** The decryption library prints a line about every file whose size is not the one the manifest gave (routine for databases), naming the working copy's path, which holds the name of whoever is logged in. The tools' output is meant to be pasted into a public issue, and that line was in it. It is now left out
+- **`tools/schema_report.py` no longer gives up on a whole database** because one of its tables needs something this SQLite lacks: the address book and the photo library of an iOS 27 backup each have a text-search table with a tokenizer of Apple's own, and were reported as "could not be read". Every other table is listed, and those say their columns are not listed
+- **`tools/compat_report.py` counts the keychain items that cannot be opened**, not the rows of the table that groups them: it said "unreadable 9" for a backup in which 4,323 items are locked to the phone they came from
+
 ## [2.4.0] - 2026-10-19
 
 ### Added

@@ -191,6 +191,30 @@ def build_sms_db(conn):
     conn.commit()
 
 
+def build_sms_db_with_unlinked(conn):
+    """The Messages scenario, and what a deleted conversation leaves behind:
+    messages that no chat lists (the phone drops the links first and keeps the
+    messages for a while). They are the newest of all."""
+    build_sms_db(conn)
+
+    def orphan(guid, text=None, body=None, handle=0, service="SMS", when=0,
+               from_me=0, attachments=0):
+        return conn.execute(
+            "INSERT INTO message (guid, text, attributedBody, handle_id, "
+            "service, date, is_from_me, cache_has_attachments) "
+            "VALUES (?,?,?,?,?,?,?,?)",
+            (guid, text, body, handle, service, (T0 + when) * NS, from_me,
+             attachments)).lastrowid
+
+    orphan("G-U1", "Left over from a deleted thread", handle=5, when=500)
+    orphan("G-U2", None, attributed_body("Sent just before it was deleted"),
+           service="iMessage", when=510, from_me=1)
+    with_file = orphan("G-U3", "￼", handle=5, when=520, attachments=1)
+    conn.execute("INSERT INTO message_attachment_join VALUES (?, 2)",
+                 (with_file,))                       # (notes.txt)
+    conn.commit()
+
+
 def build_old_sms_db(conn):
     """A pared-down database from an old iOS version."""
     conn.executescript(OLD_SMS_SCHEMA)

@@ -25,6 +25,8 @@ import json
 import os
 import re
 
+from ui_util import count_text
+
 from .export_util import (html_page, iso_utc, safe_filename, write_csv_file,
                           write_text_file)
 
@@ -99,7 +101,8 @@ def write_html(path, dataset, rows):
             f"<td{_align(c)}>{html.escape(_cell(c, r.get(c.key), r))}</td>"
             for c in dataset.columns) + "</tr>" for r in rows)
     page = (f"<h1>{html.escape(dataset.title)}</h1><div class=\"meta\">"
-            f"{len(rows):,} rows</div><table><thead><tr>{head}</tr></thead>"
+            f"{count_text(len(rows), 'row')}</div>"
+            f"<table><thead><tr>{head}</tr></thead>"
             f"<tbody>{body}</tbody></table>")
     write_text_file(path, html_page(dataset.title, page, _CSS))
     return [path]

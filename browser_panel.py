@@ -28,7 +28,7 @@ import concurrent.futures
 import tkinter as tk
 from tkinter import messagebox, ttk
 
-from ui_util import post_when_done
+from ui_util import count_text, post_when_done
 from file_index import (
     FileIndex, category_for, format_size, format_time, kind_of, sort_nodes,
 )
@@ -556,7 +556,7 @@ class FileBrowserPanel(ttk.Frame):
 
         total = len(self._listing)
         self.location_var.set(self._scope_name())
-        self.count_var.set(f"{total:,} items")
+        self.count_var.set(count_text(total, "item"))
         self.prev_btn.configure(
             state="normal" if self._page > 0 else "disabled")
         self.next_btn.configure(
@@ -666,7 +666,7 @@ class FileBrowserPanel(ttk.Frame):
                  f"Location:  {self.index.path_of(node.parent) or '-'}",
                  f"Domain:    {self.index.domain_of(node)}"]
         if node.is_dir:
-            lines.append(f"Contains:  {node.count:,} files, "
+            lines.append(f"Contains:  {count_text(node.count, 'file')}, "
                          f"{format_size(node.total)}")
         else:
             lines.append(f"Size:      {format_size(node.size)} "

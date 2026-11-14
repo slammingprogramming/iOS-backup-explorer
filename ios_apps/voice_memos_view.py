@@ -27,6 +27,8 @@ import sqlite3
 import tkinter as tk
 from tkinter import messagebox, ttk
 
+from ui_util import count_text
+
 from . import voice_memos as vm
 from . import voice_memos_export as vx
 from .common import format_datetime
@@ -168,9 +170,10 @@ class VoiceMemosPanel(AppPanel):
                                      describe_duration(memo.duration),
                                      describe_size(memo.size)))
         self.state_var.set(
-            self._note or (f"{len(self.view):,} of {len(self.memos):,} "
-                           "recordings" if text
-                           else f"{len(self.memos):,} recordings"))
+            self._note or (f"{len(self.view):,} of "
+                           f"{count_text(len(self.memos), 'recording')}"
+                           if text
+                           else count_text(len(self.memos), "recording")))
         self._describe()
 
     def selected_memos(self):
@@ -213,7 +216,7 @@ class VoiceMemosPanel(AppPanel):
         if not self.memos:
             messagebox.showinfo("Info", "There are no recordings to export.")
             return
-        scopes = {"all": f"All {len(self.memos):,} recordings"}
+        scopes = {"all": "All " + count_text(len(self.memos), "recording")}
         default = "all"
         if len(self.view) != len(self.memos):
             scopes = {"view": f"The {len(self.view):,} shown", **scopes}

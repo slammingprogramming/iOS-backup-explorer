@@ -131,7 +131,7 @@ class GuiFlowTests(unittest.TestCase):
         self.explorer.search_var.set("voice_memo_01")
         self.wait_for(lambda: len(self.explorer.file_tree.get_children())
                       == 1, "search result")
-        self.assertEqual(self.explorer.count_var.get(), "1 items")
+        self.assertEqual(self.explorer.count_var.get(), "1 item")
 
         file_id = self.explorer.file_tree.get_children()[0]
         self.explorer.file_tree.selection_set(file_id)

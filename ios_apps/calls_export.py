@@ -22,6 +22,8 @@ import html
 import json
 import os
 
+from ui_util import count_text
+
 from .calls import summarize
 from .common import format_datetime
 from .export_util import (describe_duration, html_page, iso_utc,
@@ -101,7 +103,8 @@ def write_html(path, calls):
             f"<td class=\"num\">{html.escape(describe_duration(call.duration))}"
             f"</td><td>{html.escape(call.location)}</td></tr>")
     body = ("<h1>Call history</h1><div class=\"summary meta\">"
-            f"{totals['total']:,} calls &middot; {totals['missed']:,} missed "
+            f"{count_text(totals['total'], 'call')} &middot; "
+            f"{totals['missed']:,} missed "
             f"&middot; {html.escape(describe_duration(totals['talk_seconds']))}"
             " talk time</div><table><thead><tr><th>Date</th><th>Who</th>"
             "<th>Direction</th><th>Type</th><th class=\"num\">Duration</th>"

@@ -418,7 +418,7 @@ class SearchTests(PanelCase):
         self.go("HomeDomain/Library")
         self.search("txt")
         self.assertEqual(self.shown(), ["note.txt"])
-        self.assertEqual(self.panel.count_var.get(), "1 items")
+        self.assertEqual(self.panel.count_var.get(), "1 item")
         self.assertIn("matches", self.status[-1])
         self.assertIn("location", self.panel.file_tree["displaycolumns"])
 

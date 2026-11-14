@@ -21,6 +21,12 @@
 import weakref
 
 
+def count_text(count, one, many=None):
+    """``"1 item"`` or ``"2,500 items"``: *count*, thousands separated, with
+    the noun in its right number (*many* where an "s" is not the plural)."""
+    return f"{count:,} {one if count == 1 else many or one + 's'}"
+
+
 def post_when_done(post, future, method, *args):
     """When *future* finishes, call ``method(future, *args)`` on the Tk
     thread (through *post*).

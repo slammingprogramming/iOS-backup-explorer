@@ -419,8 +419,8 @@ class SearchTests(MessagesGuiCase):
     def search(self, text):
         self.tab.search_var.set(text)
         self.wait_for(lambda: self.tab.state_var.get().endswith(
-            "matching messages") and self.tab._search_job is None,
-            "search results")
+            ("matching message", "matching messages"))
+            and self.tab._search_job is None, "search results")
 
     def test_results_replace_the_conversation_list(self):
         self.search("snacks")
@@ -430,7 +430,7 @@ class SearchTests(MessagesGuiCase):
         (item,) = tree.get_children()
         self.assertEqual(tree.item(item, "text"), "Weekend Plans")
         self.assertIn("snacks", tree.set(item, "text"))
-        self.assertEqual(self.tab.state_var.get(), "1 matching messages")
+        self.assertEqual(self.tab.state_var.get(), "1 matching message")
 
     def test_opening_a_result_jumps_to_that_message(self):
         self.search("see you there")
@@ -462,6 +462,50 @@ class SearchTests(MessagesGuiCase):
                 self.tab.search_var.set(text)
             self.assertEqual(run.call_count, 0)
             self.wait_for(lambda: run.call_count == 1, "one search")
+
+
+class UnlinkedTests(MessagesGuiCase):
+    """The messages no conversation lists (what a deleted conversation
+    leaves behind)."""
+
+    def setUp(self):
+        super().setUp()
+        self.open_backup(builder=fa.build_sms_db_with_unlinked)
+        self.show_tab()
+
+    def test_they_are_listed_last_and_the_status_counts_them_apart(self):
+        self.assertEqual(len(self.titles()), 5)
+        self.assertEqual(self.titles()[-1], "Messages in no conversation")
+        text = self.tab.state_var.get()
+        self.assertTrue(text.startswith("4 conversations, "), text)
+        self.assertTrue(text.endswith(", and 3 more in no conversation"),
+                        text)
+
+    def test_choosing_it_shows_them_and_says_what_they_are(self):
+        tree = self.tab.conversation_tree
+        item = tree.get_children()[-1]
+        conv = self.tab._items[item]
+        tree.selection_set(item)
+        self.wait_for(lambda: self.tab.current is conv and self.tab._messages
+                      and self.tab._messages[0].chat_id == 0, "the messages")
+        self.root.update()
+        self.assertIn("Left over from a deleted thread", self.chat())
+        self.assertIn("Sent just before it was deleted", self.chat())
+        self.assertIn("no conversation lists them", self.tab.info_var.get())
+
+    def test_exporting_everything_includes_them(self):
+        out = os.path.join(self.tmp, "export")
+        with mock.patch.object(mv, "ask_export",
+                               return_value=("txt", "all", out)) as ask:
+            self.tab.export("all")
+        self.wait_for(lambda: any(d[1][0] == "Export finished"
+                                  for d in self.dialogs), "the export")
+        names = os.listdir(out)
+        self.assertEqual(len(names), 5, names)
+        self.assertTrue(any("no conversation" in n.lower() for n in names),
+                        names)
+        self.assertIn("4 conversations and the messages in no conversation",
+                      ask.call_args[0][3]["all"])
 
 
 class ExportTests(MessagesGuiCase):

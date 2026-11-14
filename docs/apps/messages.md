@@ -20,6 +20,12 @@ Messages app does.
   shown; one whose message is not in the backup is listed on its own.
 - **Group events** appear as centred notes: someone named the conversation,
   added or removed someone, left it, or shared their location.
+- **Messages in no conversation**, last in the list when there are any. The
+  database sometimes still holds messages that no conversation lists: when a
+  conversation is deleted on the phone, the links to its messages go first and
+  the messages themselves can stay for a while. They are shown together here
+  (with who sent them, any attachments, and in the search and the exports) so
+  that they are not lost from view. They are most often incoming texts.
 - **Attachments** (pictures, files) are listed in the message; **click one to
   save it** (the program asks where). Large conversations load a page at a time.
 
@@ -55,8 +61,11 @@ exactly as the backup holds them.
 - **Recent messages.** The newest messages on a phone are often not yet in the
   main database but in a small companion "write-ahead log" file. The program
   copies both together, so nothing recent is lost.
-- **Deleted messages.** Messages deleted on the phone before the backup was
-  made are not in the backup. Messages in *Recently Deleted* may be.
+- **Deleted messages.** Most messages deleted on the phone before the backup
+  was made are not in the backup. Some are: see **Messages in no conversation**
+  above, which is a matter of chance, not a promise. The *Recently Deleted*
+  area of iOS 16 and later is kept in tables of its own that this program does
+  not read yet.
 - **Missing text.** The layouts change between iOS versions. If text looks
   wrong or is missing, please [report it](../../CONTRIBUTING.md#reporting-a-problem)
   without sending your data.

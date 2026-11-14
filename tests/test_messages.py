@@ -296,6 +296,111 @@ class SearchTests(unittest.TestCase):
         self.assertEqual(message.sender, "+15550109999")
 
 
+class UnlinkedMessageTests(unittest.TestCase):
+    """Messages the database keeps but no conversation lists (what is left of
+    a conversation deleted on the phone): found on a real iOS 27 backup, where
+    140 of 54,000 were in no conversation and no tab showed them."""
+
+    def setUp(self):
+        self.conn = open_scenario(fa.build_sms_db_with_unlinked)
+        self.addCleanup(self.conn.close)
+        self.reader = ms.MessagesReader(self.conn, contact_book())
+        self.convs = self.reader.conversations()
+        self.unlinked = self.convs[-1]
+
+    def test_they_are_one_more_conversation_at_the_end(self):
+        # (they are the newest messages of all, and still come last: they are
+        # not a conversation of the person, so they do not take its place)
+        self.assertEqual(len(self.convs), 5)
+        self.assertTrue(self.unlinked.unlinked)
+        self.assertEqual(self.unlinked.title, "Messages in no conversation")
+        self.assertEqual(self.unlinked.count, 3)
+        self.assertEqual(self.unlinked.services, {"SMS", "iMessage"})
+        self.assertEqual(self.unlinked.chat_ids, [])
+        self.assertFalse(self.unlinked.is_group)
+        self.assertEqual([c.unlinked for c in self.convs[:-1]], [False] * 4)
+        newest = max(c.last_when for c in self.convs[:-1])
+        self.assertGreater(self.unlinked.last_when, newest)
+
+    def test_the_other_conversations_are_as_they_were(self):
+        plain = ms.MessagesReader(open_scenario(), contact_book())
+        before = [(c.title, c.count, c.preview)
+                  for c in plain.conversations()]
+        after = [(c.title, c.count, c.preview) for c in self.convs[:-1]]
+        self.assertEqual(after, before)
+
+    def test_the_preview_is_the_newest_of_them(self):
+        self.assertEqual(self.unlinked.preview, "Attachment")
+
+    def test_their_messages_in_order_with_who_sent_them(self):
+        messages = self.reader.messages(self.unlinked)
+        self.assertEqual([(m.sender, m.service) for m in messages],
+                         [("+15550109999", "SMS"), ("Me", "iMessage"),
+                          ("+15550109999", "SMS")])
+        self.assertEqual(messages[0].text, "Left over from a deleted thread")
+        self.assertEqual(messages[1].text,           # (only in the blob)
+                         "Sent just before it was deleted")
+        self.assertEqual([m.chat_id for m in messages], [0, 0, 0])
+
+    def test_their_attachments_are_found(self):
+        messages = self.reader.messages(self.unlinked)
+        self.assertEqual([a.name for a in messages[2].attachments],
+                         ["notes.txt"])
+        self.assertEqual(self.reader.attachment_paths(self.unlinked),
+                         [ms.attachment_backup_path(
+                             "~/" + fa.ATTACHMENT_PATHS["notes"])])
+
+    def test_the_attachments_of_the_others_do_not_include_them(self):
+        alice = next(c for c in self.convs if c.title == "Alice Example")
+        paths = self.reader.attachment_paths(alice)
+        self.assertEqual(len(paths), 2)
+        # (the one of the unlinked message is the same file as one of Alice's:
+        # what is asked for is what each conversation links to)
+        self.assertEqual(
+            len(self.reader.attachment_paths(self.unlinked)), 1)
+
+    def test_a_search_finds_them(self):
+        found = [(c.title, m.text) for c, m in
+                 self.reader.search("deleted thread")]
+        self.assertEqual(found, [("Messages in no conversation",
+                                  "Left over from a deleted thread")])
+        found = [c.title for c, _m in self.reader.search("just before")]
+        self.assertEqual(found, ["Messages in no conversation"])
+
+    def test_a_search_still_finds_the_others_as_before(self):
+        found = [(c.title, m.text) for c, m in self.reader.search("snacks")]
+        self.assertEqual(found, [("Weekend Plans", "Who's bringing snacks?")])
+
+    def test_a_database_without_any_has_no_such_conversation(self):
+        conn = open_scenario()
+        self.addCleanup(conn.close)
+        convs = ms.MessagesReader(conn, contact_book()).conversations()
+        self.assertFalse(any(c.unlinked for c in convs))
+
+    def test_an_old_ios_database_has_them_too(self):
+        conn = open_scenario(fa.build_old_sms_db)
+        self.addCleanup(conn.close)
+        conn.execute(
+            "INSERT INTO message (guid, text, handle_id, service, date, "
+            "is_from_me) VALUES ('O-1', 'orphan from 2015', 1, 'SMS', "
+            "450000001, 0)")
+        reader = ms.MessagesReader(conn)
+        convs = reader.conversations()
+        self.assertEqual([c.unlinked for c in convs], [False, True])
+        messages = reader.messages(convs[-1])
+        self.assertEqual([(m.sender, m.text) for m in messages],
+                         [("+15550101234", "orphan from 2015")])
+        self.assertEqual(reader.search("orphan")[0][0].title,
+                         "Messages in no conversation")
+
+    def test_a_message_in_a_conversation_is_not_one_of_them(self):
+        # (one that is in two chats, and one in none, are counted right)
+        self.conn.execute("INSERT INTO chat_message_join VALUES (2, 1, 0)")
+        self.conn.commit()
+        convs = ms.MessagesReader(self.conn, contact_book()).conversations()
+        self.assertEqual(convs[-1].count, 3)
+
+
 class OldSchemaTests(unittest.TestCase):
     def test_a_database_from_an_old_ios_version(self):
         conn = open_scenario(fa.build_old_sms_db)

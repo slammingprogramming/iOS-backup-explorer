@@ -327,7 +327,7 @@ class CallRecordingViewTests(NotesGuiCase):
         tab.search_var.set("goodbye")
         tab._search()
         self.wait_for(lambda: tab.state_var.get().endswith(
-            "matching notes"), "the results")
+            ("matching note", "matching notes")), "the results")
         self.assertEqual(self.rows(), ["Call with Example Co  — Notes"])
 
     # -- a recording in more than one form --------------------
@@ -569,13 +569,13 @@ class SearchTests(NotesGuiCase):
         self.tab.search_var.set(text)
         self.tab._search()                      # without the typing delay
         self.wait_for(lambda: self.tab.state_var.get().endswith(
-            "matching notes"), "the results")
+            ("matching note", "matching notes")), "the results")
         return self.rows()
 
     def test_search_finds_text_and_shows_the_folder(self):
         self.assertEqual(self.search("batter"), ["Pancakes  — Recipes"])
         self.assertEqual(self.search("tomato"), ["Tomato soup  — Soups"])
-        self.assertIn("1 matching notes", self.tab.state_var.get())
+        self.assertIn("1 matching note", self.tab.state_var.get())
 
     def test_search_finds_hashtags_and_link_titles(self):
         self.assertEqual(self.search("#home"), ["Shopping list  — Notes"])

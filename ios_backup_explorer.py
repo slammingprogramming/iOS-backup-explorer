@@ -64,6 +64,7 @@ from ios_apps.context import AppContext
 from file_index import (  # noqa: F401
     FileIndex, format_size, read_file_details,
 )
+from ui_util import count_text
 
 __version__ = "2.4.0"
 APP_NAME = "iOS Backup Explorer"
@@ -1314,8 +1315,8 @@ class BackupExplorer:
         self.apps.backup_dir = self.backup_dir
         self._add_app_tabs(index)
         self.status_var.set(
-            f"{index.file_count:,} files ready. Choose a folder on the "
-            "left, or use the search box.")
+            f"{count_text(index.file_count, 'file')} ready. Choose a folder "
+            "on the left, or use the search box.")
 
     # ── App tabs ─────────────────────────────────────────────
 
@@ -1381,7 +1382,7 @@ class BackupExplorer:
             return
         self._begin_extraction(
             lambda progress: self.session.extract(file_ids, dest, progress),
-            dest, f"Extracting {len(file_ids)} files...")
+            dest, f"Extracting {count_text(len(file_ids), 'file')}...")
 
     def _extract_entire(self):
         """Extract every file, straight from the manifest (no row cap).
@@ -1435,7 +1436,7 @@ class BackupExplorer:
             return
 
         report = future.result()
-        msg = f"Extracted {report.extracted:,} files to {dest}"
+        msg = f"Extracted {count_text(report.extracted, 'file')} to {dest}"
         if report.errors:
             msg += f" ({len(report.errors)} errors)"
         if report.skipped:

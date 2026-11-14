@@ -32,7 +32,7 @@ from tkinter import filedialog, messagebox, ttk
 
 from . import messages as ms
 from . import messages_export as mx
-from ui_util import post_when_done, weak_notifier
+from ui_util import count_text, post_when_done, weak_notifier
 
 from .common import SqliteSource, format_datetime
 from .dialogs import ask_export
@@ -301,9 +301,13 @@ class MessagesPanel(ttk.Frame):
             self.conversation_tree.insert(
                 "", "end", iid=item, text=conv.title,
                 values=(format_datetime(conv.last_when), f"{conv.count:,}"))
-        total = sum(c.count for c in self.conversations)
-        self.state_var.set(f"{len(self.conversations):,} conversations, "
-                           f"{total:,} messages")
+        linked = [c for c in self.conversations if not c.unlinked]
+        text = (f"{count_text(len(linked), 'conversation')}, "
+                f"{count_text(sum(c.count for c in linked), 'message')}")
+        loose = sum(c.count for c in self.conversations if c.unlinked)
+        if loose:
+            text += f", and {loose:,} more in no conversation"
+        self.state_var.set(text)
 
     # ── Showing a conversation ───────────────────────────────
 
@@ -326,9 +330,12 @@ class MessagesPanel(ttk.Frame):
 
     @staticmethod
     def _describe(conv):
-        bits = [f"{conv.count:,} messages"]
+        bits = [count_text(conv.count, "message")]
         if conv.services:
             bits.append(conv.service_label)
+        if conv.unlinked:
+            bits.append("no conversation lists them: usually what is left "
+                        "of one deleted on the phone")
         if conv.is_group and conv.participants:
             bits.append("with " + ", ".join(conv.participants))
         elif conv.identifier and conv.identifier != conv.title:
@@ -489,7 +496,8 @@ class MessagesPanel(ttk.Frame):
             self.result_tree.insert(
                 "", "end", iid=item, text=conv.title,
                 values=(format_datetime(message.when), snippet))
-        self.state_var.set(f"{len(results):,} matching messages")
+        self.state_var.set(
+            f"{count_text(len(results), 'matching message')}")
 
     def _open_result(self):
         selection = self.result_tree.selection()
@@ -525,7 +533,11 @@ class MessagesPanel(ttk.Frame):
         if not self.conversations:
             messagebox.showinfo("Info", "There are no messages to export.")
             return
-        scopes = {"all": f"All {len(self.conversations):,} conversations"}
+        linked = [c for c in self.conversations if not c.unlinked]
+        label = "All " + count_text(len(linked), "conversation")
+        if len(linked) != len(self.conversations):
+            label += " and the messages in no conversation"
+        scopes = {"all": label}
         if self.current is not None:
             scopes = {"one": f"Only “{self.current.title}”", **scopes}
         else:

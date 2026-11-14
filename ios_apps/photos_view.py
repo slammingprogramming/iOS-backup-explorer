@@ -33,7 +33,7 @@ import tkinter.font as tkfont
 from collections import OrderedDict, deque
 from tkinter import filedialog, messagebox, ttk
 
-from ui_util import post_when_done, weak_notifier
+from ui_util import count_text, post_when_done, weak_notifier
 
 from . import imaging
 from . import photos as ph
@@ -260,7 +260,7 @@ class PhotosPanel(AppPanel):
         self._describe()
         if self.items:
             self.state_var.set(self._note or f"{len(self.shown):,} of "
-                               f"{len(self.items):,} items")
+                               f"{count_text(len(self.items), 'item')}")
 
     def _layout(self):
         width = max(self.canvas.winfo_width(), CELL)

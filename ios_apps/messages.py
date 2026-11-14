@@ -132,15 +132,20 @@ class Message:
 
 class Conversation:
     """A conversation. iOS keeps a separate chat for iMessage and for SMS
-    with the same person; they are shown together here, like in Messages."""
+    with the same person; they are shown together here, like in Messages.
+
+    ``unlinked`` marks the one made-up conversation that holds the messages
+    the database keeps but no conversation lists (see
+    ``MessagesReader.conversations``)."""
 
     __slots__ = ("chat_ids", "title", "participants", "is_group", "services",
-                 "count", "last_when", "preview", "identifier")
+                 "count", "last_when", "preview", "identifier", "unlinked")
 
     def __init__(self, **fields):
         self.chat_ids, self.participants, self.services = [], [], set()
         self.title = self.preview = self.identifier = ""
         self.is_group, self.count, self.last_when = False, 0, None
+        self.unlinked = False
         for name, value in fields.items():
             setattr(self, name, value)
 
@@ -174,10 +179,19 @@ class MessagesReader:
     def _column(self, table, name, alias):
         return f"{alias}.{name}" if name in self._columns[table] else "NULL"
 
+    # A message that no conversation lists. When someone deletes a
+    # conversation the phone drops the links from it to its messages first, and
+    # a message can stay in the database for a while after that.
+    _UNLINKED = ("NOT EXISTS (SELECT 1 FROM chat_message_join j "
+                 "WHERE j.message_id = m.ROWID)")
+
     # -- conversations ----------------------------------------
 
     def conversations(self):
-        """Every conversation that has messages, newest first."""
+        """Every conversation that has messages, newest first. After them, if
+        the database holds messages that belong to no conversation, one more
+        (``unlinked``) that holds those: it is usually what is left of a
+        conversation deleted on the phone."""
         chats = {}
         chat_sql = ", ".join(self._column("chat", name, "c") for name in
                              ("chat_identifier", "display_name",
@@ -236,19 +250,42 @@ class MessagesReader:
             conv.preview = self._preview(conv)
             result.append(conv)
         result.sort(key=lambda c: c.last_when or 0, reverse=True)
+        unlinked = self._unlinked_conversation()
+        if unlinked is not None:
+            result.append(unlinked)
         return result
 
+    def _unlinked_conversation(self):
+        count, last = self.conn.execute(
+            f"SELECT COUNT(*), MAX({self._column('message', 'date', 'm')}) "
+            f"FROM message m WHERE {self._UNLINKED}").fetchone()
+        if not count:
+            return None
+        conv = Conversation(
+            unlinked=True, title="Messages in no conversation", count=count,
+            last_when=apple_time(last))
+        conv.services = {s for (s,) in self.conn.execute(
+            f"SELECT DISTINCT {self._column('message', 'service', 'm')} "
+            f"FROM message m WHERE {self._UNLINKED}") if s}
+        conv.preview = self._preview(conv)
+        self._chat_conversation[0] = conv       # (the search finds them there)
+        return conv
+
     def _preview(self, conv):
-        marks = ",".join("?" * len(conv.chat_ids))
+        if conv.unlinked:
+            source, params = f"FROM message m WHERE {self._UNLINKED} ", []
+        else:
+            marks = ",".join("?" * len(conv.chat_ids))
+            source = ("FROM message m JOIN chat_message_join cmj "
+                      "ON cmj.message_id = m.ROWID "
+                      f"WHERE cmj.chat_id IN ({marks}) ")
+            params = conv.chat_ids
         row = self.conn.execute(
             f"SELECT {self._column('message', 'text', 'm')}, "
             f"{self._column('message', 'attributedBody', 'm')}, "
             f"{self._column('message', 'cache_has_attachments', 'm')} "
-            "FROM message m JOIN chat_message_join cmj "
-            "ON cmj.message_id = m.ROWID "
-            f"WHERE cmj.chat_id IN ({marks}) "
-            "ORDER BY m.date DESC, m.ROWID DESC LIMIT 1",
-            conv.chat_ids).fetchone()
+            + source + "ORDER BY m.date DESC, m.ROWID DESC LIMIT 1",
+            params).fetchone()
         if row is None:
             return ""
         text = self._text_of(row[0], row[1])
@@ -274,14 +311,20 @@ class MessagesReader:
         columns = ", ".join(self._column("message", name, "m")
                             for name in wanted)
         handle_id = self._column("handle", "id", "h")
-        marks = ",".join("?" * len(conversation.chat_ids))
-        rows = self.conn.execute(
-            f"SELECT m.ROWID, cmj.chat_id, {columns}, {handle_id} "
-            "FROM message m "
-            "JOIN chat_message_join cmj ON cmj.message_id = m.ROWID "
-            "LEFT JOIN handle h ON h.ROWID = m.handle_id "
-            f"WHERE cmj.chat_id IN ({marks}) "
-            "ORDER BY m.date, m.ROWID", conversation.chat_ids).fetchall()
+        if conversation.unlinked:
+            rows = self.conn.execute(
+                f"SELECT m.ROWID, 0, {columns}, {handle_id} FROM message m "
+                "LEFT JOIN handle h ON h.ROWID = m.handle_id "
+                f"WHERE {self._UNLINKED} ORDER BY m.date, m.ROWID").fetchall()
+        else:
+            marks = ",".join("?" * len(conversation.chat_ids))
+            rows = self.conn.execute(
+                f"SELECT m.ROWID, cmj.chat_id, {columns}, {handle_id} "
+                "FROM message m "
+                "JOIN chat_message_join cmj ON cmj.message_id = m.ROWID "
+                "LEFT JOIN handle h ON h.ROWID = m.handle_id "
+                f"WHERE cmj.chat_id IN ({marks}) "
+                "ORDER BY m.date, m.ROWID", conversation.chat_ids).fetchall()
 
         messages, by_guid, reaction_rows = [], {}, []
         for row in rows:
@@ -382,7 +425,10 @@ class MessagesReader:
         sql = ("SELECT DISTINCT a.filename FROM attachment a "
                "JOIN message_attachment_join maj ON maj.attachment_id = a.ROWID ")
         params = []
-        if conversation is not None:
+        if conversation is not None and conversation.unlinked:
+            sql += ("JOIN message m ON m.ROWID = maj.message_id "
+                    f"WHERE {self._UNLINKED} ")
+        elif conversation is not None:
             marks = ",".join("?" * len(conversation.chat_ids))
             sql += ("JOIN chat_message_join cmj ON cmj.message_id = "
                     f"maj.message_id WHERE cmj.chat_id IN ({marks}) ")
@@ -409,9 +455,10 @@ class MessagesReader:
         columns = ", ".join(self._column("message", name, "m") for name in
                             ("guid", "text", "attributedBody", "date",
                              "is_from_me", "service"))
-        base = (f"SELECT m.ROWID, cmj.chat_id, {columns}, "
+        # (a message in no conversation is chat 0, the unlinked one)
+        base = (f"SELECT m.ROWID, COALESCE(cmj.chat_id, 0), {columns}, "
                 f"{self._column('handle', 'id', 'h')} FROM message m "
-                "JOIN chat_message_join cmj ON cmj.message_id = m.ROWID "
+                "LEFT JOIN chat_message_join cmj ON cmj.message_id = m.ROWID "
                 "LEFT JOIN handle h ON h.ROWID = m.handle_id ")
         rows = list(self.conn.execute(
             base + "WHERE m.text LIKE ? ESCAPE '\\' "

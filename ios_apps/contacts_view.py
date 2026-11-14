@@ -26,6 +26,8 @@ import tkinter as tk
 import tkinter.font as tkfont
 from tkinter import messagebox, ttk
 
+from ui_util import count_text
+
 from . import contacts as ct
 from . import contacts_export as cx
 from .common import format_datetime
@@ -132,7 +134,7 @@ class ContactsPanel(AppPanel):
 
     def on_loaded(self, contacts):
         self.contacts = contacts
-        self.state_var.set(f"{len(contacts):,} contacts")
+        self.state_var.set(count_text(len(contacts), "contact"))
         self.refresh()
 
     def refresh(self):
@@ -155,10 +157,10 @@ class ContactsPanel(AppPanel):
             self.tree.insert("", "end", iid=row, text=contact.display_name,
                              values=(detail,))
         if text:
-            self.state_var.set(f"{len(contacts):,} of {len(self.contacts):,}"
-                               " contacts")
+            self.state_var.set(f"{len(contacts):,} of "
+                               f"{count_text(len(self.contacts), 'contact')}")
         else:
-            self.state_var.set(f"{len(self.contacts):,} contacts")
+            self.state_var.set(count_text(len(self.contacts), "contact"))
         if self.current is not None:
             row = f"p{self.current.pk}"
             if self.tree.exists(row):
@@ -222,10 +224,11 @@ class ContactsPanel(AppPanel):
         if not self.contacts:
             messagebox.showinfo("Info", "There are no contacts to export.")
             return
-        scopes = {"all": f"All {len(self.contacts):,} contacts"}
+        scopes = {"all": f"All {count_text(len(self.contacts), 'contact')}"}
         default = "all"
         if len(self.view) != len(self.contacts):
-            scopes = {"view": f"The {len(self.view):,} contacts shown",
+            scopes = {"view": f"The {count_text(len(self.view), 'contact')} "
+                              "shown",
                       **scopes}
             default = "view"
         if self.current is not None:
