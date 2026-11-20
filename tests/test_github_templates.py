@@ -312,6 +312,17 @@ class OtherFileTests(unittest.TestCase):
         for action, versions in found.items():
             self.assertEqual(len(versions), 1, (action, versions))
 
+    def test_python_3_9_does_not_run_on_the_newest_ubuntu_image(self):
+        # ubuntu-latest became Ubuntu 26.04, which has no Python 3.9 for
+        # actions/setup-python: the tests job failed and, because the release
+        # waits for it, 2.5.0 was never published. 3.9 is the oldest version
+        # the program supports, so it runs on an image that still has it.
+        source = text(GITHUB / "workflows" / "tests.yml")
+        self.assertRegex(source, r'(?m)^\s+exclude:\n\s+- os: ubuntu-latest\n'
+                                 r'\s+python-version: "3\.9"')
+        self.assertRegex(source, r'(?m)^\s+include:\n\s+- os: ubuntu-24\.04\n'
+                                 r'\s+python-version: "3\.9"')
+
     def test_the_helping_guide_is_linked_from_where_people_look(self):
         for path in ("README.md", "CONTRIBUTING.md", "docs/README.md",
                      "docs/IOS_VERSIONS.md", ".github/SUPPORT.md"):

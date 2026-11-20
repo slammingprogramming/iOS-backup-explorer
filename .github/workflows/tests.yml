@@ -16,6 +16,17 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
         python-version: ["3.9", "3.13"]
+        # ubuntu-latest became Ubuntu 26.04, for which actions/setup-python
+        # has no Python 3.9 build (the release of 2.5.0 was stopped by that),
+        # and 3.9 is the oldest version the program promises to support. So
+        # 3.9 runs on 24.04, which has it; the newest Python runs on the
+        # newest image. When 24.04 is retired, look here first.
+        exclude:
+          - os: ubuntu-latest
+            python-version: "3.9"
+        include:
+          - os: ubuntu-24.04
+            python-version: "3.9"
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
