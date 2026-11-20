@@ -7,8 +7,16 @@ Eyyup (Eric) Gunes. Entries below the fork point record the original project's h
 
 ## [Unreleased]
 
+## [2.6.0] - 2026-11-19
+
+A way to say thanks to the project, kept out of the way, and the fix of the checks that stopped 2.5.0 from being published.
+
 ### Added
 - **A way to say thanks, kept out of the way.** A small **About & support** link at the top right of the window (or the **F1** key) opens a window with the program's credit and licence and the optional ways to support it: Ko-fi, and Bitcoin (a Silent Payments address), Ethereum and Monero addresses with a *Copy* button each. Nothing in the program depends on a donation or asks for one, showing the window opens nothing, and the two buttons that open a page only hand a link to your own browser when you click them. The same details are in a new page, [Supporting the project](docs/DONATE.md), in the README, in the repository's Sponsor button (`.github/FUNDING.yml`), in the FAQ, in `SUPPORT.md` and under every release. They are kept in one file (`about.py`), and a test fails if the README, the page or the Sponsor button differs from it, or if an address is mistyped (the Bitcoin one is checked against its own checksum)
+- The pictures of the documentation were taken again: the new link shows in the corner of every window, and there is a picture of the *About & support* window
+
+### Fixed
+- **2.5.0 was tagged but never published as a release.** GitHub's `ubuntu-latest` became Ubuntu 26.04, which has no Python 3.9 for `actions/setup-python`, so the Linux Python 3.9 test job failed at its setup step, and the release workflow, which runs the tests first, stopped before publishing. That one job now runs on Ubuntu 24.04, which has Python 3.9 (the oldest version the program supports), and a test fails if it is put back on `ubuntu-latest`. The program itself is unchanged by this: 2.5.0's changes are part of this release, and its tag stays where it is (a published tag is never moved)
 
 ## [2.5.0] - 2026-11-14
 

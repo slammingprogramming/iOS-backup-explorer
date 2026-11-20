@@ -1,7 +1,7 @@
 # Testing
 
 The suite has about 1,700 tests and runs in a few minutes. Without a display
-(as on CI's Linux machines) 1,230 are counted and the 100 or so that open a
+(as on CI's Linux machines) 1,231 are counted and the 100 or so that open a
 window are skipped. It uses only
 **generated** data: nothing from a real device is, or may ever be, in the
 repository.
