@@ -19,7 +19,7 @@ iOS Backup Explorer is designed from the ground up with your privacy and securit
 ### No Data Storage
 - Your backup password is **never saved** to disk, logs, or any file.
 - The password is discarded from the UI immediately after successful decryption and is not retained when you close the app.
-- iOS Backup Explorer creates no config files, logs, or caches.
+- iOS Backup Explorer creates no logs or caches. The one file it keeps between runs is a small `settings.json` in your own settings folder (`%APPDATA%\iOS Backup Explorer` on Windows, `~/Library/Application Support/iOS Backup Explorer` on macOS, `~/.config/ios-backup-explorer` on Linux), written only if you use **Devices & backups** to add a folder to look in, to choose where new backups go, or to point to the libimobiledevice tools. It holds those folder paths and nothing else: no password, no name, nothing about any backup. Delete it any time.
 - While a backup is open, the decryption library keeps a **decrypted copy of `Manifest.db`** (the backup's file index: names, paths and wrapped per-file keys, not your file contents) in a temporary folder. It is deleted when you close the app or open a different backup. If the app is killed or crashes it may be left behind in your system temp folder, so delete stray `Manifest.db` copies there if that happens, and use full-disk encryption.
 - Files you extract are written, **decrypted**, to the folder you choose. Protect or delete them yourself.
 
@@ -66,6 +66,17 @@ A folder that was already decrypted and extracted (domain folders such as `HomeD
 To show an app such as Messages, Notes, Calls, Contacts, Photos, Voice Memos, Safari, Calendar, Voicemail, Reminders, Network, Accounts, Screen Time, Health, Maps, Podcasts, Books, Recents, Privacy, Apps or iCloud Drive, iOS Backup Explorer makes a **working copy** of that app's database or files (and of the address book, to show names instead of numbers) in a private temporary folder. Pictures shown in a note, the thumbnails of the Photos tab and anything you open (a picture, a recording, an attachment) are copied there too, and the thumbnail copies are deleted again as soon as the thumbnail is made. For an encrypted backup all these copies are decrypted. The Health database can be hundreds of megabytes, so its working copy can be too (and, for an encrypted backup, it is decrypted into that folder); make sure there is room, and that your disk is encrypted if the data is sensitive. The folder is deleted when you close the app or open another backup; if the app is killed it may be left behind in your system temp folder (named `ios-backup-explorer-apps-...`), so delete it if so.
 
 Exports you create (text, Markdown, web page, PDF, vCard, iCalendar, GPX routes and places, bookmarks, CSV, JSON, converted pictures, audio files) are ordinary files in the folder you choose and contain your data in readable form. Protect or delete them yourself. The exported web pages load nothing from the internet and contain no scripts; links inside notes are only made clickable if they are web, mail or phone links. Only `http` and `https` addresses are opened in your browser (Safari history and bookmarks, links in notes are limited to web, mail and phone links). Only pictures, videos, audio and ordinary documents (PDF, text, Office files and the like) are opened from the app, in the program your computer uses for them, which is then outside this app's control. Anything else, such as a program, a script or a web page that someone attached to a note or message, is never started from here: use **Save as...** and open it yourself if you trust it.
+
+## Devices & Backups
+
+The **Devices & backups** window (see [Devices and backups](docs/DEVICES.md)) manages the backups on the computer and, if [libimobiledevice](https://libimobiledevice.org)'s tools are installed, talks to a device plugged in by USB. Be aware that:
+
+- **Still no network.** A device is reached through its cable and the computer's own `usbmuxd` service (on Windows the Apple Mobile Device Service, which listens on this computer only). Nothing is sent to any server, and nothing here touches iCloud.
+- **The tools are separate programs** you install yourself (`idevice_id`, `ideviceinfo`, `idevicepair`, `idevicebackup2`, `idevicecrashreport`). The program never bundles, downloads or installs them. It starts them without a shell, with a list of arguments, after checking that a device identifier is a real one (so nothing can be taken for an option), and with no window and no input.
+- **Backup passwords never go on a command line**, where other programs of the computer could read them: they are handed to the tool through its environment (`BACKUP_PASSWORD`, `BACKUP_PASSWORD_NEW`) and are removed from any error text before it is shown. They are held in memory only while the tool runs.
+- **It never restores a backup to a device**, the one operation that could destroy what is on it. It never changes a backup it only lists or checks. **Copy**, **Move** and **Delete** change backups on purpose: a copy is made under a temporary name, checked, and only then renamed into place; a move removes the original only after that; and a delete is only accepted for a folder that is a backup, directly inside a folder the window lists, which is not a link, after you confirm it (it does not use the recycle bin).
+- **Crash reports** are copied from the device and left on it.
+- **A backup it makes holds your data** like any other; an unencrypted one is readable by anyone who can read the folder, so turn encryption on (the window can) and protect the drive.
 
 ## Mounting a Backup
 
@@ -114,6 +125,7 @@ iOS Backup Explorer depends on:
 We monitor our dependencies for known vulnerabilities.
 - **Pillow**, **pillow-heif** and **fpdf2** (optional) — only for picture previews, HEIC photos and PDF export. They are installed separately, run only on this computer, and are not needed for anything else.
 - **ffmpeg** (optional, a separate program you install yourself) — only to mix the tracks of a call recording into one audio file. It is started without a shell, on a working copy of the recording, only when you ask for the mixed audio; the original file is never changed.
+- **libimobiledevice** and **usbmuxd** (optional, separate programs you install yourself) — only for pairing with, backing up and managing the backup encryption of a device plugged in by USB, from the **Devices & backups** window. LGPL-2.1-or-later and GPL; not bundled with this app.
 - **mfusepy** (optional, only for mounting) — ISC licensed Python bindings for FUSE/WinFsp.
 - **WinFsp / macFUSE / FUSE-T / libfuse** (optional, only for mounting) — third-party drivers you 
   install yourself; they are not bundled with this app.

@@ -105,6 +105,41 @@ missing.
 Explorer's address bar (not the Run box on some versions). It has no drive
 letter by design.
 
+## Devices and backups
+
+See [Devices and backups](DEVICES.md) for how the window works.
+
+**The Device tab says the tools are not installed.** The program only looks
+for libimobiledevice's tools; it never installs them. The tab shows the
+command for your system. If they are installed but not on the `PATH` (often on
+Windows), use **Tools folder...** to point to the folder that holds
+`idevicebackup2` and the others.
+
+**No device is found.** Plug it in with its cable (a charge-only cable shows
+nothing), unlock it, tap Trust if it asks, and press **Refresh**. On Linux the
+`usbmuxd` service must be running (`systemctl status usbmuxd`). If
+`idevice_id -l` in a terminal prints nothing, the window cannot see it either.
+
+**"Trust this computer" keeps waiting.** The question is on the device's
+screen: unlock it and tap **Trust**, then enter its passcode. If it was
+refused once (Don't Trust), unplug the device and plug it in again.
+
+**A backup fails right away, or stops part-way.** Keep the device unlocked and
+plugged in, and make sure the folder it is saving into has room (a backup is
+about as big as the data on the device). The window shows the tool's own
+message. A very recent iOS may need a newer libimobiledevice than your
+distribution ships. Nothing is lost when a backup stops: what was copied is
+kept, the backup is listed as *Interrupted*, and the next one carries on.
+
+**A backup says it is encrypted and I never set a password.** The device
+keeps one setting for its backup encryption, and iTunes or Finder may have set
+it before. **Backup encryption** in the Device tab shows its state; to turn it
+off you need the password that was set.
+
+**The Backups tab does not list a backup I know is there.** It looks in
+Apple's folders, in this program's own folder, and in the folders you add with
+**Add a folder...** (the folder that *holds* backups, not one backup).
+
 ## Still stuck?
 
 Open an issue (see [Contributing](../CONTRIBUTING.md#reporting-a-problem)) with

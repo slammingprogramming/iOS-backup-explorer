@@ -88,6 +88,16 @@ kinnay/AEA, python-aea (Yannik Marchand; MIT License): an implementation of the
 ipsw (blacktop; MIT License): its AEA decoder describes the key derivation
     steps of the format. https://github.com/blacktop/ipsw
 The Apple Wiki: its page on the Apple Encrypted Archive format.
+libimobiledevice (Nikias Bassen, Martin Szulecki and the libimobiledevice
+    contributors; LGPL-2.1-or-later) and usbmuxd (the usbmuxd contributors;
+    GPL-2.0-or-later and GPL-3.0-or-later): the command-line tools idevice_id,
+    ideviceinfo, idevicepair, idevicebackup2 and idevicecrashreport, which the
+    "Devices & backups" window runs, as separate programs, to pair with a
+    device, back it up and manage its backup encryption. They are never
+    bundled or downloaded by this program, and no code of theirs is copied: the
+    window only runs them, and its way of reading what they print and of
+    passing them a password was written from their published source code.
+    https://libimobiledevice.org and https://github.com/libimobiledevice/usbmuxd
 Protocol Buffers encoding guide (Google; https://protobuf.dev/programming-guides/encoding/):
     the public description of the wire format read by ios_apps/protobuf_wire.py.
 HL7 FHIR (https://hl7.org/fhir) and Apple's HealthKit documentation: the names

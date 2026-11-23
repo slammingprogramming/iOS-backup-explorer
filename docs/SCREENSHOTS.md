@@ -93,10 +93,15 @@ again: the export dialog, the password boxes of the locked note and of the
 Keychain tab (the tool types the demo's own invented passwords into them, so
 nothing waits for a person), the **About & support** window (it shows the
 project's real donation addresses, which are public by design and belong to the
-project, not to the computer the pictures are made on), and the three tabs of
+project, not to the computer the pictures are made on), the two tabs of the
+**Devices & backups** window, and the three tabs of
 the **Forgot password?** window. In that window hashcat and CUPP are shown as not found, as they are
 on most computers, so that no path of the computer the pictures were made on
-can appear in them.
+can appear in them. The Devices & backups window is never shown with the
+computer's own backups or devices: the tool gives it three invented backups
+(tiny folders with the same layout, in a temporary folder, with invented
+sizes) and an invented, trusted iPhone with a backup under way
+(`tools/demo/devices.py`), so no real backup, device or folder can appear.
 
 ## When to refresh them
 

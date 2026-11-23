@@ -29,6 +29,15 @@ No. It reads **local** backups made by iTunes, Finder or the Apple Devices
 app. iCloud backups are stored on Apple's servers and cannot be reached by this
 tool.
 
+**Can it make a backup of my iPhone itself? Does that work on Linux?**
+Yes, with the optional libimobiledevice tools installed: the **Devices &
+backups** window pairs with a plugged-in device (you tap Trust), backs it up
+into any folder, and can turn the backup encryption on or off or change its
+password. It is the same on Windows, macOS and Linux, and it is how you make a
+backup on Linux, where there is no iTunes or Finder. The same window lists
+every backup on the computer and can check, copy, move and delete them. It
+never restores a backup to a device. See [Devices and backups](DEVICES.md).
+
 ## Backups
 
 **What iOS versions are supported?**

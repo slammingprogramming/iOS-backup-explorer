@@ -10,6 +10,7 @@ was taken from the program running on an *invented* demo backup (see
 |---|---|
 | [Installation](INSTALL.md) | Python, the one required package, the optional extras, running the program |
 | [Getting started](GETTING_STARTED.md) | Finding a backup, opening it (encrypted, unencrypted or already extracted), the window, a first look around |
+| [Devices and backups](DEVICES.md) | The **Devices & backups** window: every backup on the computer (check, copy, move, delete), and, with libimobiledevice's tools, pairing with a device, backing it up, and its backup encryption, on Windows, macOS and Linux |
 | [The file browser](FILE_BROWSER.md) | Folders, sorting, searching, extracting files, extracting the entire backup, mounting a backup as a drive |
 | [The app tabs](apps/README.md) | One page for each group of tabs: what is shown, how to use it, what it cannot show |
 | [Exporting](EXPORTING.md) | Every export format, which tab offers it, and what the files contain |

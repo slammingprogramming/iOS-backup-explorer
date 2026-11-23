@@ -64,6 +64,7 @@ pip install -r requirements-optional.txt
 | **tzdata** | A time zone database, which the Health tab's *Sleep per night* needs to place each night on a day (Windows has none; Linux and macOS do) |
 | **ffmpeg** (a separate program, not a pip package; [ffmpeg.org](https://ffmpeg.org)) | Mixing the two sides of a call recording into one `.m4a` |
 | **mfusepy** (`pip install -r requirements-mount.txt`) | Mounting a backup as a drive or folder; also needs WinFsp, macFUSE/FUSE-T or FUSE, see [the file browser](FILE_BROWSER.md#mounting-a-backup) |
+| **libimobiledevice**'s tools and **usbmuxd** (separate programs, not pip packages; [libimobiledevice.org](https://libimobiledevice.org)) | Pairing with a plugged-in iPhone or iPad, backing it up and managing its backup encryption, from the **Devices & backups** window. How to install them for each system is in [Devices and backups](DEVICES.md#installing-the-tools). Everything else in that window needs nothing extra |
 | **hashcat** (a separate program, not a pip package; [hashcat.net](https://hashcat.net/hashcat/)) | The "Hashcat" tab of **Forgot password?**, see [Forgot a password?](RECOVERY.md) |
 | **CUPP** (a separate program, not a pip package; [github.com/Mebus/cupp](https://github.com/Mebus/cupp)) | Building a wordlist from things you remember about yourself, inside that same tab |
 
@@ -74,9 +75,10 @@ pip install -r requirements-optional.txt
   optional `tzdata` package (`pip install tzdata`) to get that table.
 - **macOS.** Works as is. If Python was installed from python.org, tkinter is
   included.
-- **Linux.** Install `python3-tk`. Backups have to be copied over from a
-  Windows or macOS computer first, because iTunes and Finder do not exist
-  there.
+- **Linux.** Install `python3-tk`. iTunes and Finder do not exist there, so
+  to make a backup install libimobiledevice's tools and use the **Devices &
+  backups** window ([Devices and backups](DEVICES.md)); or copy a backup over
+  from a Windows or macOS computer.
 
 ## Running the tests
 

@@ -1,7 +1,7 @@
 # Testing
 
-The suite has about 1,700 tests and runs in a few minutes. Without a display
-(as on CI's Linux machines) 1,231 are counted and the 100 or so that open a
+The suite has about 1,800 tests and runs in a few minutes. Without a display
+(as on CI's Linux machines) 1,311 are counted and the 100 or so that open a
 window are skipped. It uses only
 **generated** data: nothing from a real device is, or may ever be, in the
 repository.
@@ -24,6 +24,7 @@ clean under it.
 | **Reader tests** | `tests/test_<app>.py` | Test a reader with no window: the numbers, the conversions, the edge cases, the export files |
 | **Window tests** | the same modules, classes using `AppGuiCase` | Open a generated backup in the real window and drive the tab: it appears only with data, shows the rows, searches, exports, extracts the originals, works for an encrypted backup. They skip themselves when there is no display |
 | **Backup tests** | `test_backup_session.py`, `test_unencrypted.py`, `test_folder_backup.py`, `test_gui*.py`, `test_mount.py` | Build a real encrypted backup (`fixture_backup.py`, with a real key bag and AES) and run it through the real decryption library; open unencrypted and extracted folders; the file browser; mounting |
+| **Device tests** | `test_device_tools.py`, `test_backup_library.py`, `test_devices_view.py` | No device and no real tool is ever needed. The tools' output is what their own source prints, fed through a fake runner; a stand-in `idevicebackup2` (a small script that draws its progress with the same cursor codes) is run as a real process to test progress, success, failure, stopping and that a password goes in the environment and never on the command line; the library is tested on invented backups in a temporary folder (copy, move, delete, check, including the refusals); the window is driven with a stand-in toolbox |
 | **Helpers** | `tests/gui_apps.py`, `tests/keyed_builder.py` | `AppGuiCase`; a writer of `NSKeyedArchiver` lists |
 | **Checks** | `tools/check_attribution.py`, `tools/check_version.py` | Run in CI, and from `test_version.py` |
 | **Release** | `test_release.py` | The release notes, the tag check and the archives (`tools/release.py`), and the shape of `release.yml` (who may write, what runs first) |

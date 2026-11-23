@@ -56,7 +56,11 @@ import platform
 import re
 
 import about
+import app_settings
+import backup_library
 import browser_panel
+import device_tools
+import devices_view
 import folder_backup
 from ios_apps import registry as app_registry
 from ios_apps import keychain_crypto
@@ -778,7 +782,17 @@ class BackupExplorer:
                 "~/Library/Application Support/MobileSync/Backup"
             ),
         ],
+        # Nothing else keeps backups on Linux: this is the folder the
+        # program's own "Back up now" uses unless another is chosen.
+        "Linux": [
+            backup_library.own_backup_folder(
+                "Linux", os.environ, os.path.expanduser("~")),
+        ],
     }
+
+    # Where the few remembered choices live (tests point this at a
+    # temporary folder, so that no run reads or writes a real one).
+    SETTINGS_FOLDER = None
 
     def __init__(self, root, session=None):
         self.root = root
@@ -954,6 +968,9 @@ class BackupExplorer:
         path_entry.pack(side="left", padx=8)
         ttk.Button(row1, text="Browse...",
                     command=self._browse_folder).pack(side="left")
+        self.devices_btn = ttk.Button(row1, text="Devices & backups...",
+                                      command=self.show_devices)
+        self.devices_btn.pack(side="left", padx=(8, 0))
 
         row2 = ttk.Frame(self.conn_body)
         row2.pack(fill="x", pady=3)
@@ -1154,6 +1171,57 @@ class BackupExplorer:
 
     def show_about(self):
         about.AboutDialog(self.root, APP_NAME, __version__)
+
+    # ── Devices & backups ─────────────────────────────────────
+
+    def _settings(self):
+        folder = self.SETTINGS_FOLDER or app_settings.settings_folder(
+            platform.system(), os.environ, os.path.expanduser("~"))
+        return app_settings.Settings.load(folder)
+
+    def show_devices(self):
+        """The window for the backups on this computer and for a device
+        plugged in by USB (one at a time: a second press shows the first)."""
+        window = getattr(self, "_devices_window", None)
+        if window is not None and window.winfo_exists():
+            window.deiconify()
+            window.lift()
+            return window
+        settings = self._settings()
+        system, home = platform.system(), os.path.expanduser("~")
+
+        def locations():
+            return backup_library.default_locations(
+                system, os.environ, home) + [
+                (folder, "Added by you")
+                for folder in settings.backup_folders]
+
+        def make_toolbox(folder=None):
+            return device_tools.Toolbox(folder=folder)
+
+        self._devices_window = devices_view.DevicesWindow(
+            self.root, settings=settings, locations=locations,
+            toolbox=make_toolbox(settings.tools_folder),
+            make_toolbox=make_toolbox, open_backup=self._open_from_library,
+            default_folder=backup_library.own_backup_folder(
+                system, os.environ, home))
+        return self._devices_window
+
+    def _open_from_library(self, path):
+        """Open a backup chosen in the Devices & backups window."""
+        if self._mount is not None or self._mount_busy:
+            messagebox.showinfo(
+                "Info", "Unmount the current backup before opening another.")
+            return
+        self._expand_connection()
+        self.path_var.set(path)
+        self._update_backup_kind()
+        self.root.deiconify()
+        self.root.lift()
+        if self._backup_kind == ENCRYPTED:
+            self.pass_entry.focus_set()
+        elif self._backup_kind is not None:
+            self._decrypt()
 
     # ── Forgotten passwords ───────────────────────────────────
 

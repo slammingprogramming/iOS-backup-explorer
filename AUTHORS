@@ -101,3 +101,11 @@ records it receives from clinics; reading them relies on its published names.
 Apple HealthKit documentation — Apple Inc. The public names and values of
 sleep stages, category samples (symptoms, cycle tracking, events) and clinical
 record types.
+libimobiledevice — Nikias Bassen, Martin Szulecki and the libimobiledevice
+contributors (LGPL-2.1-or-later), and usbmuxd — the usbmuxd contributors (GPL).
+The tools idevice_id, ideviceinfo, idevicepair, idevicebackup2 and
+idevicecrashreport that the Devices & backups window runs, as separate programs
+the person installs, to pair with a device, back it up and manage its backup
+encryption. Nothing of theirs is bundled, downloaded or copied.
+    https://libimobiledevice.org
+    https://github.com/libimobiledevice/usbmuxd

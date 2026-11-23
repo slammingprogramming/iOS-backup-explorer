@@ -373,6 +373,49 @@ class Shooter:
         window.destroy()
         self.pump(0.3)
 
+    def devices_window(self):
+        """The Devices & backups window, given invented backups and an
+        invented device in place of this computer's own (so no real backup,
+        device or folder can appear), with invented sizes."""
+        import shutil
+        import tempfile
+        from unittest import mock
+        import app_settings
+        import backup_library
+        import devices_view
+        from tools.demo import devices as demo
+        work = tempfile.mkdtemp(prefix="ibe-demo-devices-")
+        names = {backup[0]: backup[1] for backup in demo.BACKUPS}
+        try:
+            places = demo.make_backups(work)
+
+            def invented_size(path, cancel=None):
+                return demo.SIZES[names[os.path.basename(path)]]
+
+            with mock.patch.object(backup_library, "folder_size",
+                                   invented_size):
+                window = devices_view.DevicesWindow(
+                    self.root,
+                    settings=app_settings.Settings(
+                        os.path.join(work, "settings")),
+                    locations=lambda: places, toolbox=demo.DemoToolbox(),
+                    open_backup=lambda path: None,
+                    default_folder=r"C:\Demo\Backups")
+                window.geometry("980x740+40+40")
+                self.pump(1.5)
+                window.tree.selection_set(window.tree.get_children()[0])
+                self.shoot("61-devices-backups", window)
+                window.notebook.select(1)
+                self.pump(1.0, until=lambda: window.info_vars[
+                    "name"].get() != "")
+                window.start_backup()
+                self.pump(0.8)
+                self.shoot("62-devices-device", window)
+                window.destroy()
+                self.pump(0.3)
+        finally:
+            shutil.rmtree(work, ignore_errors=True)
+
     def export_dialog(self):
         panel = self.show("Calendar")
         self.loaded(panel, "datasets")
@@ -435,6 +478,7 @@ class Shooter:
         self.table("iCloud Drive", "39-icloud-drive")
         self.keychain()
         self.about()
+        self.devices_window()
         self.export_dialog()
         self.pump(0.5)
         self.root.destroy()

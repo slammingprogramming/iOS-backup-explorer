@@ -15,6 +15,12 @@ correct.
    |-- backup_mount.py         optional: mount a backup (FUSE / WinFsp)
    |-- about.py                the "About & support" window, and the one list of
    |                           the project's donation details (see DONATE.md)
+   |-- devices_view.py         the "Devices & backups" window (see DEVICES.md)
+   |-- backup_library.py       find, describe, copy, move, delete and check the
+   |                           backups on the computer (no GUI, no device)
+   |-- device_tools.py         pairing, backing up and encryption of a plugged-in
+   |                           device, through libimobiledevice's tools (no GUI)
+   |-- app_settings.py         the few remembered paths (one small JSON file)
    |-- ui_util.py              thread-safe callbacks that hold panels weakly
    `-- ios_apps/               everything for the app tabs
          registry.py           the list of tabs and when each appears
@@ -162,6 +168,38 @@ class MyPanel(RecordsPanel):
 `ios_apps/registry.py` has `APPS`, a list of `AppEntry(key, title, detect,
 create)`. `detect(index)` says whether the backup has the data; `create`
 builds the panel. The window adds a tab for each entry that detects.
+
+## Devices and the backups on the computer
+
+Three small modules, none of which the reading of a backup depends on.
+
+- `backup_library.py` has no GUI and needs no device. `find_backups` lists the
+  backups in some folders (`inspect_backup` reads only the three small property
+  lists of each), `folder_size` measures one, and `copy_backup`,
+  `move_backup`, `delete_backup` and `check_backup` manage them. The writing
+  ones refuse anything that does not look like a backup, never follow a link,
+  copy under a temporary name and verify before renaming, and delete only
+  inside a folder the caller lists. `default_locations` knows where each system
+  keeps backups, which on Linux is a folder of this program's own.
+- `device_tools.py` has no GUI either. A `Toolbox` finds libimobiledevice's
+  tools (`idevice_id`, `ideviceinfo`, `idevicepair`, `idevicebackup2`,
+  `idevicecrashreport`) and runs one at a time, as a list of arguments, never
+  through a shell, with the runner injectable so that tests need no tool. It
+  turns what they print into a `DeviceInfo`, a pairing state or a
+  `DeviceError` of a known kind (what the window words its advice from).
+  `BackupRun` runs `idevicebackup2 backup` in the background, reading its
+  progress from output that is drawn with cursor codes, and decides success from
+  what the tool says, not from its exit status. Passwords go in the
+  environment, never on a command line. Restoring is deliberately absent.
+- `devices_view.py` is the window. Like the other windows it does its work off
+  the Tk thread and hears back through a queue; what a thread needs from a Tk
+  variable (the selected device) is read first, on the Tk thread. It is given
+  its toolbox, settings and folders, so that tests (and the screenshot tool)
+  can use a stand-in toolbox and invented backups.
+
+`app_settings.py` holds the remembered choices (extra folders, where backups
+go, where the tools are) in one JSON file in the user's settings folder; a
+missing or damaged file is the same as an empty one.
 
 ## Other pieces
 

@@ -54,6 +54,7 @@ You made an encrypted iPhone backup with iTunes, Finder, or the Apple Devices ap
 - **A real file manager** for the whole backup: folders, sorting, instant search, extraction of any file, folder or the **entire backup**, and optionally **mounting** it as a read-only drive.
 - **One tab for each app**, reading the app's data the way the phone shows it, with search, details and export. A tab appears only when the backup has its data.
 - **Reads backups of many iOS versions**, iPhone and iPad (iOS 13 to 27, and iOS 12 as far as it was checked), each checked against real backups; [iOS versions](docs/IOS_VERSIONS.md) lists which, and what differs between them.
+- **Devices & backups**, on Windows, macOS and **Linux** alike: one list of every backup on the computer (Apple's folders, your own, any folder you add) that you can check, copy or move to another drive, and delete safely; and, with [libimobiledevice](https://libimobiledevice.org)'s tools installed, **pair with a plugged-in iPhone or iPad, back it up into any folder, manage its backup encryption and copy its crash reports**, which is how you do it on Linux, where there is no iTunes or Finder. See [Devices and backups](docs/DEVICES.md).
 - **Forgot a password?** A button next to every password prompt (the backup's, a locked note's) opens Apple's own answer, workarounds, and an optional [hashcat](https://hashcat.net/hashcat/) helper you install yourself; see [Forgot a password?](docs/RECOVERY.md).
 - **Exports in formats you can use**: text, Markdown, web pages, PDF, spreadsheets, JSON, vCard, iCalendar, GPX routes, bookmarks files, JPEG, audio with transcripts. **The original files can always be extracted untouched**, too.
 
@@ -154,7 +155,7 @@ Honesty matters when you are reading someone's data:
 
 ### Our security promises:
 
-1. **100% Offline** — iOS Backup Explorer makes zero network connections. Disconnect your internet and it works identically. [Verify it yourself.](#verify-it-yourself)
+1. **100% Offline** — iOS Backup Explorer makes zero network connections. Disconnect your internet and it works identically. (The one thing it can talk to is a phone plugged into your computer by its cable, through the computer's own local `usbmuxd` service, and only when you ask in **Devices & backups**; nothing leaves the computer.) [Verify it yourself.](#verify-it-yourself)
 
 2. **Your password is never stored** — It's held in memory only while the app runs. When you close iOS Backup Explorer, it's gone.
 
@@ -181,10 +182,14 @@ Honesty matters when you are reading someone's data:
 2. Paste: `~/Library/Application Support/MobileSync/Backup/`
 3. Each subfolder is one device backup
 
+### Linux
+
+Nothing else keeps backups here, so the program makes its own folder, `~/.local/share/ios-backup-explorer/Backups`, which **Devices & backups** uses and searches (as well as any folder you add). Backups copied from a Windows or macOS computer can be kept anywhere; choose the folder with **Browse...**.
+
 ### How to create an encrypted backup
 
 1. Connect your iPhone/iPad to your computer
-2. Open **iTunes** (Windows), **Finder** (macOS) or the **Apple Devices** app
+2. Open **iTunes** (Windows), **Finder** (macOS) or the **Apple Devices** app, **or, on any system including Linux, this program's own [Devices & backups](docs/DEVICES.md) window** (it needs [libimobiledevice](https://libimobiledevice.org)'s tools)
 3. Select your device and tick **"Encrypt local backup"**
 4. Set a password — **remember this password!**
 5. Click **Back Up Now**
@@ -290,6 +295,7 @@ The Keychain tab, the opening of locked notes and of the files in clinical recor
 - [hashcat](https://hashcat.net/hashcat/), whose Apple Secure Notes module (and, for a backup's key bag, its iTunes Backup module) confirms how a locked note's key is made, and which the optional "Forgot password?" helper can hand a password to try to
 - [itunes_backup2hashcat](https://github.com/philsmd/itunes_backup2hashcat) by philsmd, [a worked example of that format](https://irq5.io/2017/03/07/cracking-itunes-backup-passwords-with-hashcat/) by darell tan, and [applenotes2john.py](https://github.com/openwall/john) from John the Ripper by Dhiru Kholia, for the hash line formats that helper builds
 - [CUPP](https://github.com/Mebus/cupp) by Mebus, an optional wordlist generator that same helper can run
+- [libimobiledevice](https://libimobiledevice.org) by Nikias Bassen, Martin Szulecki and its contributors, and [usbmuxd](https://github.com/libimobiledevice/usbmuxd), whose command-line tools the **Devices & backups** window runs (as separate programs you install yourself, never bundled or copied) to pair with a device, back it up and manage its backup encryption
 - [kinnay/AEA](https://github.com/kinnay/AEA) (python-aea) by Yannik Marchand, which the reader for the Apple Encrypted Archive files in Health's clinical records was checked against, [ipsw](https://github.com/blacktop/ipsw) by blacktop, and [The Apple Wiki](https://theapplewiki.com/wiki/Apple_Encrypted_Archive), for how that format is built
 - The [Protocol Buffers encoding guide](https://protobuf.dev/programming-guides/encoding/), for reading the Maps records of iOS 12
 - [HL7 FHIR](https://hl7.org/fhir) and Apple's HealthKit documentation, for the names and values used to read Health records, symptoms and cycle tracking

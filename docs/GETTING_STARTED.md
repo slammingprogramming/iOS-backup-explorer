@@ -18,7 +18,7 @@ folder yourself.
 | **Windows** (iTunes installer) | `%APPDATA%\Apple Computer\MobileSync\Backup\` |
 | **Windows** (Microsoft Store iTunes, Apple Devices app) | `%USERPROFILE%\Apple\MobileSync\Backup\` |
 | **macOS** | `~/Library/Application Support/MobileSync/Backup/` |
-| **Linux** | Copy a backup over from a Windows or macOS computer |
+| **Linux** | `~/.local/share/ios-backup-explorer/Backups/`, where this program's own **Devices & backups** window puts the backups it makes ([Devices and backups](DEVICES.md)); or copy a backup over from a Windows or macOS computer |
 
 Each device has one sub-folder with a long name made of letters and digits
 (for example `00008030-001A2B3C4D5E6F78`). **Choose that folder**, the one
@@ -33,7 +33,9 @@ explore everything.
 
 1. Connect the iPhone or iPad to your computer.
 2. Open **iTunes** (Windows) or **Finder** (macOS), or the **Apple Devices**
-   app, and select the device.
+   app, and select the device. (On Linux, or if you would rather not use
+   Apple's programs, use this program's **Devices & backups** window instead:
+   [Devices and backups](DEVICES.md).)
 3. Tick **Encrypt local backup**.
 4. Set a password and **remember it**. A forgotten one is not easily recovered.
 5. Click **Back Up Now**.
