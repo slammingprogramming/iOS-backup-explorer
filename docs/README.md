@@ -1,6 +1,6 @@
 # iOS Backup Explorer documentation
 
-Documentation for **iOS Backup Explorer 2.6.0**. Every picture in these pages
+Documentation for **iOS Backup Explorer 2.7.0**. Every picture in these pages
 was taken from the program running on an *invented* demo backup (see
 [SCREENSHOTS.md](SCREENSHOTS.md)); nothing in them is a real person's data.
 

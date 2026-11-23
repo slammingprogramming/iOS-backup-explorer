@@ -550,6 +550,8 @@ class MainWindowTests(AppGuiCase):
         folder = tempfile.mkdtemp(dir=self.tmp)
         with mock.patch.object(app.BackupExplorer, "SETTINGS_FOLDER",
                                folder), \
+                mock.patch.object(dv.DevicesWindow, "COLLECT_AFTER_CLOSE",
+                                  None), \
                 mock.patch.object(app.device_tools, "Toolbox",
                                   return_value=FakeToolbox()):
             self.assertEqual(self.explorer.devices_btn.cget("text"),
